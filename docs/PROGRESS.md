@@ -7,6 +7,7 @@
 開始做一件事前在這裡登記；做完就移除。格式：`- 分支名稱：在做什麼（會動到的檔案或資料夾）`
 
 - `claude/loving-brahmagupta-mhxt6t`：遊戲系統第 2 批（序幕＋第一幕）——`server/`、`data/`、`game/`（新增 `game/src/data/` 場景配置格式、`game/src/world/greybox.mjs` 灰盒場景、`game/src/ui/` 謎題畫面、`game/src/logic/` 劇情）、`tools/test/`、`docs/08-world-format.md`。美術之後由帳號二照 `docs/08-world-format.md` 的格式換上。
+- `claude/sweet-goldberg-nklgb6`：(1) 用換髮型讓撞臉的配角看不出來（`prototype/src/`）；(2) 角色模型壓到每個 5MB 以下、放進 `game/models/`，並在 `game/src/art/` 提供載入角色的程式，給遊戲換掉隊友的簡單人形。不會動 `game/src/` 其他資料夾。
 
 
 ## 等製作人回答
