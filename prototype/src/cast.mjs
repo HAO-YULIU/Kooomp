@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import { loadCC } from './cc.mjs';
 import { loadCyril } from './cyril.mjs';
 import { loadWarden } from './warden.mjs';
-import { loadMan, loadHoodedWoman, makeBun } from './extras.mjs';
+import { loadMan, loadHoodedWoman } from './extras.mjs';
+import { loadHairSet } from './hairbank.mjs';
 
 const $ = (id) => document.getElementById(id);
 const HOUSES = {
@@ -19,9 +20,11 @@ const CAST = [
   { name: '守夜人 葛雷', en: 'Greer the Night Warden', desc: '第一章的追逐者。駝背、提著綠色的燈。原檔貼圖沒有附上，全部用程式上色。', load: (s) => loadWarden(s) },
   { name: '校長 奧德里克', en: 'Headmaster Aldric Milner', desc: '白髮白鬍子、紫金色長袍。用「72」男生模型改的，沒有骨架。', load: (s) => loadMan(s, { hair: '#e4e0d8', beard: '#ece8e0', skin: '#e8c4aa', robe: { main: '#2e1a3a', trim: '#c8a24a' }, height: 1.8 }) },
   { name: '副校長 塞巴斯汀', en: 'Vice-Principal Sebastian Moray', desc: '西里爾的父親，用西里爾的模型改的：更高、深色頭髮夾著灰白、黑銀長袍。', load: (s) => loadCyril(s, { house: { main: '#0c0c10', trim: '#9aa0a8' }, hair: '#22201e', hairTip: '#8a857c', iris: '#5a6a62', skin: '#e8c8b2', height: 1.88 }) },
-  { name: '舍監 赫爾嘉夫人', en: 'Madam Helga', desc: '用月晞的模型改的：拿掉丸子頭，換成灰色髮髻和白色布帽。', load: (s) => loadCC(s, { body: 'female', house: { main: '#3a3a40', trim: '#e8e4dc' }, hair: '#8a857c', hairTip: '#b8b2a8', skin: '#e8c8b4', cloakScale: 0.98, height: 1.02, hideHair: true, headGear: makeBun('#a8a298', { cap: '#ece8e0' }) }) },
-  { name: '魔藥學教授 薇拉', en: 'Professor Vera Knox', desc: '用艾洛拉的模型改的：戴眼鏡、深紅棕色頭髮、墨綠色長袍。', load: (s) => loadCC(s, { body: 'elora', glasses: true, house: { main: '#1a2a20', trim: '#7a6a3a' }, hair: '#3a1610', hairTip: '#6a2a1a', skin: '#ecc8b0', height: 0.93, cloakScale: 0.92 }) },
-  { name: '男學生', en: 'Student（艾爾德林）', desc: '背景學生。「72」男生模型＋學院長袍，換髮色和學院就能變出很多人。', load: (s) => loadMan(s, { hair: '#6a4a2a', robe: HOUSES.eldrin, height: 1.74 }) },
+  { name: '舍監 赫爾嘉夫人', en: 'Madam Helga', desc: '月晞的臉，換上艾洛拉模型的短捲髮（灰白色）和眼鏡，看不出是同一個人。', load: async (s) => loadCC(s, { body: 'female', house: { main: '#3a3a40', trim: '#e8e4dc' }, hair: '#6a655c', hairTip: '#c8c2b8', skin: '#e8c8b4', cloakScale: 0.98, height: 1.02, hideHair: true,
+    headGear: await loadHairSet([{ from: 'elora', parts: ['Scalp'], hair: '#6a655c', hairTip: '#c8c2b8' }, { from: 'elora', parts: ['glasses'] }]) }) },
+  { name: '魔藥學教授 薇拉', en: 'Professor Vera Knox', desc: '艾洛拉的臉，換上月晞模型的長髮和空氣瀏海（深紅棕色），看不出是同一個人。', load: async (s) => loadCC(s, { body: 'elora', house: { main: '#1a2a20', trim: '#7a6a3a' }, hair: '#3a1610', hairTip: '#6a2a1a', skin: '#ecc8b0', height: 0.93, cloakScale: 0.92, hideHair: true,
+    headGear: await loadHairSet([{ from: 'female', parts: ['Double_high', 'Air_bangs'], hair: '#3a1610', hairTip: '#6a2a1a' }]) }) },
+  { name: '男學生', en: 'Student（艾爾德林）', desc: '背景學生。跟校長同一張臉，換上沃恩模型的油頭，再加學院長袍。', load: async (s) => loadMan(s, { hair: '#6a4a2a', robe: HOUSES.eldrin, height: 1.74, gear: await loadHairSet([{ from: 'male', parts: ['Slicked_Back'], hair: '#6a4a2a', hairTip: '#a07a50' }]) }) },
   { name: '男學生（兜帽）', en: 'Student（貝爾蒙特）', desc: '背景學生，戴兜帽。', load: (s) => loadMan(s, { hair: '#1a1410', robe: HOUSES.belmont, hood: true, height: 1.78 }) },
   { name: '女學生（兜帽）', en: 'Student（格里莫瓦）', desc: '背景學生。女性人體雛形沒有五官，所以一定戴兜帽，臉藏在陰影裡。', load: (s) => loadHoodedWoman(s, { robe: HOUSES.grimoire }) },
   { name: '女學生（兜帽）', en: 'Student（烏洛波斯）', desc: '背景學生，同上。', load: (s) => loadHoodedWoman(s, { robe: HOUSES.ouroboros, height: 1.62 }) },

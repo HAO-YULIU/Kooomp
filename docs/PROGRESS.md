@@ -7,13 +7,13 @@
 開始做一件事前在這裡登記；做完就移除。格式：`- 分支名稱：在做什麼（會動到的檔案或資料夾）`
 
 - `claude/loving-brahmagupta-mhxt6t`：遊戲系統第 2 批（序幕＋第一幕）——`server/`、`data/`、`game/`（新增 `game/src/data/` 場景配置格式、`game/src/world/greybox.mjs` 灰盒場景、`game/src/ui/` 謎題畫面、`game/src/logic/` 劇情）、`tools/test/`、`docs/08-world-format.md`。美術之後由帳號二照 `docs/08-world-format.md` 的格式換上。
-- `claude/sweet-goldberg-nklgb6`：(1) 用換髮型讓撞臉的配角看不出來（`prototype/src/`）；(2) 角色模型壓到每個 5MB 以下、放進 `game/models/`，並在 `game/src/art/` 提供載入角色的程式，給遊戲換掉隊友的簡單人形。不會動 `game/src/` 其他資料夾。
+- `claude/sweet-goldberg-nklgb6`： 角色模型壓到每個 5MB 以下、放進 `game/models/`，並在 `game/src/art/` 提供載入角色的程式，給遊戲換掉隊友的簡單人形。不會動 `game/src/` 其他資料夾。
 
 
 ## 等製作人回答
 - 技術雛形（`prototype/`）試玩後：
   1. ~~角色美術走哪個方向？~~ 已決定：**寫實模型**（2026-10-21）。
-  1-1. 第一章的角色都做好了，看 `prototype/cast.html`（角色一覽）。要確認：撞臉可不可以接受（校長＝男學生、赫爾嘉＝月晞、薇拉＝艾洛拉）；西里爾沒有表情可不可以；守夜人的上色。
+  1-1. 第一章的角色都做好了，看 `prototype/cast.html`（角色一覽）。撞臉已用換髮型處理（赫爾嘉戴艾洛拉的短捲髮＋眼鏡、薇拉戴月晞的頭髮、男學生戴沃恩的油頭）；西里爾沒有表情可不可以；守夜人的上色。
   1-2. 法杖：星月法杖給女生、龍首法杖給男生（2026-10-21 製作人提供）。
   2. **揮動手機施咒的靈敏度**（太容易誤觸發或太難揮出來？）、**QR code 配對**能不能連上——這兩項開發環境測不到，要在真的手機上試。
   3. 教室的亮度、恐怖程度（顯影咒之後的驚嚇）可不可以？
@@ -51,3 +51,4 @@
 - 2026-10-21：遊戲系統第 1 批完成：Cloudflare Worker＋Durable Object 房間（登入、等待室、位置同步 A＋B、聊天、標記、伺服器判斷第一章全部答案與提示）、遊戲外殼、build、13 項自動測試通過。房間與答案改放 Cloudflare，Supabase 只做登入（不用建新資料表）。
 - 2026-10-21：製作人在 Cloudflare 建立 Worker `kooomp`（https://kooomp.noron.workers.dev/）；wrangler.jsonc 名稱改成 kooomp。
 - 2026-10-21：上架大廳延後到第一章做得差不多時。
+- 2026-10-21：換髮型區分撞臉的配角（`prototype/src/hairbank.mjs`）。

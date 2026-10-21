@@ -83,7 +83,7 @@ export const skinMat = (name) => new THREE.MeshPhysicalMaterial({
 });
 
 // ---------- 頭髮：髮根深、髮尾亮，每一撮深淺不同，加上光澤 ----------
-function paintHair(geo, root, tip, scalpCount, dz) {
+export function paintHair(geo, root, tip, scalpCount, dz) {
   const pos = geo.attributes.position, n = pos.count, col = new Float32Array(n * 4);
   const R = new THREE.Color(root), T = new THREE.Color(tip), c = new THREE.Color();
   for (let i = 0; i < n; i++) {
@@ -120,8 +120,30 @@ export function makeCloak(house) {
   return g;
 }
 
-const FILES = { male: 'models/male/Male_Base.fbx', female: 'models/girl/Female_Base.fbx', elora: 'models/elora/Elora.fbx' };
-const HAIR_MESH = /Slicked_Back_Side|Space_bun|Air_bangs|Double_high|^Scalp$/;
+export const FILES = { male: 'models/male/Male_Base.fbx', female: 'models/girl/Female_Base.fbx', elora: 'models/elora/Elora.fbx' };
+export const HAIR_MESH = /Slicked_Back_Side|Space_bun|Air_bangs|Double_high|^Scalp$/;
+
+// 把模型原本的材質換成我們的（皮膚、頭髮、眉毛…）。hairbank.mjs 換髮型時也用這個
+export function ccMaterial(m, { hair = '#1e1510' } = {}) {
+  if (/Skin/.test(m.name)) return skinMat(m.name);
+  if (/Nails/.test(m.name)) return new THREE.MeshStandardMaterial({ name: m.name, color: '#e6c2b0', roughness: 0.35 });
+  if (/Teeth/.test(m.name)) return new THREE.MeshStandardMaterial({ name: m.name, color: '#e8e2d6', roughness: 0.3 });
+  if (/Scalp/.test(m.name)) return new THREE.MeshStandardMaterial({ name: m.name, color: '#ffffff', vertexColors: true, alphaMap: m.alphaMap, transparent: true, depthWrite: false, roughness: 1 }); // 原本是白色頭皮；髮際線慢慢淡出
+  // 頭髮：保留原本的透明度貼圖（一根一根的形狀）。用不反光的材質：頭髮片很薄、幾乎都是斜著看，
+  // 會反光的材質在斜角反射特別強，整頭會被燭光照成橘色
+  if (/^hair$/.test(m.name)) { // 艾洛拉的頭髮：髮絲很細、透明度貼圖很淡，切掉會變光頭，所以改用半透明疊加，並把不透明度加倍
+    const h = new THREE.MeshLambertMaterial({ name: m.name, color: '#ffffff', vertexColors: true, alphaMap: m.alphaMap, transparent: true, depthWrite: false, alphaTest: 0.03, side: THREE.DoubleSide });
+    h.customProgramCacheKey = () => 'hair-alpha-boost'; // 不設的話會跟其他頭髮共用同一份著色器，加倍就失效
+    h.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <alphamap_fragment>', '#include <alphamap_fragment>\n diffuseColor.a = clamp(diffuseColor.a * 2.4, 0.0, 1.0);'); };
+    return h;
+  }
+  if (/Slicked_Back|Hair_Transparency|^hair$/.test(m.name)) return new THREE.MeshLambertMaterial({
+    name: m.name, color: '#ffffff', vertexColors: true, alphaMap: m.alphaMap, alphaTest: 0.3, side: THREE.DoubleSide,
+  });
+  if (/Eyelash/.test(m.name)) { m.color.set('#1a120e'); return m; }
+  if (/Female_Flat/.test(m.name)) return new THREE.MeshLambertMaterial({ name: m.name, color: hair, alphaMap: m.alphaMap, transparent: true, depthWrite: false }); // 眉毛：原本的材質反光太強，看起來是灰白色
+  return m;
+}
 
 /** opts：{ body: 'male' | 'female' | 'elora', house: { main, trim }, hair, hairTip, skin, cloakScale, height（整體縮放）, glasses（艾洛拉的模型附眼鏡，預設不戴）,
  *         hideHair（拿掉原本的頭髮）, headGear（戴在頭上的零件，例如 extras.mjs 的髮髻、帽子；原點是頭的中心、臉朝 +z） } */
@@ -144,26 +166,7 @@ export function loadCC(scene, { body = 'male', house = { main: '#121214', trim: 
         if (c.name === P + 'Body') paintSkin(c.geometry, skin, dz);
         const scalpCount = c.geometry.groups.length > 1 ? c.geometry.groups[0].count : 0;
         if (HAIR_MESH.test(c.name) && !c.geometry.index) paintHair(c.geometry, hair, hairTip, scalpCount, dz);
-        const mats = [].concat(c.material).map((m) => {
-          if (/Skin/.test(m.name)) return skinMat(m.name);
-          if (/Nails/.test(m.name)) return new THREE.MeshStandardMaterial({ name: m.name, color: '#e6c2b0', roughness: 0.35 });
-          if (/Teeth/.test(m.name)) return new THREE.MeshStandardMaterial({ name: m.name, color: '#e8e2d6', roughness: 0.3 });
-          if (/Scalp/.test(m.name)) return new THREE.MeshStandardMaterial({ name: m.name, color: '#ffffff', vertexColors: true, alphaMap: m.alphaMap, transparent: true, depthWrite: false, roughness: 1 }); // 原本是白色頭皮；髮際線慢慢淡出
-          // 頭髮：保留原本的透明度貼圖（一根一根的形狀）。用不反光的材質：頭髮片很薄、幾乎都是斜著看，
-          // 會反光的材質在斜角反射特別強，整頭會被燭光照成橘色
-          if (/^hair$/.test(m.name)) { // 艾洛拉的頭髮：髮絲很細、透明度貼圖很淡，切掉會變光頭，所以改用半透明疊加，並把不透明度加倍
-            const h = new THREE.MeshLambertMaterial({ name: m.name, color: '#ffffff', vertexColors: true, alphaMap: m.alphaMap, transparent: true, depthWrite: false, alphaTest: 0.03, side: THREE.DoubleSide });
-            h.customProgramCacheKey = () => 'hair-alpha-boost'; // 不設的話會跟其他頭髮共用同一份著色器，加倍就失效
-            h.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <alphamap_fragment>', '#include <alphamap_fragment>\n diffuseColor.a = clamp(diffuseColor.a * 2.4, 0.0, 1.0);'); };
-            return h;
-          }
-          if (/Slicked_Back|Hair_Transparency|^hair$/.test(m.name)) return new THREE.MeshLambertMaterial({
-            name: m.name, color: '#ffffff', vertexColors: true, alphaMap: m.alphaMap, alphaTest: 0.3, side: THREE.DoubleSide,
-          });
-          if (/Eyelash/.test(m.name)) { m.color.set('#1a120e'); return m; }
-          if (/Female_Flat/.test(m.name)) return new THREE.MeshLambertMaterial({ name: m.name, color: hair, alphaMap: m.alphaMap, transparent: true, depthWrite: false }); // 眉毛：原本的材質反光太強，看起來是灰白色
-          return m;
-        });
+        const mats = [].concat(c.material).map((m) => ccMaterial(m, { hair }));
         c.material = Array.isArray(c.material) ? mats : mats[0];
       });
       const bone = (n) => o.getObjectByName(P + n);
@@ -191,7 +194,9 @@ export function loadCC(scene, { body = 'male', house = { main: '#121214', trim: 
         const eyeW = eye.localToWorld(ec.clone()), hp = bone('Head').getWorldPosition(new THREE.Vector3());
         gearOffset.set(0, eyeW.y - hp.y + 0.005 * height, eyeW.z - hp.z - 0.06 * height); // 頭骨在脖子上方，頭的中心在眼睛後面約 6 公分
         restInv.copy(bone('Head').getWorldQuaternion(new THREE.Quaternion())).invert();
-        gear = headGear; gear.scale.multiplyScalar(height); holder.add(gear);
+        // 從別的模型拿來的頭髮：依兩個模型的眼距換算頭的大小
+        const fit = headGear.userData.eyeWidth ? (eye.geometry.boundingBox.max.x - eye.geometry.boundingBox.min.x) / headGear.userData.eyeWidth : 1;
+        gear = headGear; gear.scale.multiplyScalar(height * fit); holder.add(gear);
       }
       scene.add(holder);
 

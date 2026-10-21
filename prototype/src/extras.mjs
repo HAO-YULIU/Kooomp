@@ -66,8 +66,9 @@ function staticCharacter(holder, model, s) {
   };
 }
 
-/** 男生（72）：hair 髮色、beard 鬍子顏色、robe 長袍、hood 兜帽、height 身高 */
-export async function loadMan(scene, { hair = '#2a1d15', skin = '#e6bea0', robe = { main: '#1a1a1e', trim: '#8a7a50' }, beard = null, hood = false, height = 1.79 } = {}) {
+/** 男生（72）：hair 髮色、beard 鬍子顏色、robe 長袍、hood 兜帽、height 身高、
+ *  gear 戴在頭上的零件（例如 hairbank.mjs 換來的頭髮）、gearScale 零件放大倍率（這個模型的頭比 Character Creator 的大） */
+export async function loadMan(scene, { hair = '#2a1d15', skin = '#e6bea0', robe = { main: '#1a1a1e', trim: '#8a7a50' }, beard = null, hood = false, height = 1.79, gear = null, gearScale = 1.2 } = {}) {
   const geo = await geometryOf('man');
   const p = geo.attributes.position, n = p.count;
   const face = faceColors(geo, skin, { eyeY: 1.672, frontZ: 0.086, k: 1.19 });
@@ -91,6 +92,7 @@ export async function loadMan(scene, { hair = '#2a1d15', skin = '#e6bea0', robe 
   const headC = new THREE.Vector3(0, 1.665 * s, 0.005 * s);
   if (beard) { const b = makeBeard(beard); b.position.copy(headC); holder.add(b); }
   if (hood) { const h = makeHood(robe.main); h.position.copy(headC); holder.add(h); }
+  if (gear) { gear.position.copy(headC); gear.scale.setScalar(gearScale * s); holder.add(gear); }
   scene.add(holder);
   return staticCharacter(holder, body, s);
 }
