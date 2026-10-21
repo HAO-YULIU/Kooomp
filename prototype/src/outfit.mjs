@@ -282,7 +282,7 @@ export async function wearOutfit(ctx, spec) {
   if (isRobe) {
     const wreg = new Uint8Array(W); for (let i = 0; i < n; i++) wreg[wid[i]] = vreg[i];
     const { geometry: g, material } = buildRobe({ posed, pnorm, wid, W, wnb, n, TRI, region: wreg, skinned, bones: skinned ? body.skeleton.bones : [],
-      bw: body.geometry.attributes.skinWeight, bi: body.geometry.attributes.skinIndex, cx, neckY: neck.y, hipY: hip.y, hands: [wristL, wristR] }, spec);
+      bw: body.geometry.attributes.skinWeight, bi: body.geometry.attributes.skinIndex, cx, neckY: neck.y, hipY: hip.y, hands: [wristL, wristR], arms: [[shL, elL, wristL], [shR, elR, wristR]] }, spec);
     if (window.__outfitTint?.robe) { material.vertexColors = false; material.color.set(window.__outfitTint.robe); }
     const p = g.attributes.position; for (let i = 0; i < p.count; i++) clothPts.push(p.getX(i), p.getY(i), p.getZ(i));
     const m = skinned ? new THREE.SkinnedMesh(g, material) : new THREE.Mesh(g, material); m.castShadow = m.receiveShadow = true; m.frustumCulled = false;

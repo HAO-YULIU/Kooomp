@@ -36,7 +36,7 @@ function fabricNormal() {
  *   collar：要不要立領；belt：要不要腰帶；off：離皮膚多遠
  */
 export function buildRobe(B, spec = {}) {
-  const { posed, pnorm, wid, W, wnb, TRI, region, bones, bw, bi, skinned, cx, neckY, hipY, hands } = B; // region：每個身體節點是 0 軀幹、1 手臂、2 手、3 腿
+  const { posed, pnorm, wid, W, wnb, TRI, region, bones, bw, bi, skinned, cx, neckY, hipY, hands } = B; // B.arms：沒有骨架時兩隻手的 [肩膀, 手肘, 手腕] // region：每個身體節點是 0 軀幹、1 手臂、2 手、3 腿
   const color = new THREE.Color(spec.color ?? '#2a2a33'), trim = new THREE.Color(spec.trim ?? '#b8902e');
   const off = spec.off ?? 0.016, hemY = hipY * (spec.hem ?? 0.12), flare = spec.flare ?? 0.12, sleeveFlare = spec.sleeveFlare ?? 0;
   const openTop = spec.openTop ?? 0.07, openWaist = spec.openWaist ?? 0.035, openHem = spec.openHem ?? 0.35;
@@ -60,48 +60,51 @@ export function buildRobe(B, spec = {}) {
   const shellTop = neckY - 0.02, shellBot = hipY - 0.05;
   const openW = (y) => THREE.MathUtils.lerp(openWaist, openTop, sm(hipY, shellTop, y));
   const isArm = (w) => region[w] === 1;
-  const keep = new Uint8Array(W), front = (w) => pnorm[rep[w] * 3 + 2] > 0.2; // 面朝前方的（用方向判斷，胸部、鎖骨的前後位置每個人不同）
-  for (let w = 0; w < W; w++) {
-    const y = PY(w);
-    if (y > shellTop || y < shellBot || region[w] >= 2) continue;
-    if (!isArm(w) && front(w) && Math.abs(PX(w) - cx) < openW(y)) continue; // 開襟
-    keep[w] = 1;
-  }
-  // 往外推、抹平（去掉鎖骨、肋骨這些細節），再確定每個點都在皮膚外面
-  const S = new Float32Array(W * 3);
-  for (let w = 0; w < W; w++) if (keep[w]) { const r = rep[w] * 3; for (let k = 0; k < 3; k++) S[w * 3 + k] = posed[r + k] + pnorm[r + k] * off; }
-  const outside = (w, want) => { const r = rep[w] * 3; const h = (S[w * 3] - posed[r]) * pnorm[r] + (S[w * 3 + 1] - posed[r + 1]) * pnorm[r + 1] + (S[w * 3 + 2] - posed[r + 2]) * pnorm[r + 2]; if (h < want) for (let k = 0; k < 3; k++) S[w * 3 + k] += pnorm[r + k] * (want - h); };
-  for (let it = 0; it < 6; it++) {
-    const T = S.slice();
-    for (let w = 0; w < W; w++) { if (!keep[w]) continue; let c = 0; const s = [0, 0, 0]; for (const o of wnb[w]) if (keep[o]) { for (let k = 0; k < 3; k++) s[k] += S[o * 3 + k]; c++; } if (c) for (let k = 0; k < 3; k++) T[w * 3 + k] = S[w * 3 + k] * 0.4 + (s[k] / c) * 0.6; }
-    S.set(T); for (let w = 0; w < W; w++) if (keep[w]) outside(w, off * (it < 5 ? 0.9 : 1));
-  }
-  // 喇叭袖：手腕附近往外放
-  if (sleeveFlare > 0) for (let w = 0; w < W; w++) if (keep[w] && isArm(w)) { const f = sleeveFlare * sm(0.22, 0.02, handDist(w)), r = rep[w] * 3; for (let k = 0; k < 3; k++) S[w * 3 + k] += pnorm[r + k] * f; }
-  // 開襟的邊拉直（身體的三角形邊緣是鋸齒狀的）；領口的邊拉平
-  const edge = new Uint8Array(W);
-  for (let w = 0; w < W; w++) if (keep[w]) for (const o of wnb[w]) if (!keep[o]) edge[w] = 1;
-  for (let w = 0; w < W; w++) {
-    if (!edge[w]) continue; const y = PY(w);
-    if (!isArm(w) && front(w) && y > shellBot + 0.01 && Math.abs(PX(w) - cx) < openW(y) + 0.06) S[w * 3] = cx + Math.sign(PX(w) - cx) * openW(y);
-    if (y > shellTop - 0.025 && !isArm(w)) S[w * 3 + 1] = shellTop;
-  }
-  // 滾邊：離邊緣（開襟、袖口）1.6 公分內；沿著身體表面往內量
-  const toEdge = new Float32Array(W).fill(Infinity), queue = [];
-  for (let w = 0; w < W; w++) if (edge[w] && PY(w) > shellBot + 0.03 && (isArm(w) ? handDist(w) < 0.12 : PY(w) < shellTop - 0.03)) { toEdge[w] = 0; queue.push(w); }
-  while (queue.length) {
-    const w = queue.shift();
-    for (const o of wnb[w]) { if (!keep[o]) continue; const d = toEdge[w] + Math.hypot(S[w * 3] - S[o * 3], S[w * 3 + 1] - S[o * 3 + 1], S[w * 3 + 2] - S[o * 3 + 2]); if (d < toEdge[o] && d < 0.03) { toEdge[o] = d; queue.push(o); } }
-  }
-  const shellCol = (w) => (toEdge[w] < (spec.trimWidth ?? 0.016) ? trim : color);
-  const vid = new Int32Array(W).fill(-1);
-  const sv = (w) => (vid[w] >= 0 ? vid[w] : (vid[w] = vert(S[w * 3], S[w * 3 + 1], S[w * 3 + 2], shellCol(w), nodeW(w))));
-  const seen = new Set();
-  for (let t = 0; t < TRI.length; t += 3) {
-    const A = wid[TRI[t]], Bn = wid[TRI[t + 1]], C = wid[TRI[t + 2]];
-    if (A === Bn || Bn === C || A === C || !keep[A] || !keep[Bn] || !keep[C]) continue;
-    const key = [A, Bn, C].sort((p, q) => p - q).join(); if (seen.has(key)) continue; seen.add(key);
-    idx.push(sv(A), sv(Bn), sv(C));
+  // 有骨架（Character Creator）：直接用身體表面做，最合身。沒有骨架的模型表面常常很亂（衣服和身體疊在一起），改用下面一圈一圈量的做法
+  if (skinned) {
+    const keep = new Uint8Array(W), front = (w) => pnorm[rep[w] * 3 + 2] > 0.2; // 面朝前方的（用方向判斷，胸部、鎖骨的前後位置每個人不同）
+    for (let w = 0; w < W; w++) {
+      const y = PY(w);
+      if (y > shellTop || y < shellBot || region[w] >= 2) continue;
+      if (!isArm(w) && front(w) && Math.abs(PX(w) - cx) < openW(y)) continue; // 開襟
+      keep[w] = 1;
+    }
+    // 往外推、抹平（去掉鎖骨、肋骨這些細節），再確定每個點都在皮膚外面
+    const S = new Float32Array(W * 3);
+    for (let w = 0; w < W; w++) if (keep[w]) { const r = rep[w] * 3; for (let k = 0; k < 3; k++) S[w * 3 + k] = posed[r + k] + pnorm[r + k] * off; }
+    const outside = (w, want) => { const r = rep[w] * 3; const h = (S[w * 3] - posed[r]) * pnorm[r] + (S[w * 3 + 1] - posed[r + 1]) * pnorm[r + 1] + (S[w * 3 + 2] - posed[r + 2]) * pnorm[r + 2]; if (h < want) for (let k = 0; k < 3; k++) S[w * 3 + k] += pnorm[r + k] * (want - h); };
+    for (let it = 0; it < 6; it++) {
+      const T = S.slice();
+      for (let w = 0; w < W; w++) { if (!keep[w]) continue; let c = 0; const s = [0, 0, 0]; for (const o of wnb[w]) if (keep[o]) { for (let k = 0; k < 3; k++) s[k] += S[o * 3 + k]; c++; } if (c) for (let k = 0; k < 3; k++) T[w * 3 + k] = S[w * 3 + k] * 0.4 + (s[k] / c) * 0.6; }
+      S.set(T); for (let w = 0; w < W; w++) if (keep[w]) outside(w, off * (it < 5 ? 0.9 : 1));
+    }
+    // 喇叭袖：手腕附近往外放
+    if (sleeveFlare > 0) for (let w = 0; w < W; w++) if (keep[w] && isArm(w)) { const f = sleeveFlare * sm(0.22, 0.02, handDist(w)), r = rep[w] * 3; for (let k = 0; k < 3; k++) S[w * 3 + k] += pnorm[r + k] * f; }
+    // 開襟的邊拉直（身體的三角形邊緣是鋸齒狀的）；領口的邊拉平
+    const edge = new Uint8Array(W);
+    for (let w = 0; w < W; w++) if (keep[w]) for (const o of wnb[w]) if (!keep[o]) edge[w] = 1;
+    for (let w = 0; w < W; w++) {
+      if (!edge[w]) continue; const y = PY(w);
+      if (!isArm(w) && front(w) && y > shellBot + 0.01 && Math.abs(PX(w) - cx) < openW(y) + 0.06) S[w * 3] = cx + Math.sign(PX(w) - cx) * openW(y);
+      if (y > shellTop - 0.025 && !isArm(w)) S[w * 3 + 1] = shellTop;
+    }
+    // 滾邊：離邊緣（開襟、袖口）1.6 公分內；沿著身體表面往內量
+    const toEdge = new Float32Array(W).fill(Infinity), queue = [];
+    for (let w = 0; w < W; w++) if (edge[w] && PY(w) > shellBot + 0.03 && (isArm(w) ? handDist(w) < 0.12 : PY(w) < shellTop - 0.03)) { toEdge[w] = 0; queue.push(w); }
+    while (queue.length) {
+      const w = queue.shift();
+      for (const o of wnb[w]) { if (!keep[o]) continue; const d = toEdge[w] + Math.hypot(S[w * 3] - S[o * 3], S[w * 3 + 1] - S[o * 3 + 1], S[w * 3 + 2] - S[o * 3 + 2]); if (d < toEdge[o] && d < 0.03) { toEdge[o] = d; queue.push(o); } }
+    }
+    const shellCol = (w) => (toEdge[w] < (spec.trimWidth ?? 0.016) ? trim : color);
+    const vid = new Int32Array(W).fill(-1);
+    const sv = (w) => (vid[w] >= 0 ? vid[w] : (vid[w] = vert(S[w * 3], S[w * 3 + 1], S[w * 3 + 2], shellCol(w), nodeW(w))));
+    const seen = new Set();
+    for (let t = 0; t < TRI.length; t += 3) {
+      const A = wid[TRI[t]], Bn = wid[TRI[t + 1]], C = wid[TRI[t + 2]];
+      if (A === Bn || Bn === C || A === C || !keep[A] || !keep[Bn] || !keep[C]) continue;
+      const key = [A, Bn, C].sort((p, q) => p - q).join(); if (seen.has(key)) continue; seen.add(key);
+      idx.push(sv(A), sv(Bn), sv(C));
+    }
   }
 
   // ---------- 一圈一圈的輪廓（腰以下的袍子、立領共用） ----------
@@ -134,6 +137,44 @@ export function buildRobe(B, spec = {}) {
       prev = row;
     }
   };
+
+  // ---------- 沒有骨架：上半身也一圈一圈量；手臂沿著肩膀→手肘→手腕量成管子 ----------
+  if (!skinned) {
+    const torsoRings = [];
+    for (let y = shellBot; y <= shellTop + 1e-6; y += 0.02) {
+      const r = profile(y - 0.015, y + 0.015, (w) => region[w] === 0).map((v) => (v > 0 ? v + off : 0.12));
+      torsoRings.push({ y, r, half: Math.atan2(openW(y), r[0] || 0.12), c: color });
+    }
+    for (let it = 0; it < 2; it++) for (let j = 1; j < torsoRings.length - 1; j++) { const a = torsoRings[j - 1].r, b = torsoRings[j].r, c = torsoRings[j + 1].r; for (let k = 0; k < K; k++) b[k] = Math.max(b[k], (a[k] + b[k] * 2 + c[k]) / 4); }
+    tube(torsoRings, rigid(0));
+    const segsA = 20;
+    for (const side of [0, 1]) {
+      const Sx = B.arms[side]; // [肩膀, 手肘, 手腕]
+      const pts = []; for (let k = 0; k < 2; k++) { const A = Sx[k], E = Sx[k + 1], L = A.distanceTo(E); for (let t = 0; t < L; t += 0.02) pts.push({ c: A.clone().lerp(E, t / L), d: E.clone().sub(A).normalize() }); }
+      pts.push({ c: Sx[2].clone(), d: Sx[2].clone().sub(Sx[1]).normalize() });
+      let prev = null;
+      pts.forEach(({ c, d }, j) => {
+        const u = new THREE.Vector3().crossVectors(d, new THREE.Vector3(0, 0, 1)).normalize(), vv = new THREE.Vector3().crossVectors(u, d);
+        const r = new Float32Array(segsA).fill(-1);
+        for (let w = 0; w < W; w++) {
+          if (region[w] !== 1) continue;
+          const q = new THREE.Vector3(PX(w), PY(w), PZ(w)).sub(c), along = q.dot(d); if (Math.abs(along) > 0.015) continue;
+          const x = q.dot(u), y = q.dot(vv), rad = Math.hypot(x, y); if (rad > 0.12) continue;
+          const k = ((Math.round((Math.atan2(y, x) / (Math.PI * 2)) * segsA) % segsA) + segsA) % segsA; if (rad > r[k]) r[k] = rad;
+        }
+        let mx = 0; for (const v of r) mx = Math.max(mx, v); for (let k = 0; k < segsA; k++) if (r[k] < 0) r[k] = mx > 0 ? mx : 0.045;
+        const flareNow = sleeveFlare * sm(0.22, 0.0, c.distanceTo(Sx[2])), cuff = j >= pts.length - 2;
+        const row = [];
+        for (let k = 0; k <= segsA; k++) {
+          const a = (k / segsA) * Math.PI * 2, rr = Math.max(r[k % segsA], (r[(k + segsA - 1) % segsA] + r[(k + 1) % segsA]) / 2) + off + flareNow;
+          const p = c.clone().addScaledVector(u, Math.cos(a) * rr).addScaledVector(vv, Math.sin(a) * rr);
+          row.push(vert(p.x, p.y, p.z, cuff ? trim : color, rigid(0)));
+        }
+        if (prev) for (let k = 0; k < segsA; k++) idx.push(prev[k], row[k], prev[k + 1], prev[k + 1], row[k], row[k + 1]);
+        prev = row;
+      });
+    }
+  }
 
   // ---------- 腰以下 ----------
   const notArm = (w) => region[w] === 0 || region[w] === 3;
