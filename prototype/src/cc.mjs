@@ -32,14 +32,14 @@ const FACE = {
   socketR: { x: -3.2, z: 168.6, rx: 2.4, rz: 1.6, col: [0.55, 0.38, 0.34], amt: 0.3 },
   chin: { x: 0, z: 156.8, rx: 3, rz: 1.5, col: [0.8, 0.55, 0.48], amt: 0.12 },
 };
-const hash3 = (x, y, z) => { const v = Math.sin(x * 12.9898 + y * 78.233 + z * 37.719) * 43758.5453; return v - Math.floor(v); };
+export const hash3 = (x, y, z) => { const v = Math.sin(x * 12.9898 + y * 78.233 + z * 37.719) * 43758.5453; return v - Math.floor(v); };
 function vnoise(x, y, z) { // 簡單的數值雜訊，做皮膚深淺不均
   const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z), xf = x - xi, yf = y - yi, zf = z - zi;
   const l = (a, b, t) => a + (b - a) * t * t * (3 - 2 * t);
   const c = (i, j, k) => hash3(xi + i, yi + j, zi + k);
   return l(l(l(c(0, 0, 0), c(1, 0, 0), xf), l(c(0, 1, 0), c(1, 1, 0), xf), yf), l(l(c(0, 0, 1), c(1, 0, 1), xf), l(c(0, 1, 1), c(1, 1, 1), xf), yf), zf);
 }
-function paintSkin(geo, base, dz) {
+export function paintSkin(geo, base, dz) {
   const pos = geo.attributes.position, n = pos.count, col = new Float32Array(n * 3), b = new THREE.Color(base);
   // FACE 裡的顏色是一般看到的顏色（sRGB），換成計算用的線性顏色，不然會太淡
   const faces = Object.values(FACE).map((f) => ({ ...f, col: new THREE.Color().setRGB(...f.col, THREE.SRGBColorSpace).toArray() }));
@@ -77,7 +77,7 @@ function pores() {
   poresTex = new THREE.CanvasTexture(c); poresTex.wrapS = poresTex.wrapT = THREE.RepeatWrapping; poresTex.repeat.set(12, 12);
   return poresTex;
 }
-const skinMat = (name) => new THREE.MeshPhysicalMaterial({
+export const skinMat = (name) => new THREE.MeshPhysicalMaterial({
   name, color: '#ffffff', vertexColors: true, roughness: 0.55, normalMap: pores(), normalScale: new THREE.Vector2(0.12, 0.12),
   sheen: 0.35, sheenColor: new THREE.Color('#ff9a85'), sheenRoughness: 0.5, // 邊緣透一點紅，假的次表面散射
 });
@@ -105,7 +105,7 @@ function paintHair(geo, root, tip, scalpCount, dz) {
 }
 
 // 斗篷：從肩膀垂到腳踝的長袍＋立領，掛在胸口的骨頭上，跟著身體動
-function makeCloak(house) {
+export function makeCloak(house) {
   const g = new THREE.Group();
   const cloth = new THREE.MeshStandardMaterial({ color: house.main, roughness: 0.85, side: THREE.DoubleSide });
   const trim = new THREE.MeshStandardMaterial({ color: house.trim, roughness: 0.4, metalness: 0.6 });
@@ -120,24 +120,27 @@ function makeCloak(house) {
   return g;
 }
 
-const FILES = { male: 'models/male/Male_Base.fbx', female: 'models/girl/Female_Base.fbx' };
-const HAIR_MESH = /Slicked_Back_Side|Space_bun|Air_bangs|Double_high/;
+const FILES = { male: 'models/male/Male_Base.fbx', female: 'models/girl/Female_Base.fbx', elora: 'models/elora/Elora.fbx' };
+const HAIR_MESH = /Slicked_Back_Side|Space_bun|Air_bangs|Double_high|^Scalp$/;
 
-/** opts：{ body: 'male' | 'female', house: { main, trim }, hair, hairTip, skin, cloakScale } */
-export function loadCC(scene, { body = 'male', house = { main: '#121214', trim: '#b8902e' }, hair = '#1e1510', hairTip = '#4a3426', skin = '#e8bfa2', cloakScale = 1 } = {}) {
+/** opts：{ body: 'male' | 'female' | 'elora', house: { main, trim }, hair, hairTip, skin, cloakScale, height（整體縮放）, glasses（艾洛拉的模型附眼鏡，預設不戴） } */
+export function loadCC(scene, { body = 'male', house = { main: '#121214', trim: '#b8902e' }, hair = '#1e1510', hairTip = '#4a3426', skin = '#e8bfa2', cloakScale = 1, height = 1, glasses = false } = {}) {
   return new Promise((resolve, reject) => {
     new FBXLoader().load(FILES[body], (o) => {
-      o.scale.setScalar(0.01);
+      o.scale.setScalar(0.01 * height);
       const meshes = [];
+      // 不同模型的骨頭、零件前綴不一樣（EM3D_Base_、NUG_Base_…），從身體的名字找出來
+      let P = 'EM3D_Base_'; o.traverse((c) => { if (c.isMesh && /_Base_Body$/.test(c.name)) P = c.name.replace(/Body$/, ''); });
       // 以眼睛的高度對齊臉部位置（男生 169.3 公分）
-      const eye = o.getObjectByName('EM3D_Base_Eye'); eye.geometry.computeBoundingBox();
+      const eye = o.getObjectByName(P + 'Eye'); eye.geometry.computeBoundingBox();
       const dz = (eye.geometry.boundingBox.min.z + eye.geometry.boundingBox.max.z) / 2 - 169.3;
       o.traverse((c) => {
         if (!c.isMesh) return;
-        if (/Tongue|Boxers|Bra|Underwear/.test(c.name)) { c.visible = false; return; } // 舌頭看不到、內衣被斗篷蓋住
+        if (/Tongue|Boxers|Bra|Underwear/.test(c.name) || (/glasses/i.test(c.name) && !glasses)) { c.visible = false; return; } // 舌頭看不到、內衣被斗篷蓋住
         pruneMorphs(c); meshes.push(c);
         c.castShadow = true; c.receiveShadow = true;
-        if (c.name === 'EM3D_Base_Body') paintSkin(c.geometry, skin, dz);
+        c.frustumCulled = false; // 骨架會轉頭，三.js 算的範圍跟不上，頭髮會被誤判在畫面外而不畫
+        if (c.name === P + 'Body') paintSkin(c.geometry, skin, dz);
         const scalpCount = c.geometry.groups.length > 1 ? c.geometry.groups[0].count : 0;
         if (HAIR_MESH.test(c.name) && !c.geometry.index) paintHair(c.geometry, hair, hairTip, scalpCount, dz);
         const mats = [].concat(c.material).map((m) => {
@@ -147,7 +150,13 @@ export function loadCC(scene, { body = 'male', house = { main: '#121214', trim: 
           if (/Scalp/.test(m.name)) return new THREE.MeshStandardMaterial({ name: m.name, color: '#ffffff', vertexColors: true, alphaMap: m.alphaMap, transparent: true, depthWrite: false, roughness: 1 }); // 原本是白色頭皮；髮際線慢慢淡出
           // 頭髮：保留原本的透明度貼圖（一根一根的形狀）。用不反光的材質：頭髮片很薄、幾乎都是斜著看，
           // 會反光的材質在斜角反射特別強，整頭會被燭光照成橘色
-          if (/Slicked_Back|Hair_Transparency/.test(m.name)) return new THREE.MeshLambertMaterial({
+          if (/^hair$/.test(m.name)) { // 艾洛拉的頭髮：髮絲很細、透明度貼圖很淡，切掉會變光頭，所以改用半透明疊加，並把不透明度加倍
+            const h = new THREE.MeshLambertMaterial({ name: m.name, color: '#ffffff', vertexColors: true, alphaMap: m.alphaMap, transparent: true, depthWrite: false, alphaTest: 0.03, side: THREE.DoubleSide });
+            h.customProgramCacheKey = () => 'hair-alpha-boost'; // 不設的話會跟其他頭髮共用同一份著色器，加倍就失效
+            h.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <alphamap_fragment>', '#include <alphamap_fragment>\n diffuseColor.a = clamp(diffuseColor.a * 2.4, 0.0, 1.0);'); };
+            return h;
+          }
+          if (/Slicked_Back|Hair_Transparency|^hair$/.test(m.name)) return new THREE.MeshLambertMaterial({
             name: m.name, color: '#ffffff', vertexColors: true, alphaMap: m.alphaMap, alphaTest: 0.3, side: THREE.DoubleSide,
           });
           if (/Eyelash/.test(m.name)) { m.color.set('#1a120e'); return m; }
@@ -156,7 +165,7 @@ export function loadCC(scene, { body = 'male', house = { main: '#121214', trim: 
         });
         c.material = Array.isArray(c.material) ? mats : mats[0];
       });
-      const bone = (n) => o.getObjectByName('EM3D_Base_' + n);
+      const bone = (n) => o.getObjectByName(P + n);
       // 手臂放下（T 字站姿 → 自然垂下），用骨架轉，比改頂點乾淨
       o.updateMatrixWorld(true);
       const rotWorld = (b, axis, ang) => {

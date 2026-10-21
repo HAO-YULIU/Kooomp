@@ -7,9 +7,10 @@ import { SPELLS, recognize, attachRuneCanvas, requestMotionPermission, watchGest
 import { isTouch, initOrientation, requireOrientation, enterFullscreen, onOrientation, current } from './orient.mjs';
 import { joinWandLink, makeCode } from './link.mjs';
 import * as sfx from './audio.mjs';
-import { loadFemaleModel } from './model.mjs';
 import { loadCC } from './cc.mjs';
-import { GLTFLoader } from '../vendor/addons/loaders/GLTFLoader.js';
+import { loadCyril } from './cyril.mjs';
+import { loadWarden } from './warden.mjs';
+import { loadMoonStaff, loadDragonStaff } from './staffs.mjs';
 
 const $ = (id) => document.getElementById(id);
 document.body.classList.toggle('touch', isTouch);
@@ -25,51 +26,49 @@ const room = buildClassroom(scene, { lowQuality: isTouch });
 const elora = buildElora(scene);
 elora.root.position.set(-5.4, 0, -1.0); elora.root.rotation.y = 1.0; // 站在窗邊，月光和燭光都照得到
 room.colliders.push({ minX: -5.8, maxX: -5.0, minZ: -1.4, maxZ: -0.6 });
-// 製作人提供的寫實模型：放在同一個位置，用按鈕切換，比較兩種美術風格
+// 角色模型（製作人提供的免費模型）。艾洛拉可以用按鈕切換「寫實模型／程式繪製」，比較美術風格
 let realModel = null, useModel = new URLSearchParams(location.search).get('char') !== 'code'; // 預設用寫實模型；網址加 ?char=code 改成程式繪製
-const ELORA_SPOT = { pos: new THREE.Vector3(-5.4, 0, -1.0), rotY: 1.0 };
-// 艾洛拉：艾爾德林（原本的金髮、領帶改淡藍、眼睛改藍）
-loadFemaleModel(scene, { accentHue: 212, accentSat: 0.75, accentLight: 1.5, irisHue: 210 }).then((m) => {
-  realModel = m; m.position.copy(ELORA_SPOT.pos); m.rotation.y = ELORA_SPOT.rotY;
-  targets.push({ object: m, label: '和艾洛拉說話', kind: 'elora' });
-  $('btn-style').hidden = false; applyStyle();
-}).catch((e) => console.warn('寫實模型載入失敗', e));
-// 月晞、沃恩：Character Creator 的基本模型（有骨架、有表情），補上皮膚、頭髮、學院斗篷
 const npcs = {}; // 名字 → { root, update, setMood, talk }
-function placeCC(name, opts, pos, rotY, label) {
-  loadCC(scene, opts).then((c) => {
-    c.root.position.copy(pos); c.root.rotation.y = rotY; npcs[name] = c;
+function placeNPC(name, loader, pos, rotY, label, kind = name) {
+  return loader.then((c) => {
+    c.root.position.copy(pos); c.root.rotation.y = rotY; c.setRest?.(rotY); npcs[name] = c;
     room.colliders.push({ minX: pos.x - 0.4, maxX: pos.x + 0.4, minZ: pos.z - 0.4, maxZ: pos.z + 0.4 });
-    targets.push({ object: c.root, label, kind: name });
+    targets.push({ object: c.root, label, kind });
+    return c;
   }).catch((e) => console.warn(name + '模型載入失敗', e));
 }
+// 艾洛拉：艾爾德林（銀白＋淡藍），站在窗邊。模型附的眼鏡先不戴
+placeNPC('艾洛拉', loadCC(scene, { body: 'elora', house: { main: '#cdd3df', trim: '#7fa7d6' }, hair: '#9a7444', hairTip: '#dcc08a', skin: '#f2d2bd', height: 0.9, cloakScale: 0.9 }),
+  new THREE.Vector3(-5.4, 0, -1.0), 1.0, '和艾洛拉說話', 'elora').then((c) => { if (!c) return; realModel = c.root; $('btn-style').hidden = false; applyStyle(); });
 // 月晞：格里莫瓦（深紅＋羊皮紙色），黑髮丸子頭，站在書架旁
-placeCC('月晞', { body: 'female', house: { main: '#2a0c10', trim: '#d8c49a' }, hair: '#0d0a0a', hairTip: '#2a2226', skin: '#efcdb4', cloakScale: 0.92 },
+placeNPC('月晞', loadCC(scene, { body: 'female', house: { main: '#2a0c10', trim: '#d8c49a' }, hair: '#0d0a0a', hairTip: '#2a2226', skin: '#efcdb4', cloakScale: 0.92 }),
   new THREE.Vector3(5.2, 0, 0.2), -1.75, '和月晞說話');
 // 沃恩：貝爾蒙特（黑＋金），站在老師桌子旁
-placeCC('沃恩', { body: 'male', house: { main: '#121214', trim: '#b8902e' }, hair: '#1e1510', hairTip: '#4a3426', skin: '#e8bfa2' },
+placeNPC('沃恩', loadCC(scene, { body: 'male', house: { main: '#121214', trim: '#b8902e' }, hair: '#1e1510', hairTip: '#4a3426', skin: '#e8bfa2' }),
   new THREE.Vector3(4.4, 0, -5.4), -0.35, '和沃恩說話');
+// 西里爾：烏洛波斯（墨綠＋銀），站在後面的窗邊，離大家有點距離
+placeNPC('西里爾', loadCyril(scene), new THREE.Vector3(-5.2, 0, 5.2), 2.4, '和西里爾說話');
+// 守夜人：顯影咒之後的驚嚇，出現在玩家面前的就是他
+let warden = null;
+loadWarden(scene).then((w) => { warden = w; room.setScareFigure(w.root, '#4dff7a'); }).catch((e) => console.warn('守夜人模型載入失敗', e));
 
-// 第一人稱的法杖（艾爾德林的星月法杖；原始模型 150 萬個頂點，減到約 4 萬個三角形）
-const staff = new THREE.Group(); let staffGlow = [];
+// 第一人稱的法杖：星月法杖（女生）、龍首法杖（男生），右上角按鈕切換
+const staff = new THREE.Group(); let staffs = {}, staffKind = 'moon', staffGlow = [];
 scene.add(camera); camera.add(staff);
 staff.position.set(0.42, -0.5, -0.8); staff.rotation.set(0.3, 0.3, -0.22);
-new GLTFLoader().load('models/staff/staff.glb', (g) => {
-  g.scene.traverse((m) => {
-    if (!m.isMesh) return;
-    const wood = m.material.color.r < 0.1; // 深色的是木頭杖身，淺色的是月亮、環、星星
-    m.material = wood
-      ? new THREE.MeshStandardMaterial({ color: '#2a170e', roughness: 0.7 })
-      : new THREE.MeshStandardMaterial({ color: '#d8dbe6', roughness: 0.3, metalness: 0.45, emissive: '#9fc4ff', emissiveIntensity: 0.06 });
-    if (!wood) staffGlow.push(m.material);
-    m.frustumCulled = false;
-  });
-  g.scene.scale.setScalar(0.5); g.scene.position.y = -0.36; // 杖頭露在畫面右下角
-  staff.add(g.scene);
-}, undefined, (e) => console.warn('法杖載入失敗', e));
+const STAFF_NAMES = { moon: '星月法杖', dragon: '龍首法杖' };
+function showStaff() {
+  for (const [k, v] of Object.entries(staffs)) v.object.visible = k === staffKind;
+  staffGlow = staffs[staffKind]?.glow || [];
+  $('btn-staff').textContent = '🔁 ' + STAFF_NAMES[staffKind];
+}
+for (const [kind, load] of [['moon', loadMoonStaff], ['dragon', loadDragonStaff]]) {
+  load().then((st) => { st.object.scale.setScalar(0.5); st.object.position.y = -0.36; staff.add(st.object); staffs[kind] = st; showStaff(); })
+    .catch((e) => console.warn('法杖載入失敗', e));
+}
 function applyStyle() {
   elora.root.visible = !useModel; if (realModel) realModel.visible = useModel;
-  $('btn-style').textContent = useModel ? '🎨 角色：寫實模型' : '🎨 角色：程式繪製';
+  $('btn-style').textContent = useModel ? '🎨 艾洛拉：寫實模型' : '🎨 艾洛拉：程式繪製';
 }
 const controls = createControls(camera, renderer.domElement, {
   colliders: room.colliders, isTouch, onStep: sfx.step,
@@ -112,6 +111,12 @@ function interact() {
     say(room.state.revealed
       ? [Y('……黑板上的字，是用血寫的。', 'scared'), Y('筆畫是從右往左寫的。寫字的人，可能不太習慣用右手。'), Y('我們不該待在這裡。', 'scared')]
       : [Y('噓。'), Y('……這排書，每一本都被翻到同一頁。'), Y('第十三頁。', 'smile')]);
+  }
+  else if (focus.kind === '西里爾') {
+    const C = (text) => ({ who: '西里爾', text });
+    say(room.state.revealed
+      ? [C('……「午夜之前離開」。'), C('有人想嚇我們。或是，想警告我們。'), C('不管是哪一個，都不是什麼好消息。')]
+      : [C('別看我，我只是剛好路過。'), C('你們要闖禍，我不攔。只是別把我的名字扯進去。')]);
   }
   else if (focus.kind === '沃恩') {
     const V = (text, mood = 'calm') => ({ who: '沃恩', text, mood });
@@ -252,6 +257,7 @@ addEventListener('keydown', (e) => {
 renderer.domElement.addEventListener('click', () => {
   if (mode === 'walk' && !isTouch) { if (document.pointerLockElement) interact(); else controls.lockPointer(); }
 });
+$('btn-staff').addEventListener('click', (e) => { e.stopPropagation(); staffKind = staffKind === 'moon' ? 'dragon' : 'moon'; showStaff(); });
 $('btn-style').addEventListener('click', (e) => { e.stopPropagation(); useModel = !useModel; applyStyle(); });
 $('btn-act').addEventListener('click', (e) => { e.stopPropagation(); interact(); });
 
@@ -273,14 +279,8 @@ function frame() {
   controls.update(dt);
   room.update(t, dt, camera.position);
   elora.update(t, dt, camera.position);
-  for (const c of Object.values(npcs)) c.update(t, dt, camera.position);
-  if (realModel?.visible) {
-    realModel.scale.y = 1 + Math.sin(t * 1.6) * 0.004;
-    const dx = camera.position.x - ELORA_SPOT.pos.x, dz = camera.position.z - ELORA_SPOT.pos.z;
-    const want = Math.hypot(dx, dz) < 5 ? Math.atan2(dx, dz) : ELORA_SPOT.rotY;
-    const diff = Math.atan2(Math.sin(want - realModel.rotation.y), Math.cos(want - realModel.rotation.y));
-    realModel.rotation.y += diff * Math.min(1, dt * 1.5);
-  }
+  for (const c of Object.values(npcs)) if (c.root.visible) c.update(t, dt, camera.position);
+  warden?.update(t);
   // 魔杖光
   wandFlash = Math.max(0, wandFlash - dt * 1.2);
   wandLight.intensity = wandFlash * 6;

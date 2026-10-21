@@ -421,5 +421,7 @@ export function buildClassroom(scene, { lowQuality = false } = {}) {
       state.distorted = true; portraitM.map = portraitTexs[1]; portraitM.needsUpdate = true;
     },
     flicker(seconds = 2) { state.flickerBoost = seconds; },
+    // 把門口的黑影換成真正的模型（守夜人），燈光改成他提的燈的顏色
+    setScareFigure(obj, color) { figure.clear(); figure.add(obj); obj.position.set(0, 0, 0); obj.rotation.set(0, 0, 0); if (color) figLight.color.set(color); },
   };
 }
