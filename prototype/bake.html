@@ -7,7 +7,7 @@ import { loadCC } from './src/cc.mjs';
 import { COSTUMES } from './src/costumes.mjs';
 import { loadHairSet } from './src/hairbank.mjs';
 import { loadCyril } from './src/cyril.mjs';
-import { loadMan } from './src/extras.mjs';
+import { SUPPORT } from './src/support.mjs';
 import { GLTFExporter } from './bake/GLTFExporter.js';
 const J = window.JOB;
 const scene = new THREE.Scene();
@@ -21,7 +21,7 @@ const CFG = {
     headGear: await loadHairSet([{ from: 'female', parts: ['Double_high', 'Air_bangs'], hair: '#3a1610', hairTip: '#6a2a1a' }]) }),
   cyril: async () => loadCyril(scene, COSTUMES.cyril),
   moray: async () => loadCyril(scene, { house: { main: '#0c0c10', trim: '#9aa0a8' }, hair: '#22201e', hairTip: '#8a857c', iris: '#5a6a62', skin: '#e8c8b2', height: 1.88 }),
-  aldric: async () => loadMan(scene, { hair: '#e4e0d8', beard: '#ece8e0', skin: '#e8c4aa', robe: { main: '#2e1a3a', trim: '#c8a24a' }, height: 1.8 }),
+  aldric: async () => SUPPORT.aldric(scene),
 };
 const c = await CFG[J.key]();
 // 先讓角色動一格：換來的頭髮、斗篷的位置是在每一格的更新裡算的

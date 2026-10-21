@@ -195,6 +195,7 @@ export async function wearOutfit(ctx, spec) {
       vreg[i] = r;
     }
   }
+  if (window.__outfitDebug && !skinned) { const c = [0, 0, 0, 0]; for (const r of vreg) c[r]++; console.error('部位 ' + JSON.stringify({ c, shL, elL, wristL, hip, neck, bodySW })); }
   // 只有軀幹和腿（不含手臂、手）：女生的手垂在屁股旁邊，衣服的身體部分如果找到手上的點，會被往旁邊推得亂七八糟。袖子才用 nearBody。
   const tp = posed.slice(); for (let i = 0; i < n; i++) if (vreg[i] === 1 || vreg[i] === 2) tp[i * 3] = tp[i * 3 + 1] = tp[i * 3 + 2] = 1e6;
   const nearTorso = grid(tp, 0.03);
