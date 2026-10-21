@@ -54,10 +54,16 @@ async function load(url) {
   if (!cache.has(url)) cache.set(url, fetch(url).then((r) => r.arrayBuffer()).then((b) => ac().decodeAudioData(b)).catch(() => null));
   return cache.get(url);
 }
-export async function playFile(url, { volume = 0.6, loop = false } = {}) {
+// reverse：倒著播；rate：速度（0.5＝慢一倍，音也會變低）——P15 的留聲水晶用
+export async function playFile(url, { volume = 0.6, loop = false, reverse = false, rate = 1 } = {}) {
   try { ac(); } catch { return null; }
-  const buf = await load(url); if (!buf) return null;
-  const src = ctx.createBufferSource(); src.buffer = buf; src.loop = loop;
+  let buf = await load(url); if (!buf) return null;
+  if (reverse) {
+    const rev = ctx.createBuffer(buf.numberOfChannels, buf.length, buf.sampleRate);
+    for (let ch = 0; ch < buf.numberOfChannels; ch++) rev.getChannelData(ch).set(Float32Array.from(buf.getChannelData(ch)).reverse());
+    buf = rev;
+  }
+  const src = ctx.createBufferSource(); src.buffer = buf; src.loop = loop; src.playbackRate.value = rate;
   const g = ctx.createGain(); g.gain.value = volume; src.connect(g).connect(master); src.start();
   return { stop: () => { try { src.stop(); } catch { /* 已停止 */ } } };
 }
@@ -81,4 +87,20 @@ export function chime(up = true) {
     g.gain.setValueAtTime(0.18, t + d); g.gain.exponentialRampToValueAtTime(0.001, t + d + 0.6);
     o.connect(g).connect(master); o.start(t + d); o.stop(t + d + 0.7);
   });
+}
+
+// S2 聽音辨位：黑根「心臟」的跳動聲，從某個方向傳來（0＝正前方，順時針的角度）。
+// 左右用聲道，前後用音色（後面的比較悶）；沒戴耳機時只聽得出大小聲
+export function heartbeatFrom(deg, { beats = 4, volume = 0.7 } = {}) {
+  try { ac(); } catch { return; }
+  const rad = (deg * Math.PI) / 180, pan = ctx.createStereoPanner(), lp = ctx.createBiquadFilter();
+  pan.pan.value = Math.sin(rad); lp.type = 'lowpass'; lp.frequency.value = Math.cos(rad) > 0 ? 1800 : 450;
+  lp.connect(pan).connect(master);
+  let t = ctx.currentTime + 0.05;
+  for (let i = 0; i < beats; i++, t += 0.85) for (const [k, dt] of [[1, 0], [0.7, 0.22]]) { // 咚—咚
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(70, t + dt); o.frequency.exponentialRampToValueAtTime(38, t + dt + 0.18);
+    g.gain.setValueAtTime(0, t + dt); g.gain.linearRampToValueAtTime(volume * k, t + dt + 0.015); g.gain.exponentialRampToValueAtTime(0.001, t + dt + 0.25);
+    o.connect(g).connect(lp); o.start(t + dt); o.stop(t + dt + 0.3);
+  }
 }

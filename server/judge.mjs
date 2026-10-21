@@ -1,6 +1,6 @@
 // 判斷答案（只在伺服器執行）。題目資料見 data/puzzles/ch1.mjs。
 // 隨機的題目（P09、P21、救援題、自救題）用房間的亂數種子決定，同一個房間每次結果一樣，不同房間不同。
-import { CHAPTER1, RESCUE, SELF_RESCUE, HOUSE_HOUR } from '../data/puzzles/ch1.mjs';
+import { CHAPTER1, RESCUE, SELF_RESCUE, HOUSE_HOUR, BOOK_CIPHER, BRAILLE_DOOR, ROOF } from '../data/puzzles/ch1.mjs';
 
 export const PUZZLES = { ...CHAPTER1, ...RESCUE, ...SELF_RESCUE };
 export const HOUSES = ['eldrin', 'grimoire', 'belmont', 'ouroboros'];
@@ -93,11 +93,12 @@ export function simulateLevers(def, pulls) {
 const COUNTER = { fire: 'water', wind: 'fire', earth: 'wind', water: 'earth' }; // 被誰剋：水剋火、火剋風、風剋土、土剋水
 const FREE_WORDS = ['FREE', 'LIGHT', 'AWAKE', 'BREAK'];
 const VIG_WORDS = ['SOLVE VINCULA', 'LUX MANET', 'NON SUM TUUS', 'REDEO'];
-const LIARS = [ // 三顆頭各說一句話，只有一顆說真話；answer＝要切斷的黑根
-  { says: ['left_is_safe', 'middle_lies', 'right_is_root'], root: 'middle' },
-  { says: ['right_lies', 'left_is_root', 'middle_is_root'], root: 'right' },
-  { says: ['not_left', 'not_middle', 'left_lies'], root: 'left' },
+const LIARS = [ // 三顆頭（左、中、右）各說一句話，只有一顆說真話；root＝要切斷的黑根（每題都驗證過只有一個解，見 tools/test/judge.test.mjs）
+  { says: ['not_left', 'right_is_root', 'middle_lies'], root: 'left' },
+  { says: ['middle_is_root', 'left_lies', 'not_right'], root: 'right' },
+  { says: ['not_middle', 'right_lies', 'left_is_root'], root: 'middle' },
 ];
+export const LIAR_SETS = LIARS; // 測試用
 const shiftWord = (w, k) => w.replace(/[A-Z]/g, (c) => String.fromCharCode(((c.charCodeAt(0) - 65 + k) % 26 + 26) % 26 + 65));
 const vigenere = (w, key) => { let i = 0; return w.replace(/[A-Z]/g, (c) => shiftWord(c, key.charCodeAt(i++ % key.length) - 65)); };
 
@@ -113,7 +114,7 @@ export function rescueContent(pid, seed, key, { house } = {}) {
     default: return {};
   }
 }
-function rescueAnswer(pid, seed, key) {
+export function rescueAnswer(pid, seed, key) {
   const r = rng(seed, `${pid}:${key}`);
   switch (pid) {
     case 'R1': return Array.from({ length: 4 }, () => COUNTER[pick(r, Object.keys(COUNTER))]).join(',');
@@ -124,6 +125,18 @@ function rescueAnswer(pid, seed, key) {
     default: return null;
   }
 }
+
+// P14：書的某一頁（每頁 24 個字或詞）。答案的字放在指定位置，其他是隨機的填充文字
+const FILL_ZH = '的一是在不了有和人這中大為上個國我以要他時來用們生到作地於出就分對成會可主發年動同工也能下過子說產種面而方後多定行學法所民得經十三之進著等部度家電力裡如水化高自二理起小物現實加量都兩體制機當使點從業本去把性好應開它合還因由其些然前外天政四日那社義事平形相全表間樣與關各重新線內數正心反你明看原又麼利比或但質氣第向道命此變條只沒結解問意建月公無系軍很情者最立代想已通並提直題黨程展五果料象員革位入常文總次品式活設及管特件長求老頭基資邊流路級少圖山統接知較將組見計別她手角期根論運農指幾九區強放決西被幹做必戰先回則任取據處府研隊南給色光門即保治北造百規熱領七海口東導器壓志世金增爭濟階油思術極交受聯什認六共權收證改清己美再採轉更單風切打白教速花帶安場身車例真務具萬每目至達走積示議聲報鬥完類八離華名確才科張信馬節話米整空元況今集溫傳土許步群廣石記需段研界拉林律叫且究觀越織裝影算低持音眾書布復容兒須際商非驗連斷深難近礦千週委素技備半辦青省列習響約支般史感勞便團往酸歷市克何除消構府稱太準精值號率族維劃選標寫存候毛親快效斯院查江型眼王按格養易置派層片始卻專狀育廠京識適屬圓包火住調滿縣局照參紅細引聽該鐵價嚴';
+const FILL_EN = 'the of and a to in is was he for it with as his on be at by i had not are but from or have an they which one you were her all she there would their we him been has when who will more no if out so said what up its about into than them can only other new some could time these two may then do first any my now such like our over man me even most made after also did many before must through back years where much your way well down should because each just those people how too little state good very make world still own see men work long get here between both life being under never day same another know while last might us great old year off come since against go came right used take three'.split(' ');
+export function bookPage(seed, lang, book, page) {
+  const en = lang === 'en';
+  const r = rng(seed, `book:${book}:${page}`);
+  const words = Array.from({ length: 24 }, () => (en ? FILL_EN[Math.floor(r() * FILL_EN.length)] : FILL_ZH[Math.floor(r() * FILL_ZH.length)]));
+  for (const [b, p, w, word] of BOOK_CIPHER[en ? 'en' : 'zh']) if (b === book && p === page) words[w - 1] = en ? word.toLowerCase() : word;
+  return words;
+}
+export const brailleDoor = () => BRAILLE_DOOR;
 
 // P07 的燭光（摩斯密碼）：只送電腦控制的同伴那幾座塔
 const MORSE = ['-----', '.----', '..---', '...--', '....-', '.....', '-....', '--...', '---..', '----.'];
@@ -199,6 +212,17 @@ export function judge(pid, value, ctx) {
         return { ok: true, solved: ok, reply: ok ? {} : { reshuffled: true } };
       }
       return { ok: false, error: 'bad_value' };
+    }
+    case 'roof': { // P29：value＝{ cell: [欄, 排] }；每個人自己的進度。踩錯石板就碎掉，從頭來
+      if (value?.reset) { ctx.state[ctx.uid] = { at: null, i: 0 }; return { ok: true, solved: false, reply: { reset: true } }; } // 退回起點（離開石板）
+      const me = (ctx.state[ctx.uid] ??= { at: null, i: 0 });
+      const [c, r] = Array.isArray(value?.cell) ? value.cell.map(Math.trunc) : [];
+      if (!(c >= 0 && c < 6 && r >= 0 && r < 6)) return { ok: false, error: 'bad_value' };
+      const near = me.at ? Math.abs(me.at[0] - c) + Math.abs(me.at[1] - r) === 1 : r === 5;
+      const want = [...def.word][me.i % [...def.word].length];
+      if (!near || [...ROOF[r]][c] !== want) { ctx.state[ctx.uid] = { at: null, i: 0 }; return { ok: true, solved: false, reply: { broke: [c, r] } }; }
+      me.at = [c, r]; me.i++;
+      return { ok: true, solved: r === 0, reply: { step: me.i } };
     }
     case 'counter': case 'caesar': case 'vigenere': case 'direction': case 'liar': {
       const want = rescueAnswer(pid, ctx.seed, ctx.key);

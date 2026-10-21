@@ -2,6 +2,9 @@
 // 這裡只有位置、標籤、題目內容（給玩家看的線索），沒有答案；答案在伺服器。
 // 座標：公尺。x 往東、z 往南（北邊是 -z）；yaw＝面向（0 是朝北）。
 
+import { LIB_ROOMS, LIB_DOORS, LIB_THINGS, LIB_SPAWNS } from './library-ch1.mjs';
+import { A4_ROOMS, A4_DOORS, A4_THINGS, A4_SPAWN } from './act4-ch1.mjs';
+
 const L = (zh, en) => ({ zh, en });
 
 export const ROOMS = [
@@ -146,3 +149,14 @@ export const PATROL = {
   view: 8, fov: 60, // 提燈照得到的距離（公尺）、角度
   hearRun: 6, hearWalk: 3, // 跑步、走路多近會被聽到
 };
+
+// 第三幕：沉眠圖書館（game/src/data/library-ch1.mjs）
+ROOMS.push(...LIB_ROOMS);
+DOORS.push(...LIB_DOORS);
+THINGS.push(...LIB_THINGS);
+Object.assign(SPAWNS, LIB_SPAWNS);
+// 第四幕：守夜人（game/src/data/act4-ch1.mjs）
+ROOMS.push(...A4_ROOMS);
+DOORS.push(...A4_DOORS);
+THINGS.push(...A4_THINGS);
+SPAWNS.act4 = A4_SPAWN;

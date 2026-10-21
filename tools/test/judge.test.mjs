@@ -1,7 +1,9 @@
 // 答案判斷的單元測試：每一題的正確答案要對、錯誤答案要錯
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { judge, hint, simulateHourglass, corridorLoop, corridorFocus, rescueContent, PUZZLES } from '../../server/judge.mjs';
+import { judge, hint, simulateHourglass, corridorLoop, corridorFocus, rescueContent, PUZZLES, LIAR_SETS } from '../../server/judge.mjs';
+import { ROOF as ROOF_GAME } from '../../game/src/data/act4-ch1.mjs';
+import { ROOF } from '../../data/puzzles/ch1.mjs';
 import { CHAPTER1 } from '../../data/puzzles/ch1.mjs';
 
 const ctx = (o = {}) => ({ seed: 'test-seed', lang: 'zh', house: null, solo: true, state: {}, ...o });
@@ -33,7 +35,6 @@ test('文字、順序、集合題', () => {
   assert.equal(ok('P25', '5,7,3'), true);
   assert.equal(ok('P27', '12,24,18,36'), true);
   assert.equal(ok('P28', 'LSSLLSL'), true);
-  assert.equal(ok('P29', 'm,i,l,n,e,r'), true);
 });
 
 test('學院限定：多人時別的學院不能作答，單人可以', () => {
@@ -128,4 +129,31 @@ test('每一題（除了不計分的）都有三張中英文提示，難度比�
 test('異常長廊的第三張提示會填入要注意的地方', () => {
   assert.equal(hint('P09', 2, 'zh', { focus: corridorFocus({ id: 'lullaby' }, 'zh') }), '這一趟要特別注意：聲音');
   assert.match(hint('P09', 2, 'en', { focus: corridorFocus(null, 'en') }), /nothing may be wrong/);
+});
+
+test('P29 屋頂的符文路：一步一步踩，踩錯就碎掉', () => {
+  const state = {}, step = (c, r, uid = 'a') => judge('P29', { cell: [c, r] }, ctx({ state, uid }));
+  assert.deepEqual(ROOF_GAME, ROOF); // 畫面和伺服器用同一份石板
+  assert.equal(step(4, 4).reply.broke.join(), '4,4'); // 第一步要在最南邊那排
+  const path = [[1, 5], [1, 4], [2, 4], [2, 3], [3, 3], [3, 2], [3, 1], [4, 1], [4, 0]];
+  for (const [i, [c, r]] of path.entries()) {
+    const res = step(c, r);
+    assert.equal(!!res.reply.broke, false, `第 ${i + 1} 步`); assert.equal(res.solved, i === path.length - 1);
+  }
+  // 另一個人走自己的；拼錯字（M 之後踩 L）會碎掉
+  assert.equal(step(1, 5, 'b').solved, false); assert.ok(step(2, 5, 'b').reply.broke);
+  assert.equal(step(0, 0, 'b').reply.broke.join(), '0,0');
+});
+
+test('S4 說謊者題：每一組都只有一個解', () => {
+  const H = ['left', 'middle', 'right'];
+  const ev = (s, root, tv) => s.endsWith('_lies') ? !tv[H.indexOf(s.split('_')[0])] : s.startsWith('not_') ? root !== s.slice(4) : root === s.split('_')[0];
+  for (const L of LIAR_SETS) {
+    const sols = [];
+    for (const root of H) for (let m = 0; m < 8; m++) {
+      const tv = H.map((_, i) => !!((m >> i) & 1));
+      if (tv.filter(Boolean).length === 1 && L.says.every((s, i) => ev(s, root, tv) === tv[i])) sols.push(root);
+    }
+    assert.deepEqual(sols, [L.root], L.says.join());
+  }
 });

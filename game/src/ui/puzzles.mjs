@@ -3,6 +3,9 @@ import { openPanel, closePanel, el, L, t } from './overlay.mjs';
 import { errText, getLang } from '../logic/i18n.mjs';
 import { RUMORS } from '../data/world-ch1.mjs';
 import { MORSE_TABLE, RUNE_ROWS } from '../data/story-ch1.mjs';
+import { ROSTER, SURVIVORS, BOOK_RULE, FLIP_PAGES, TRIGRAMS, RUNES, RUNE_DOOR, LIGHT_GRID, SOKOBAN, VIALS, SKETCH, BRAILLE } from '../data/library-ch1.mjs';
+import { playFile, heartbeatFrom } from '../world/sound.mjs';
+import { LEVERS, BOLTS_LOCKED, GEAR_RACK, AXLE_GAPS, LYRIC, LYRIC_MARKS } from '../data/act4-ch1.mjs';
 import { HOUSES } from '../logic/chars.mjs';
 
 const ZODIAC = [
@@ -27,10 +30,9 @@ export function openPuzzle(pid, thing, ctx) {
       return r;
     };
     if (solved) body.append(el('p', { class: 'p-done', text: t('p_already') }));
-    builder(body, { ...ctx, submit, solved, pid });
-    body.append(status);
-    body.append(hintBox(pid, ctx));
-    panel.onClose = null;
+    const main = el('div'); body.append(main, status); // 內容要等伺服器回覆的題目，也會排在狀態與提示上面
+    builder(main, { ...ctx, submit, solved, pid, panel }); // 畫面可以設定 panel.onClose（關掉時要停的計時器）
+    if (!NO_HINTS.has(pid) && !INFO_PANELS.has(thing.panel)) body.append(hintBox(pid, ctx));
   });
 }
 
@@ -53,6 +55,11 @@ const numberInput = (submit, ph = '') => {
   inp.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') go.click(); };
   return el('div', { class: 'row' }, inp, go);
 };
+
+// 沒有提示的題目（西里爾的抉擇）、只是看資料的畫面（不放提示）
+const NO_HINTS = new Set(['P22']);
+const INFO_PANELS = new Set(['roster', 'notice', 'trigrams', 'sketch', 'crystalball', 'brailletable']);
+const RUNES6 = ['ᚠ', 'ᚢ', 'ᚦ', 'ᚨ', 'ᚱ', 'ᚲ'];
 
 const BUILD = {
   // P02：整理傳聞
@@ -197,6 +204,433 @@ const BUILD = {
     body.append(...rows.map((r) => r.row),
       el('button', { text: t('answer'), onclick: () => submit(rows.map((r) => `${r.house.value}:${r.hour.value}`).join(',')) }));
   },
+
+  // ======== 第三幕：沉眠圖書館 ========
+  // P11：搜救名單、公告、提燈箱
+  roster(body) {
+    body.append(el('p', { text: t('p11_roster') }), el('ol', { class: 'roster' }, ...ROSTER.map(([n, name]) => el('li', { text: `${n}　${L(name)}` }))));
+  },
+  notice(body) { body.append(el('blockquote', { text: L(SURVIVORS) })); },
+  P11(body, { submit }) { body.append(el('p', { text: t('p11_box') }), numberInput(submit, '???')); },
+
+  // P12：柵門的影子（要拿著提燈、站在地上的標記照）
+  P12(body, { conn, submit, items, near }) {
+    const ok = items().includes('lantern') && near('mark', 1.2);
+    const ELEM = [['wind', '🜁', t('el_wind')], ['fire', '🜂', t('el_fire')], ['earth', '🜃', t('el_earth')], ['water', '🜄', t('el_water')]];
+    body.append(el('p', { text: ok ? t('p12_shadow') : items().includes('lantern') ? t('p12_stand') : t('p12_need') }));
+    if (ok) { // 影子由伺服器給（畫面程式裡沒有答案）
+      const sh = el('div', { class: 'shadows', text: '…' }); body.append(sh);
+      conn.request({ t: 'peek', pid: 'P12' }).then((r) => { sh.textContent = r.t === 'peek' ? r.content.shadows.map((id) => ELEM.find((e) => e[0] === id)?.[1] ?? '?').join(' ') : ''; });
+    }
+    const pick = []; const show = el('div', { class: 'slots' });
+    const paint = () => { show.textContent = [0, 1, 2, 3].map((i) => ELEM.find((e) => e[0] === pick[i])?.[1] ?? '＿').join('　'); };
+    paint();
+    body.append(show, el('div', { class: 'row' }, ...ELEM.map(([id, sym, name]) => el('button', { text: `${sym} ${name}`, onclick: () => { if (pick.length < 4) pick.push(id); paint(); } })),
+      el('button', { class: 'small', text: t('reset'), onclick: () => { pick.length = 0; paint(); } }),
+      el('button', { text: t('answer'), onclick: () => submit(pick.join(',')) })));
+  },
+
+  // P14：翻書（頁面內容由伺服器給）
+  P14(body, { conn, submit }) {
+    body.append(el('p', { class: 'dim', text: L(BOOK_RULE) }));
+    const book = el('select', {}, ...Array.from({ length: 12 }, (_, i) => el('option', { value: String(i + 1), text: `${i + 1}` })));
+    const page = el('input', { inputmode: 'numeric', maxlength: '3', class: 'num', placeholder: t('page'), onkeydown: (e) => e.stopPropagation() });
+    const view = el('div', { class: 'bookpage' });
+    const open = async () => {
+      const r = await conn.request({ t: 'peek', pid: 'P14', value: { book: +book.value, page: +page.value } });
+      view.innerHTML = '';
+      if (r.t !== 'peek') return (view.textContent = t('p14_nopage'));
+      r.content.words.forEach((w, i) => view.append(el('span', {}, el('small', { text: String(i + 1) }), el('b', { text: w }))));
+    };
+    const ans = el('input', { placeholder: t('p14_ph'), onkeydown: (e) => e.stopPropagation() });
+    body.append(el('div', { class: 'row' }, el('span', { text: t('book') }), book, page, el('button', { text: t('open_book'), onclick: open })), view,
+      el('div', { class: 'row' }, ans, el('button', { text: t('answer'), onclick: () => submit(ans.value.trim()) })));
+  },
+
+  // P15：留聲水晶（方向、速度）與第七張桌子
+  recording(body, { getLang }) {
+    let dir = 'fwd', speed = 1, playing = null;
+    const lab = el('p', { class: 'dim' });
+    const paint = () => { lab.textContent = `${t('dial_dir')}：${dir === 'fwd' ? t('forward') : t('reverse')}　${t('dial_speed')}：${speed}×`; };
+    paint();
+    const play = async () => {
+      playing?.stop();
+      playing = await playFile(`assets/audio/ch1/p15_liana_${getLang() === 'en' ? 'en' : 'zh'}.mp3`, { volume: 0.9, reverse: dir === 'rev', rate: speed });
+    };
+    body.append(el('p', { text: t('p15_crystal') }), lab, el('div', { class: 'row' },
+      el('button', { text: t('dial_dir'), onclick: () => { dir = dir === 'fwd' ? 'rev' : 'fwd'; paint(); } }),
+      el('button', { text: t('dial_speed'), onclick: () => { speed = speed === 1 ? 2 : speed === 2 ? 0.5 : 1; paint(); } }),
+      el('button', { text: `▶ ${t('play')}`, onclick: play }),
+      el('button', { class: 'small', text: '■', onclick: () => playing?.stop() })));
+  },
+  P15(body, { submit }) { body.append(el('p', { text: t('p15_drawer') }), numberInput(submit, '????')); },
+
+  // P16：自己翻頁的書
+  P16(body, { submit, panel }) {
+    const pageEl = el('div', { class: 'flip', text: FLIP_PAGES[0] });
+    let i = 0; const timer = setInterval(() => { i = (i + 1) % FLIP_PAGES.length; pageEl.textContent = FLIP_PAGES[i]; }, 1200);
+    panel.onClose = () => clearInterval(timer);
+    const inp = el('input', { class: 'num', placeholder: t('page'), onkeydown: (e) => e.stopPropagation() });
+    body.append(el('p', { text: t('p16_intro') }), pageEl, el('div', { class: 'row' }, inp, el('button', { text: t('turn_to'), onclick: () => submit(inp.value.trim()) })));
+  },
+
+  // P17：東方典藏櫃的抽屜（六條橫槓，由下往上）與八卦家族圖
+  trigrams(body) { body.append(el('div', { class: 'trigrams' }, ...TRIGRAMS.map(([sym, name]) => el('div', {}, el('b', { text: sym }), el('small', { text: L(name) }))))); },
+  P17(body, { submit }) {
+    const bits = [1, 1, 1, 1, 1, 1];
+    const bars = el('div', { class: 'hexagram' });
+    const paint = () => { bars.innerHTML = ''; for (let i = 5; i >= 0; i--) bars.append(el('button', { class: bits[i] ? 'solid' : 'broken', title: String(i + 1), onclick: () => { bits[i] ^= 1; paint(); } }, el('i'), el('i'))); };
+    paint();
+    body.append(el('p', { text: t('p17_drawer') }), bars, el('button', { text: t('answer'), onclick: () => submit(bits.join('')) }));
+  },
+
+  // P18：符文大門（按 6 個）
+  P18(body, { submit, items }) {
+    const latin = items().includes('chartpage');
+    const seq = []; const show = el('div', { class: 'slots runes-in' });
+    const paint = () => { show.textContent = [0, 1, 2, 3, 4, 5].map((i) => RUNES.find((r) => r[1] === seq[i])?.[0] ?? '＿').join(' '); };
+    paint();
+    const ring = el('div', { class: 'runering' }, ...RUNES.map(([g, id]) => el('button', { onclick: () => { if (seq.length < 6) seq.push(id); paint(); } }, el('b', { text: g }), latin ? el('small', { text: id.toUpperCase() }) : null)));
+    body.append(el('p', { text: L(RUNE_DOOR) }), show, ring, el('p', { class: 'dim', text: latin ? t('p18_latin') : t('p18_nolatin') }),
+      el('div', { class: 'row' }, el('button', { class: 'small', text: t('reset'), onclick: () => { seq.length = 0; paint(); } }), el('button', { text: t('answer'), onclick: () => submit(seq.join(',')) })));
+  },
+
+  // P19：月光反射（艾爾德林看得到光的路線）
+  P19(body, { submit, items, myHouse, solo }) {
+    const see = myHouse() === 'eldrin' || solo;
+    const hasMirror = items().includes('mirror');
+    const set = { 1: '', 2: '', 3: '', 4: '' }; let done = false;
+    const grid = el('div', { class: 'light-grid' });
+    const trace = () => { // 照 LIGHT_GRID 算光走過的格子
+      let x = 0, y = 0, dx = 1, dy = 0; const path = new Set(['0,0']);
+      for (let k = 0; k < 60; k++) {
+        x += dx; y += dy; if (x < 0 || y < 0 || x > 5 || y > 5) return { path, end: null };
+        const c = LIGHT_GRID[y][x]; path.add(`${x},${y}`);
+        if (c === '#') return { path, end: [x, y] };
+        if (c === 'C') return { path, end: [x, y], hit: true };
+        const m = set[c];
+        if (m === '/') [dx, dy] = [-dy, -dx]; else if (m === '\\') [dx, dy] = [dy, dx];
+      }
+      return { path, end: null };
+    };
+    const paint = () => {
+      grid.innerHTML = ''; const tr = trace();
+      LIGHT_GRID.forEach((row, y) => [...row].forEach((c, x) => {
+        const lit = see && tr.path.has(`${x},${y}`), end = tr.end && tr.end[0] === x && tr.end[1] === y;
+        const label = c === 'W' ? '☾' : c === 'C' ? '◆' : c === '#' ? '▮' : /\d/.test(c) ? (set[c] || '○') : '';
+        const b = el('button', { class: `${lit ? 'lit' : ''} ${end ? 'end' : ''} ${c === 'C' ? 'crystal' : ''}`, text: label });
+        if (/\d/.test(c)) b.onclick = () => {
+          if (c === '4' && !hasMirror) return (status.textContent = t('p19_need_mirror'));
+          set[c] = set[c] === '' ? '/' : set[c] === '/' ? '\\' : ''; paint();
+        };
+        grid.append(b);
+      }));
+      if (tr.hit && !done) { done = true; submit('done'); }
+    };
+    const status = el('p', { class: 'dim', text: see ? t('p19_see') : t('p19_blind') });
+    body.append(el('p', { text: t('p19_intro') }), grid, status);
+    paint();
+  },
+
+  // P20：推石像（推箱子）
+  P20(body, { submit, panel }) {
+    let map = SOKOBAN.map((r) => [...r]), done = false; const targets = [];
+    map.forEach((row, y) => row.forEach((c, x) => { if (c === 'T') targets.push([x, y]); }));
+    let px = 0, py = 0; map.forEach((row, y) => row.forEach((c, x) => { if (c === 'P') { px = x; py = y; row[x] = '.'; } if (c === 'T') row[x] = '.'; }));
+    const start = { map: map.map((r) => [...r]), px, py };
+    const grid = el('div', { class: 'soko' });
+    const paint = () => {
+      grid.innerHTML = '';
+      map.forEach((row, y) => row.forEach((c, x) => {
+        const tgt = targets.some(([a, b]) => a === x && b === y);
+        grid.append(el('span', { class: `${c === '#' ? 'wall' : ''} ${tgt ? 'target' : ''}`, text: x === px && y === py ? '◉' : c === 'B' ? '🗿' : '' }));
+      }));
+      if (!done && targets.every(([x, y]) => map[y][x] === 'B')) { done = true; submit('done'); }
+    };
+    const move = (dx, dy) => {
+      const nx = px + dx, ny = py + dy, c = map[ny]?.[nx];
+      if (c === '#') return;
+      if (c === 'B') { const bx = nx + dx, by = ny + dy; if (map[by]?.[bx] !== '.') return; map[by][bx] = 'B'; map[ny][nx] = '.'; }
+      px = nx; py = ny; paint();
+    };
+    const keys = (e) => { const d = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0], KeyW: [0, -1], KeyS: [0, 1], KeyA: [-1, 0], KeyD: [1, 0] }[e.code]; if (d) { e.preventDefault(); e.stopPropagation(); move(...d); } };
+    addEventListener('keydown', keys, true);
+    panel.onClose = () => removeEventListener('keydown', keys, true);
+    body.append(el('p', { text: t('p20_intro') }), grid, el('div', { class: 'pad' },
+      el('button', { text: '▲', onclick: () => move(0, -1) }), el('button', { text: '◀', onclick: () => move(-1, 0) }), el('button', { text: '▼', onclick: () => move(0, 1) }), el('button', { text: '▶', onclick: () => move(1, 0) }),
+      el('button', { class: 'small', text: t('reset'), onclick: () => { map = start.map.map((r) => [...r]); px = start.px; py = start.py; paint(); } })));
+    paint();
+  },
+
+  // P21：煉金天平（九瓶裡找出重的那瓶，只能秤兩次）
+  P21(body, { conn, submit, myHouse, solo }) {
+    const named = myHouse() === 'ouroboros' || solo;
+    const side = Array(9).fill(''); let mode = 'weigh';
+    const row = el('div', { class: 'vials' }); const out = el('p', { class: 'dim', text: t('p21_intro') });
+    const paint = () => {
+      row.innerHTML = '';
+      VIALS.forEach(([sym, name], i) => row.append(el('button', { class: side[i], onclick: () => {
+        if (mode === 'pick') return submit({ pick: i });
+        side[i] = side[i] === '' ? 'L' : side[i] === 'L' ? 'R' : ''; paint();
+      } }, el('b', { text: sym }), el('small', { text: named ? L(name) : '？' }), el('i', { text: side[i] }))));
+    };
+    paint();
+    const weigh = async () => {
+      const left = side.flatMap((s, i) => (s === 'L' ? [i] : [])), right = side.flatMap((s, i) => (s === 'R' ? [i] : []));
+      const r = await conn.request({ t: 'answer', pid: 'P21', value: { weigh: { left, right } } });
+      if (r.reply?.reshuffled) out.textContent = t('p21_reshuffled');
+      else if (r.reply?.result) out.textContent = t(`p21_${r.reply.result}`, { n: r.reply.used });
+      else if (r.t === 'error') out.textContent = t(`err.${r.error}`);
+      side.fill(''); paint();
+    };
+    body.append(row, out, el('div', { class: 'row' },
+      el('button', { text: t('weigh'), onclick: weigh }),
+      el('button', { text: t('p21_pick'), onclick: () => { mode = mode === 'pick' ? 'weigh' : 'pick'; out.textContent = mode === 'pick' ? t('p21_pickmode') : t('p21_intro'); } })));
+  },
+
+  // P22：銜尾蛇徽章（只有扮演西里爾的人看得到這個選擇）
+  P22(body, { submit, myChar, toast }) {
+    if (myChar() !== 'cyril') { body.append(el('p', { class: 'dim', text: t('p22_nothing') })); return; }
+    body.append(el('p', { text: t('p22_intro') }), el('div', { class: 'row' },
+      el('button', { text: t('p22_show'), onclick: () => submit('show').then((r) => r?.solved && toast(t('p22_said_show'))) }),
+      el('button', { text: t('p22_hide'), onclick: () => submit('hide').then((r) => r?.solved && toast(t('p22_said_hide'))) })));
+  },
+
+  // P23：暗室的石板（裡面）、前廳的速寫（外面）、水晶球
+  sketch(body) { body.append(el('p', { text: t('p23_sketch') }), sketchGrid()); },
+  crystalball(body) { body.append(el('p', { text: t('p23_ball') }), tileGrid(null)); },
+  P23(body, { submit, solo, lib }) {
+    const seq = []; const status = el('p', { class: 'dim', text: t('p23_inside') });
+    const press = (i) => {
+      seq.push(i + 1); lib?.lightTile(i, true); setTimeout(() => lib?.lightTile(i, false), 400);
+      tone(i % 4);
+      status.textContent = seq.join(' → ');
+      if (seq.length === 7) { submit(seq.join(',')).then((r) => { if (!r?.solved) { seq.length = 0; status.textContent = t('p23_reset'); } }); }
+    };
+    body.append(tileGrid(press), status, el('button', { class: 'small', text: t('reset'), onclick: () => { seq.length = 0; status.textContent = t('p23_inside'); } }));
+    if (solo) body.append(el('details', {}, el('summary', { text: t('p23_familiar') }), sketchGrid()));
+  },
+
+  // P24：點字（前廳的對照表；暗室門把上的凸點要「摸」）
+  brailletable(body) {
+    const tbl = el('div', { class: 'braille-table' });
+    for (const [ch, dots] of Object.entries(BRAILLE)) tbl.append(el('div', {}, brailleCell(dots), el('small', { text: ch.toUpperCase() })));
+    body.append(tbl);
+  },
+  P24(body, { conn, submit }) {
+    body.append(el('p', { text: t('p24_intro') }));
+    const cells = el('div', { class: 'braille-door' });
+    conn.request({ t: 'peek', pid: 'P24' }).then((r) => (r.content?.cells ?? []).forEach((dots) => {
+      const c = brailleCell(dots, true);
+      const feel = () => { c.classList.add('felt'); navigator.vibrate?.(dots.map(() => 40)); setTimeout(() => c.classList.remove('felt'), 1500); };
+      c.onpointerenter = feel; c.onclick = feel; cells.append(c);
+    }));
+    const inp = el('input', { maxlength: '8', onkeydown: (e) => e.stopPropagation() });
+    body.append(cells, el('p', { class: 'dim', text: t('p24_feel') }), el('div', { class: 'row' }, inp, el('button', { text: t('answer'), onclick: () => submit(inp.value.trim()) })));
+  },
+
+  // P25：井蓋的三個圓環（0～12）
+  P25(body, { submit }) {
+    const rings = [0, 0, 0];
+    const view = el('div', { class: 'rings' });
+    const paint = () => { view.innerHTML = ''; rings.forEach((v, i) => view.append(el('div', {}, el('small', { text: t(`ring_${i}`) }),
+      el('button', { text: '−', onclick: () => { rings[i] = (rings[i] + 12) % 13; paint(); } }), el('b', { text: String(v) }),
+      el('button', { text: '+', onclick: () => { rings[i] = (rings[i] + 1) % 13; paint(); } })))); };
+    paint();
+    body.append(el('p', { text: t('p25_intro') }), view, el('button', { text: t('answer'), onclick: () => submit(rings.join(',')) }));
+  },
+
+  // ---- 第四幕 ----
+  // P26：拉桿切換門閂（門閂的狀態照拉桿算，這是題目本身）
+  P26(body, { submit }) {
+    const pulls = [];
+    const bolts = el('div', { class: 'bolts' });
+    const paint = () => {
+      const locked = new Set(BOLTS_LOCKED);
+      for (const p of pulls) for (const b of LEVERS[p]) locked.has(b) ? locked.delete(b) : locked.add(b);
+      bolts.innerHTML = '';
+      for (let b = 1; b <= 4; b++) bolts.append(el('span', { class: locked.has(b) ? 'locked' : 'open', text: `${b}　${t(locked.has(b) ? 'bolt_locked' : 'bolt_open')}` }));
+    };
+    paint();
+    body.append(el('p', { text: t('p26_intro') }), bolts,
+      el('div', { class: 'row' }, ...Object.keys(LEVERS).map((k) => el('button', { text: k, onclick: () => { pulls.push(k); paint(); } })),
+        el('button', { class: 'small', text: t('reset'), onclick: () => { pulls.length = 0; paint(); } })),
+      el('button', { text: t('p26_push'), onclick: () => submit([...pulls]) }));
+  },
+  // P27：齒輪（軸距固定：兩個齒輪的半徑加起來要剛好；半徑＝齒數 ÷ 6）
+  P27(body, { submit }) {
+    const pick = [null, null, null];
+    const row = el('div', { class: 'gears' }), out = el('p', { class: 'dim' });
+    const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+    const paint = () => {
+      row.innerHTML = '';
+      row.append(el('div', { class: 'gear driver' }, el('small', { text: t('p27_driver') }), el('b', { text: '12' })));
+      const chain = [12, ...pick];
+      pick.forEach((g, i) => {
+        const fit = g && chain[i] ? chain[i] / 6 + g / 6 === AXLE_GAPS[i] : null;
+        row.append(el('i', { class: `gap ${fit === true ? 'ok' : fit === false ? 'bad' : ''}`, text: fit === true ? t('p27_fit_ok') : fit === false ? t('p27_fit_bad') : '' }));
+        const sel = el('select', { onchange: () => { pick[i] = +sel.value || null; paint(); } }, el('option', { value: '', text: '—' }), ...GEAR_RACK.map((n) => el('option', { value: String(n), text: String(n) })));
+        sel.value = g ? String(g) : '';
+        row.append(el('div', { class: 'gear' }, el('small', { text: t('p27_axle', { n: i + 2 }) }), sel));
+      });
+      const all = pick.every(Boolean) && pick.every((g, i) => chain[i] / 6 + g / 6 === AXLE_GAPS[i]);
+      const k = gcd(12, pick[2] ?? 12);
+      out.textContent = all ? t('p27_result', { dir: t(pick.length % 2 ? 'p27_ccw' : 'p27_cw'), ratio: `${12 / k}/${pick[2] / k}` }) : '';
+    };
+    paint();
+    body.append(el('p', { text: t('p27_intro') }), row, out, el('button', { text: t('p27_install'), onclick: () => submit(['12', ...pick.map((g) => g ?? 0)].join(',')) }));
+  },
+  // P28：照童謠的節奏敲（按住＝長、點一下＝短）。敲錯了聲音會引來守夜人
+  P28(body, { submit, noise }) {
+    const seq = []; const show = el('div', { class: 'rhythm' });
+    const words = L(LYRIC);
+    const paint = () => { show.innerHTML = ''; words.forEach((w, i) => show.append(el('span', {}, el('small', { text: LYRIC_MARKS[i] ? '—' : '?' }), el('b', { text: w })))); mine.textContent = seq.map((x) => (x === 'L' ? '—' : '・')).join(' ') || '…'; };
+    const mine = el('p', { class: 'rhythm-in' });
+    let down = 0;
+    const pad = el('button', { class: 'knock', text: t('p28_tap') });
+    pad.onpointerdown = () => { down = performance.now(); pad.classList.add('on'); };
+    pad.onpointerup = () => { if (!down) return; pad.classList.remove('on'); if (seq.length < 7) seq.push(performance.now() - down > 350 ? 'L' : 'S'); down = 0; paint(); };
+    paint();
+    body.append(el('p', { text: t('p28_intro') }), show, pad, mine,
+      el('div', { class: 'row' }, el('button', { class: 'small', text: t('p28_long'), onclick: () => { if (seq.length < 7) seq.push('L'); paint(); } }),
+        el('button', { class: 'small', text: t('p28_short'), onclick: () => { if (seq.length < 7) seq.push('S'); paint(); } }),
+        el('button', { class: 'small', text: t('reset'), onclick: () => { seq.length = 0; paint(); } }),
+        el('button', { text: t('p28_knock'), onclick: async () => { const r = await submit(seq.join('')); if (r && r.t !== 'error' && !r.solved) noise?.(); seq.length = 0; paint(); } })));
+  },
+  // P29：屋頂入口的刻字（石板本身在場景裡踩）
+  roofsign(body) { body.append(el('blockquote', { text: t('p29_quote') }), el('p', { class: 'dim', text: t('p29_sign') })); },
+};
+
+// ---- 蝕巢：救援題（R，同伴來救）、自救題（S，被抓的人自己解）。題目內容由伺服器給 ----
+export function openRescue(conn, kind, target, toast) {
+  openPanel(t(kind === 'R' ? 'rescue_title' : 'self_title'), (body, panel) => {
+    const main = el('div'), status = el('p', { class: 'p-status', text: '…' }); body.append(main, status);
+    conn.request({ t: 'peek', pid: kind, target }).then((r) => {
+      if (r.t !== 'peek') { status.textContent = errText(r.error); return; }
+      status.textContent = '';
+      const submit = async (value) => {
+        status.textContent = '…';
+        const res = await conn.request({ t: kind === 'R' ? 'rescue' : 'selfrescue', target, value });
+        if (res.t === 'error') { status.textContent = errText(res.error, { s: Math.ceil((res.wait ?? 0) / 1000) }); return res; }
+        if (res.solved) { status.textContent = t('p_solved'); toast?.(t('a4_freed')); setTimeout(closePanel, 700); } else status.textContent = t('wrong');
+        return res;
+      };
+      NEST[r.pid]?.(main, { content: r.content, submit, panel });
+    });
+  });
+}
+const ELEM4 = [['fire', '🜂', 'el_fire'], ['water', '🜄', 'el_water'], ['wind', '🜁', 'el_wind'], ['earth', '🜃', 'el_earth']];
+const NEST = {
+  R1(body, { content, submit }) { // 四條黑根的元素 → 依序點燃剋制它的元素
+    const pick = []; const show = el('div', { class: 'slots' });
+    const sym = (id) => ELEM4.find((e) => e[0] === id)?.[1] ?? '＿';
+    const paint = () => { show.textContent = [0, 1, 2, 3].map((i) => sym(pick[i])).join('　'); };
+    paint();
+    body.append(el('p', { text: t('r1_intro') }), el('div', { class: 'roots' }, ...content.roots.map((id) => el('span', { text: `${sym(id)} ${t(ELEM4.find((e) => e[0] === id)[2])}` }))), show,
+      el('div', { class: 'row' }, ...ELEM4.map(([id, s, k]) => el('button', { text: `${s} ${t(k)}`, onclick: () => { if (pick.length < 4) pick.push(id); paint(); } })),
+        el('button', { class: 'small', text: t('reset'), onclick: () => { pick.length = 0; paint(); } }),
+        el('button', { text: t('answer'), onclick: () => submit(pick.join(',')) })));
+  },
+  R2(body, { submit }) { // 導管：每一格的開口（北 1、東 2、南 4、西 8），點一下轉 90 度
+    const N = 5, rot = (m) => ((m << 1) | (m >> 3)) & 15, GLYPH = { 1: '╵', 2: '╶', 4: '╷', 8: '╴', 5: '│', 10: '─', 3: '└', 6: '┌', 12: '┐', 9: '┘', 7: '├', 14: '┬', 13: '┤', 11: '┴', 15: '┼' };
+    // 先做出一條從左邊（第 3 列）到右邊（第 3 列）的路，再把每一格亂轉
+    const grid = Array.from({ length: N * N }, () => [5, 3, 7][Math.floor(Math.random() * 3)]);
+    const path = []; const seen = new Set();
+    const walk = (c, r) => {
+      path.push([c, r]); seen.add(`${c},${r}`);
+      if (c === N - 1 && r === 2) return true;
+      const dirs = [[1, 0], [0, 1], [0, -1], [-1, 0]].sort(() => Math.random() - 0.5); // 隨機繞路
+      for (const [dc, dr] of dirs) { const nc = c + dc, nr = r + dr; if (nc >= 0 && nc < N && nr >= 0 && nr < N && !seen.has(`${nc},${nr}`) && walk(nc, nr)) return true; }
+      path.pop(); return false;
+    };
+    walk(0, 2);
+    const bit = (dc, dr) => (dr === -1 ? 1 : dc === 1 ? 2 : dr === 1 ? 4 : 8);
+    path.forEach(([c, r], i) => {
+      const [pc, pr] = i ? path[i - 1] : [-1, 2], [nc, nr] = i < path.length - 1 ? path[i + 1] : [N, 2];
+      grid[r * N + c] = bit(pc - c, pr - r) | bit(nc - c, nr - r);
+    });
+    for (let i = 0; i < grid.length; i++) for (let k = Math.floor(Math.random() * 4); k > 0; k--) grid[i] = rot(grid[i]);
+    const connected = () => { // 從左邊進來，能不能走到右邊出去
+      const q = [[0, 2, 8]], vis = new Set();
+      while (q.length) {
+        const [c, r, from] = q.shift(); const m = grid[r * N + c];
+        if (!(m & from) || vis.has(`${c},${r}`)) continue; vis.add(`${c},${r}`);
+        if (c === N - 1 && r === 2 && m & 2) return true;
+        for (const [b, dc, dr, opp] of [[1, 0, -1, 4], [2, 1, 0, 8], [4, 0, 1, 1], [8, -1, 0, 2]]) { const nc = c + dc, nr = r + dr; if (m & b && nc >= 0 && nc < N && nr >= 0 && nr < N) q.push([nc, nr, opp]); }
+      }
+      return false;
+    };
+    const view = el('div', { class: 'pipes' });
+    const paint = () => { view.innerHTML = ''; grid.forEach((m, i) => view.append(el('button', { text: GLYPH[m] ?? '·', onclick: () => { grid[i] = rot(grid[i]); paint(); if (connected()) submit('done'); } }))); };
+    paint();
+    body.append(el('p', { text: t('r2_intro') }), el('div', { class: 'pipe-wrap' }, el('b', { text: '✦' }), view, el('b', { text: '◉' })));
+  },
+  R3(body, { content, submit }) {
+    const inp = el('input', { maxlength: '12', onkeydown: (e) => e.stopPropagation() });
+    body.append(el('p', { text: t('r3_intro') }), el('p', { class: 'cipher', text: content.cipher }), el('div', { class: 'row' }, inp, el('button', { text: t('answer'), onclick: () => submit(inp.value.trim()) })));
+  },
+  R4(body, { submit, panel }) { // 記憶翻牌：6 對符文、60 秒
+    const cards = el('div', { class: 'memory' }), clock = el('p', { class: 'dim' });
+    let deck, open, done, left, timer;
+    const deal = () => {
+      deck = [...RUNES6, ...RUNES6].sort(() => Math.random() - 0.5); open = []; done = new Set(); left = 60; paint();
+    };
+    const paint = () => {
+      cards.innerHTML = ''; clock.textContent = t('r4_time', { s: left });
+      deck.forEach((r, i) => cards.append(el('button', { class: done.has(i) ? 'done' : open.includes(i) ? 'up' : '', text: done.has(i) || open.includes(i) ? r : '', onclick: () => flip(i) })));
+    };
+    const flip = (i) => {
+      if (done.has(i) || open.includes(i) || open.length >= 2) return;
+      open.push(i); paint();
+      if (open.length === 2) setTimeout(() => {
+        if (deck[open[0]] === deck[open[1]]) open.forEach((k) => done.add(k));
+        open = []; paint();
+        if (done.size === deck.length) { clearInterval(timer); submit('done'); }
+      }, 600);
+    };
+    timer = setInterval(() => { left--; if (left <= 0) { body.querySelector('.p-note')?.remove(); body.append(el('p', { class: 'p-note dim', text: t('r4_reset') })); deal(); } else clock.textContent = t('r4_time', { s: left }); }, 1000);
+    panel.onClose = () => clearInterval(timer);
+    deal();
+    body.append(el('p', { text: t('r4_intro') }), clock, cards);
+  },
+  S1(body, { content, submit }) {
+    const inp = el('input', { maxlength: '20', onkeydown: (e) => e.stopPropagation() });
+    body.append(el('p', { text: t('s1_intro') }), el('p', { class: 'cipher', text: content.cipher }), el('div', { class: 'row' }, inp, el('button', { text: t('answer'), onclick: () => submit(inp.value.trim()) })));
+  },
+  S2(body, { content, submit }) { // 聽音辨位：三次，每次聽完選方向
+    const picks = []; const info = el('p', { class: 'dim' });
+    const paint = () => { info.textContent = t('s2_round', { n: Math.min(3, picks.length + 1) }); };
+    paint();
+    const dirs = el('div', { class: 'compass8' }, ...[7, 0, 1, 6, -1, 2, 5, 4, 3].map((d) => d < 0
+      ? el('button', { class: 'listen', text: t('s2_listen'), onclick: () => heartbeatFrom(content.rounds[picks.length] ?? 0) })
+      : el('button', { text: t(`dir.${d}`), onclick: () => { picks.push(d * 45); if (picks.length === 3) { submit(picks.join(',')); picks.length = 0; } paint(); } })));
+    body.append(el('p', { text: t('s2_intro') }), info, dirs);
+  },
+  S3(body, { submit }) { // 符文數獨（6×6，2×3 的框）
+    const GIVEN = ['1..4.6', '.5..2.', '2.1..4', '5..2.1', '.1..4.', '6.5..2'];
+    const g = GIVEN.map((row) => [...row].map((ch) => (ch === '.' ? 0 : +ch)));
+    const fixed = g.map((row) => row.map(Boolean));
+    const ok = () => {
+      const sets = [];
+      for (let i = 0; i < 6; i++) { sets.push(g[i]); sets.push(g.map((row) => row[i])); }
+      for (let br = 0; br < 6; br += 2) for (let bc = 0; bc < 6; bc += 3) sets.push([0, 1].flatMap((dr) => [0, 1, 2].map((dc) => g[br + dr][bc + dc])));
+      return sets.every((set) => new Set(set).size === 6 && !set.includes(0));
+    };
+    const view = el('div', { class: 'sudoku' });
+    const paint = () => {
+      view.innerHTML = '';
+      g.forEach((row, r) => row.forEach((v, c) => view.append(el('button', { class: `${fixed[r][c] ? 'fixed' : ''} ${c === 2 ? 'bx' : ''} ${r % 2 ? 'by' : ''}`, text: v ? RUNES6[v - 1] : '',
+        onclick: () => { if (fixed[r][c]) return; g[r][c] = (g[r][c] + 1) % 7; paint(); if (ok()) submit('done'); } }))));
+    };
+    paint();
+    body.append(el('p', { text: t('s3_intro') }), view);
+  },
+  S4(body, { content, submit }) {
+    const SIDES = ['left', 'middle', 'right'];
+    body.append(el('p', { text: t('s4_intro') }),
+      el('div', { class: 'heads' }, ...content.says.map((k, i) => el('div', {}, el('small', { text: t(`head_${SIDES[i]}`) }), el('p', { text: t(`liar.${k}`) })))),
+      el('div', { class: 'row' }, ...SIDES.map((sd) => el('button', { text: t('s4_cut', { side: t(`side_${sd}`) }), onclick: () => submit(sd) }))));
+  },
 };
 
 // 燭光閃爍：長＝－，短＝・
@@ -218,3 +652,31 @@ function blink(lamp, codes) {
 
 // P02 用：玩家走到長桌旁時記下聽到的傳聞
 export function rumorText(i) { return RUMORS[i].map(L).join(' '); }
+
+// ---- 第三幕的小工具 ----
+function brailleCell(dots, hidden = false) {
+  const c = el('div', { class: `braille ${hidden ? 'hidden' : ''}` });
+  for (const n of [1, 4, 2, 5, 3, 6]) c.append(el('i', { class: dots.includes(n) ? 'on' : '' }));
+  return c;
+}
+function sketchGrid() { // 鏡子上的速寫：路線（左右相反）＋每一步的音高
+  const g = el('div', { class: 'tiles sketch' });
+  for (let i = 1; i <= 16; i++) { const k = SKETCH.path.indexOf(i); g.append(el('span', { class: k >= 0 ? 'on' : '', text: k >= 0 ? String(k + 1) : '' })); }
+  const staff = el('div', { class: 'staff' }, ...SKETCH.pitches.map((p) => el('i', { style: `margin-bottom:${(p - 1) * 9}px` })));
+  return el('div', {}, g, staff);
+}
+function tileGrid(onPress) {
+  const g = el('div', { class: 'tiles' });
+  for (let i = 0; i < 16; i++) g.append(onPress ? el('button', { onclick: () => onPress(i) }) : el('span', { text: String(i + 1) }));
+  return g;
+}
+let toneCtx = null;
+function tone(col) { // 每一欄一個音，左邊最低
+  try {
+    toneCtx ??= new AudioContext();
+    const o = toneCtx.createOscillator(), g = toneCtx.createGain(), t0 = toneCtx.currentTime;
+    o.frequency.value = [262, 330, 392, 523][col]; o.type = 'sine';
+    g.gain.setValueAtTime(0.2, t0); g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.5);
+    o.connect(g).connect(toneCtx.destination); o.start(); o.stop(t0 + 0.6);
+  } catch { /* 沒有音效也能玩 */ }
+}

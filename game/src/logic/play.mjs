@@ -7,9 +7,12 @@ import { openWand } from '../ui/wand.mjs';
 import { t, getLang } from './i18n.mjs';
 import { CHARS, HOUSES } from './chars.mjs';
 import { SCRIPT } from '../data/story-ch1.mjs';
-import { SPAWNS, DOORS, ROOMS, RUMORS } from '../data/world-ch1.mjs';
+import { SPAWNS, DOORS, ROOMS, RUMORS, THINGS } from '../data/world-ch1.mjs';
+const THINGS_BY_ID = Object.fromEntries(THINGS.map((x) => [x.id, x]));
 import { HEADMASTERS } from '../data/story-ch1.mjs';
 import { createAct2 } from './act2.mjs';
+import { createAct3 } from './act3.mjs';
+import { createAct4 } from './act4.mjs';
 
 const $ = (id) => document.getElementById(id);
 const HOUR_PID = { P03: 'eldrin', P04: 'grimoire', P05: 'belmont', P06: 'ouroboros' };
@@ -37,7 +40,10 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
   setPauseHandler((p) => { world.controls.setEnabled(!p); });
   const act2 = createAct2({ world, conn, toast, play, S, house: myHouse(), solo: S().mode === 'solo', lang: getLang() });
   $('btn-familiar').hidden = S().mode !== 'solo';
-  if (dev) window.__ml = { receiver, world, sent: 0, notes, heard, act2 };
+  const act3 = createAct3({ world, conn, toast, say, S, myChar: () => me()?.char, solvedByMe: (pid, r) => { onSolved(pid, myUid, r.reveal); toast(t('solved', { pid })); }, serverNow: () => Date.now() + clockOffset });
+  const act4 = createAct4({ world, conn, toast, say, talking, S, myUid, myChar: () => me()?.char, receiver, serverNow: () => Date.now() + clockOffset, holding: () => holding, dev, playScript: (k) => play(k),
+    solvedByMe: (pid, r) => { onSolved(pid, myUid, r.reveal); toast(t('solved', { pid })); } });
+  if (dev) window.__ml = { receiver, world, conn, sent: 0, notes, heard, act2, act3, act4, get state() { return S(); } };
 
   // ---- 段落開始：移到出發點、播劇情 ----
   function enterSegment(seg, first) {
@@ -47,7 +53,10 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
       world.teleport({ ...SPAWNS.prologue, x: SPAWNS.prologue.x + (i - 1.5) * 1.4 });
     } else if (seg === 'act1') world.teleport(SPAWNS.act1[myHouse()] ?? SPAWNS.act1.eldrin);
     else if (seg === 'act2') { world.teleport(SPAWNS.act2); act2.enter(); }
-    else if (seg === 'act3a') { act2.leave(); world.teleport(SPAWNS.act3a); toast(t('act_end')); }
+    else if (seg === 'act3a') { act2.leave(); world.teleport(SPAWNS.act3a); }
+    else if ((seg === 'act3b' || seg === 'act3c') && first) world.teleport(SPAWNS[seg]); // 重新連線時才傳送（平常是走過去的）
+    else if (seg === 'act4') act4.begin(false);
+    else if (seg === 'epilogue') return act4.end(); // 尾聲的劇情由 act4 排順序
     play(`segment:${seg}`);
     sender.resend();
   }
@@ -80,7 +89,8 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
     if (reveal) notes[pid] = reveal;
     updateDoors();
     act2.onSolved(pid);
-    if (by === myUid || ['P08', 'P09', 'P10'].includes(pid)) play(`solved:${pid}`);
+    if (pid === 'P29') return; // 屋頂的高潮由 act4.end() 播（守夜人最後那句話只有西里爾聽清楚）
+    if (by === myUid || !['P03', 'P04', 'P05', 'P06', 'P07'].includes(pid)) play(`solved:${pid}`); // 宿舍門鎖只有解開的人看得到
   }
 
   // ---- 調查 ----
@@ -89,7 +99,7 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
     if (panelOpen()) return;
     const tg = world.target();
     if (!tg) return;
-    if (act2.interact(tg)) return;
+    if (act2.interact(tg) || act3.interact(tg) || act4.interact(tg)) return;
     if (tg.kind === 'plaques') return openPanel(L(tg.label), (body) => body.append(el('ul', { class: 'plaques' }, ...HEADMASTERS.map((h) => el('li', { text: L(h) })))));
     if (tg.kind === 'prop' && tg.text) return say([[null, tg.text.zh, tg.text.en]]);
     if (tg.kind === 'rumor') {
@@ -100,7 +110,9 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
       if (tg.needsAi && !S().ai?.length) return toast(t('p07_none'));
       if (tg.house && S().mode !== 'solo' && myHouse() !== tg.house) return toast(t('err.not_your_house'));
       return openPuzzle(tg.puzzle, tg, {
-        conn, state: S(), notes, heard, revealed, toast,
+        conn, state: S(), notes, heard, revealed, toast, getLang, lib: act3.lib, solo: S().mode === 'solo',
+        items: () => S().items ?? [], myHouse, myChar: () => me()?.char, noise: () => conn.send({ t: 'noise', p: world.me().p }),
+        near: (id, r) => { const th = THINGS_BY_ID[id]; const p = world.controls.state.pos; return !!th && Math.hypot(p.x - th.x, p.z - th.z) <= r; },
         onSolved: (pid, r) => onSolved(pid, myUid, r.reveal),
       });
     }
@@ -109,6 +121,7 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
   // ---- 魔杖 ----
   function castWand() {
     if (panelOpen() || talking()) return;
+    if (segment === 'act4' && act4.canRepel()) return act4.repel(); // 貝爾蒙特：擊退守夜人
     openWand((spell) => {
       if (spell !== 'lumen') return;
       const tg = world.target((x) => x.id === 'lock_eldrin');
@@ -124,6 +137,8 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
       for (const [pid, h] of Object.entries(HOUR_PID)) if (notes[pid]) items.push(t('note_hour', { house: HOUSES[h][getLang()], n: notes[pid] }));
       if (!items.length && !heard.size) body.append(el('p', { class: 'dim', text: t('notebook_empty') }));
       if (items.length) body.append(el('ul', {}, ...items.map((x) => el('li', { text: x }))));
+      const libNotes = act3.notebook();
+      if (libNotes.length) body.append(el('h4', { text: t('liana_notes') }), el('ul', {}, ...libNotes));
       if (heard.size) {
         body.append(el('h4', { text: t('note_rumor') }));
         body.append(el('ul', {}, ...[...heard].sort().flatMap((i) => RUMORS[i].map((h) => el('li', { text: L(h) })))));
@@ -184,12 +199,14 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
       } else world.placeAvatar(key, 0, 0, 0, false);
     });
     if (segment === 'act2') act2.frame(dt, mine);
+    if (segment?.startsWith('act3')) act3.frame(dt, mine, segment);
+    const hideState = act4.frame(dt, mine, segment);
     // 「調查」提示
     const tg = !panelOpen() && !talking() ? world.target() : null;
     $('prompt').hidden = !tg; if (tg) $('prompt').textContent = `${matchMedia('(pointer: coarse)').matches ? '' : 'E　'}${L(tg.label)}`;
     $('btn-inspect').classList.toggle('ready', !!tg);
     // 同步、畫面
-    sender.update(mine, now);
+    sender.update({ ...mine, h: hideState }, now);
     world.frame(dt, receiver.update(dt, now), mine.z);
     requestAnimationFrame(loop);
   };
@@ -199,6 +216,7 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
     world, sender, receiver, onState, onSolved,
     onCorridor: (msg) => act2.onCorridor(msg),
     onVote: (msg) => act2.onVote(msg),
+    onAct4: (msg) => act4.onMessage(msg),
     zoneName: (z) => L(ROOMS.find((r) => r.id === z)?.name) || z,
     setNotes(n) { Object.assign(notes, n); },
   };

@@ -1,19 +1,19 @@
 # 進度
 
 ## 目前階段
-**階段一：角色與故事大綱，製作人已確認（2026-10-21）。** 見 `docs/01-characters.md`、`docs/02-story.md`。**階段二：第一章完整劇情，製作人已確認**（`docs/03-chapter1.md`）。**階段三：第一章地圖，製作人已確認**（`docs/04-map-ch1.md`）。**階段四：第一章謎題，製作人已確認**（`docs/05-puzzles-ch1.md`，含答案，不可發佈）。**階段五技術雛形：完成，美術確定用寫實模型；另一個帳號正在做人物。** **階段五遊戲系統規劃：製作人已確認**（`docs/07-system.md`），省額度做法確定 A＋B＋D。**第 1～3 批（架構、序幕＋第一幕、第二幕）完成**，等製作人試玩，見 `docs/07-system.md` 第 14 節；已部署到 https://kooomp.noron.workers.dev/（Worker `kooomp`）。（`prototype/`，說明見 `prototype/README.md`）。
+**階段一：角色與故事大綱，製作人已確認（2026-10-21）。** 見 `docs/01-characters.md`、`docs/02-story.md`。**階段二：第一章完整劇情，製作人已確認**（`docs/03-chapter1.md`）。**階段三：第一章地圖，製作人已確認**（`docs/04-map-ch1.md`）。**階段四：第一章謎題，製作人已確認**（`docs/05-puzzles-ch1.md`，含答案，不可發佈）。**階段五技術雛形：完成，美術確定用寫實模型；另一個帳號正在做人物。** **階段五遊戲系統規劃：製作人已確認**（`docs/07-system.md`），省額度做法確定 A＋B＋D。**第 1～5 批（架構、序幕＋第一幕、第二幕、第三幕、第四幕）完成，第一章可以從頭玩到「第一章完」**，等製作人試玩，見 `docs/07-system.md` 第 14 節；已部署到 https://kooomp.noron.workers.dev/（Worker `kooomp`）。（`prototype/`，說明見 `prototype/README.md`）。
 
 ## 進行中
 開始做一件事前在這裡登記；做完就移除。格式：`- 分支名稱：在做什麼（會動到的檔案或資料夾）`
 
-- `claude/loving-brahmagupta-mhxt6t`：遊戲系統第 4 批（第三幕：沉眠圖書館 P11～P25）——`server/`、`data/`、`game/src/data/`、`game/src/world/library.mjs`、`game/src/logic/`、`game/src/ui/`、`tools/test/`。
-
+- `claude/loving-brahmagupta-mhxt6t`：遊戲系統第 6 批（存檔與繼續遊戲、通關結算、英文版檢查、整章測試）——`server/`、`wrangler.jsonc`、`game/src/`（不含 `art/`）、`game/index.html`、`game/style.css`、`tools/`。
 
 - `claude/sweet-goldberg-nklgb6`：角色模型壓到每個 5MB 以下、放進 `game/models/chars/`，並在 `game/src/art/characters.mjs` 提供載入角色的程式。不會動 `game/src/` 其他資料夾。
   - **請帳號一**：照 `game/src/art/README.md` 的兩點，(1) `tools/build.mjs` 複製 `game/models/` 到 `dist/models/`；(2) `world.mjs` 的 `makeAvatar` 載入正式模型換掉簡單人形。
 
 
 ## 等製作人回答
+- 第四幕守夜人的難度（追得太緊還是太鬆）：試玩後告訴我，數值在 `game/src/data/act4-ch1.mjs` 的 `WARDEN`。
 - 第 2 批（序幕＋第一幕）試玩：在 Cloudflare 設定 `TEST_PASS` 後，用 `https://kooomp.noron.workers.dev/?test=密碼&name=名字` 試玩（步驟見 `docs/07-system.md` 第 16 節）。
 - 技術雛形（`prototype/`）試玩後：
   1. ~~角色美術走哪個方向？~~ 已決定：**寫實模型**（2026-10-21）。
@@ -26,7 +26,7 @@
 - 製作人試聽 `assets-src/voice/p15_zh_preview.mp3`、`p15_en_preview.mp3`，確認莉安娜的錄音切得對（中文段是 0～16.6 秒）。
 
 ## 下一步
-- 第 4 批：第三幕（沉眠圖書館 P11～P25）。
+- 第 6 批：尾聲、存檔、英文檢查、整章測試。
 - 帳號二：照 `docs/08-world-format.md` 把序幕、第一幕的場景與角色換成正式美術。
 - 第一章做得差不多時，上架大廳（未公開測試），要先給製作人確認。
 - 之後發佈時，`docs/` 一定要列進 `.assetsignore`（裡面有答案）。
@@ -64,3 +64,5 @@
 - 2026-10-21：遊戲系統第 3 批完成：第二幕（肖像畫長廊 22＋4 種異常、全隊同步、使魔視角；創辦人房間熄燈看視線、P10；雨聲、童謠、呼吸聲、尖叫）。14 項自動測試＋瀏覽器走完 8 趟長廊與 P10。
 - 2026-10-21：主角穿上製作人找的衣服（JK 制服、男生制服＋長大衣，學院色）；守夜人換成 Mixamo 的四個動作（待機、走路、跑步、撲抓）；素材授權整理在 `prototype/models/CREDITS.md`。
 - 2026-10-21：異常長廊多人改成投票（過半數）。
+- 2026-10-21：遊戲系統第 4 批完成：第三幕沉眠圖書館（P11～P25：會移動的書架迷宮、書本密碼、留聲水晶、八卦、符文門、月光鏡座、推石像鬼、天平、西里爾的抉擇、暗室旋律、點字、井蓋）。16 項自動測試＋瀏覽器單人走過第三幕。
+- 2026-10-21：遊戲系統第 5 批完成：第四幕守夜人（35 分鐘倒數、守夜人追逐與躲藏、掙脫、單人復活、多人蝕巢救援／自救、擊退、P26～P29、判定輸與重來、高潮與尾聲）。修正 S4 說謊者題沒有唯一解。25 項自動測試＋單人與兩人瀏覽器實測。
