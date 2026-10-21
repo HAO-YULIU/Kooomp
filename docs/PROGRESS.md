@@ -7,8 +7,7 @@
 開始做一件事前在這裡登記；做完就移除。格式：`- 分支名稱：在做什麼（會動到的檔案或資料夾）`
 
 - `claude/loving-brahmagupta-mhxt6t`：遊戲系統第 1 批——伺服器（`server/`）、謎題資料（`data/`）、遊戲外殼與連線（`game/`，美術部分之後交給帳號二的 `game/src/art/`）、build 與部署設定（`tools/`、`wrangler.jsonc`）。只讀取、不修改 `prototype/`。
-
-（目前沒有）
+- `claude/sweet-goldberg-nklgb6`：配角模型（校長、副校長、舍監、魔藥學教授、背景學生）＋角色一覽頁（`prototype/`）。
 
 ## 等製作人回答
 - 技術雛形（`prototype/`）試玩後：
