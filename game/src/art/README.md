@@ -3,6 +3,7 @@
 ## 角色模型
 - 檔案：`game/models/chars/<代號>.glb`，每個 5MB 以下。代號照 `docs/08-world-format.md`：`yuexi`、`vaughn`、`elora`、`cyril`、`helga`、`aldric`、`moray`、`knox`。
 - 程式：`game/src/art/characters.mjs`
+- 衣服：照每個角色的身體形狀做的巫師袍（`prototype/src/robe.mjs`），樣式在 `prototype/src/costumes.mjs`、`prototype/src/support.mjs`。
 
 ```js
 import { loadCharacter } from '../art/characters.mjs';
@@ -17,14 +18,14 @@ c.talk(秒數); c.setMood('calm' | 'smile' | 'scared');
 ## 目前的檔案大小
 | 角色 | 大小 | 說明 |
 |---|---|---|
-| elora 艾洛拉 | 4.3 MB | 有骨架、表情、JK 制服＋大衣 |
-| yuexi 月晞 | 4.2 MB | 同上 |
-| vaughn 沃恩 | 2.4 MB | 有骨架、表情、男生制服＋大衣 |
-| cyril 西里爾 | 0.8 MB | 沒有骨架（不會轉頭、眨眼），制服＋大衣 |
-| helga 赫爾嘉夫人 | 3.2 MB | 有骨架、表情、長大衣、艾洛拉的短捲髮＋眼鏡 |
-| knox 諾克斯 | 3.2 MB | 有骨架、表情、長大衣 |
-| moray 副校長 | 0.3 MB | 沒有骨架 |
-| aldric 校長 | 0.25 MB | 沒有骨架 |
+| elora 艾洛拉 | 4.1 MB | 有骨架、表情；JK 制服＋月白長袍（藍邊） |
+| yuexi 月晞 | 3.9 MB | 同上；JK 制服＋酒紅短外袍（金邊、寬袖） |
+| vaughn 沃恩 | 2.4 MB | 有骨架、表情；男生制服＋黑袍（金邊） |
+| cyril 西里爾 | 0.6 MB | 沒有骨架（不會轉頭、眨眼）；制服＋墨綠袍（扣起來、銀邊） |
+| helga 赫爾嘉夫人 | 2.8 MB | 有骨架、表情；灰色長袍、艾洛拉的短捲髮＋眼鏡 |
+| knox 魔藥學教授 | 2.8 MB | 有骨架、表情；墨綠長袍 |
+| aldric 校長 | 2.1 MB | 有骨架、表情（沃恩的臉）；白髮白鬍子、紫金長袍 |
+| moray 副校長 | 0.6 MB | 沒有骨架；制服＋黑銀長袍 |
 | warden 守夜人（蝕化後） | 0.2 MB | 有骨架、待機／走路／跑步／撲抓四個動作（見下面「守夜人」） |
 
 ## 守夜人
