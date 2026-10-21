@@ -95,8 +95,14 @@ export function loadCyril(scene, { house = { main: '#0f2a1e', trim: '#c0c4c8' },
         for (const m of model.children) if (/T-Shirt|Shorts/.test(m.name)) m.visible = false;
         holder.updateMatrixWorld(true);
         // 這個模型 T 恤、短褲底下沒有身體（被切掉了），量身體時把它們一起算進去（不顯示）
-        const parts = model.children.filter((m) => /^(Body|T-Shirt|Shorts)$/.test(m.name)), arr = [];
-        for (const m of parts) { const g = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry; arr.push(...g.attributes.position.array); }
+        // 身體被 T 恤、短褲蓋住的地方不算（不然會量到裡外兩層）
+        const flat = (m) => (m.geometry.index ? m.geometry.toNonIndexed() : m.geometry).attributes.position.array;
+        const cloth = model.children.filter((m) => /^(T-Shirt|Shorts)$/.test(m.name)).map(flat), arr = [];
+        const cell = 3, cmap = new Set(); for (const a of cloth) for (let i = 0; i < a.length; i += 3) cmap.add(`${Math.floor(a[i] / cell)},${Math.floor(a[i + 1] / cell)},${Math.floor(a[i + 2] / cell)}`);
+        const under = (a, i) => { const x = Math.floor(a[i] / cell), y = Math.floor(a[i + 1] / cell), z = Math.floor(a[i + 2] / cell); for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) if (cmap.has(`${x + dx},${y + dy},${z + dz}`)) return true; return false; };
+        const bodyArr = flat(model.children.find((m) => m.name === 'Body'));
+        for (let t = 0; t < bodyArr.length; t += 9) if (!(under(bodyArr, t) && under(bodyArr, t + 3) && under(bodyArr, t + 6))) for (let k = 0; k < 9; k++) arr.push(bodyArr[t + k]);
+        for (const a of cloth) arr.push(...a);
         const shape = new THREE.BufferGeometry(); shape.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
         const measure = new THREE.Mesh(shape, new THREE.MeshBasicMaterial()); measure.visible = false; model.add(measure); holder.updateMatrixWorld(true);
         const ctx = { holder, body: measure, landmarks };
