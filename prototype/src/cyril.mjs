@@ -65,7 +65,9 @@ function paintHair(geo, root, tip) {
 }
 
 /** outfit：要穿的衣服（outfit.mjs 的 spec 陣列）；穿了衣服就不做程式的斗篷，原本的 T 恤、短褲也藏起來 */
-export function loadCyril(scene, { house = { main: '#0f2a1e', trim: '#c0c4c8' }, hair = '#8c8270', hairTip = '#d8d0bc', skin = '#f0cdb6', iris = '#3f7a52', height = 1.78, outfit = null } = {}) {
+export function loadCyril(scene, { house = { main: '#0f2a1e', trim: '#c0c4c8' }, hair = '#8c8270', hairTip = '#d8d0bc', skin = '#f0cdb6', iris = '#3f7a52', height = 1.78, outfit = undefined } = {}) {
+  // 沒指定 outfit（副校長）：男生制服＋學院色長袍；outfit: null 才用舊的筒狀斗篷
+  if (outfit === undefined) outfit = [{ name: 'boy', noSleeves: true }, { name: 'robe', color: house.main, trim: house.trim, hem: 0.08, sleeveFlare: 0.03, openTop: 0.06, openWaist: 0.035, openHem: 0.2 }];
   return new Promise((resolve, reject) => {
     new FBXLoader().load('models/cyril/Modern_Tarzan.fbx', async (o) => {
       o.updateMatrixWorld(true);
@@ -92,7 +94,12 @@ export function loadCyril(scene, { house = { main: '#0f2a1e', trim: '#c0c4c8' },
         const landmarks = { shL: P(15, 117), shR: P(-15, 117), elL: P(19, 89), hip: P(0, 82), neck: P(0, 124) };
         for (const m of model.children) if (/T-Shirt|Shorts/.test(m.name)) m.visible = false;
         holder.updateMatrixWorld(true);
-        const ctx = { holder, body: model.children.find((m) => m.name === 'Body'), landmarks };
+        // 這個模型 T 恤、短褲底下沒有身體（被切掉了），量身體時把它們一起算進去（不顯示）
+        const parts = model.children.filter((m) => /^(Body|T-Shirt|Shorts)$/.test(m.name)), arr = [];
+        for (const m of parts) { const g = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry; arr.push(...g.attributes.position.array); }
+        const shape = new THREE.BufferGeometry(); shape.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
+        const measure = new THREE.Mesh(shape, new THREE.MeshBasicMaterial()); measure.visible = false; model.add(measure); holder.updateMatrixWorld(true);
+        const ctx = { holder, body: measure, landmarks };
         try { for (const spec of outfit) await wearOutfit(ctx, spec); } catch (e) { console.warn('西里爾穿衣服失敗', e); }
       } else {
         const cloak = makeCloak(house); cloak.position.y = 124 * s - 0.2; cloak.position.z = 0.01; cloak.scale.set(0.96, 1, 0.96);

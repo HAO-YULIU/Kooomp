@@ -7,6 +7,7 @@
 // 5. 被衣服蓋住的皮膚藏起來，免得從衣服底下穿出來
 import * as THREE from 'three';
 import { GLTFLoader } from '../vendor/addons/loaders/GLTFLoader.js';
+import { buildRobe } from './robe.mjs';
 
 const DIR = 'models/clothes/';
 // 衣服清單：檔案、貼圖、要拿哪幾塊（依檔案裡的順序）
@@ -16,7 +17,8 @@ export const OUTFITS = {
 // flipY：貼圖要不要上下翻（glTF 來的不翻，FBX、OBJ 來的要翻）
   jk: { file: 'jk.glb', tex: 'jk_color.jpg', parts: null, sw: 0.155, sh: 0.07, hip: 0.56, flipY: false, credit: '"Jk School Uniform" by Style3D CG (CC-BY-4.0)' }, // 襯衫、領結、格子裙
   boy: { file: 'male.glb', tex: 'male_color.jpg', parts: null, sw: 0.08, sh: 0.07, hip: 0.37, flipY: true }, // 男生制服：襯衫、長褲（T 字站姿）
-  coat: { file: 'coat.glb', tex: 'coat_color.jpg', parts: [0], sw: 0.13, sh: 0.07, hip: 0.4, flipY: true }, // 長大衣（只拿外套）
+  coat: { file: 'coat.glb', tex: 'coat_color.jpg', parts: [0], sw: 0.13, sh: 0.07, hip: 0.4, flipY: true, maxLight: 1.35 }, // 長大衣（只拿外套）
+// maxLight：染色時最亮幾倍。貼圖上有一大片白色是裡面那件襯衫的，外套的接縫會沾到，只穿外套時壓暗，免得變成白點
   coatFull: { file: 'coat.glb', tex: 'coat_color.jpg', parts: [0, 1], sw: 0.13, sh: 0.07, hip: 0.4, flipY: true }, // 長大衣＋裡面的襯衫長褲
 };
 
@@ -33,8 +35,8 @@ async function loadSource(name) {
 
 // 學院色：把貼圖上偏藍的格子、領結換成學院的顏色
 const texCache = {};
-function houseTexture(file, hue, sat, flipY, light = 1, colorize = null) {
-  const key = [file, hue, sat, flipY, light, colorize].join();
+function houseTexture(file, hue, sat, flipY, light = 1, colorize = null, maxLight = 2.5) {
+  const key = [file, hue, sat, flipY, light, colorize, maxLight].join();
   return (texCache[key] ||= new Promise((res) => {
     const img = new Image();
     img.onload = () => {
@@ -43,7 +45,7 @@ function houseTexture(file, hue, sat, flipY, light = 1, colorize = null) {
       if (colorize) { // 整張染成一個顏色，保留原本的明暗（看得出皺褶）
         const d = g.getImageData(0, 0, c.width, c.height), p = d.data, C = new THREE.Color(colorize);
         const base = 255 * 0.13; // 大衣布料原本的亮度大約是 13%（同一張貼圖還有白襯衫，不能用平均）
-        for (let i = 0; i < p.length; i += 4) { const k = Math.min(2.5, (p[i] + p[i + 1] + p[i + 2]) / 3 / base); p[i] = Math.min(255, C.r * 255 * k); p[i + 1] = Math.min(255, C.g * 255 * k); p[i + 2] = Math.min(255, C.b * 255 * k); }
+        for (let i = 0; i < p.length; i += 4) { const k = Math.min(maxLight, (p[i] + p[i + 1] + p[i + 2]) / 3 / base); p[i] = Math.min(255, C.r * 255 * k); p[i + 1] = Math.min(255, C.g * 255 * k); p[i + 2] = Math.min(255, C.b * 255 * k); }
         g.putImageData(d, 0, 0);
       }
       if (hue != null) {
@@ -122,29 +124,41 @@ const smooth = (a, b, x) => { const t = THREE.MathUtils.clamp((x - a) / (b - a),
  * 沒有骨架的身體（西里爾）：衣服直接固定，不綁骨架。
  * spec：{ name: 'jk' | 'boy' | 'coat' | 'coatFull', hue（學院色的色相，度）, sat、light（彩度、亮度倍率）, tint（整件衣服再乘一個顏色）, puff（離皮膚、裡面那層衣服多遠，公尺） }
  * colorize：整件染成一個顏色（保留明暗）；noSleeves：剪掉袖子（外面要穿大衣時用）；hideInner：外層蓋住內層多近就把內層藏起來。
- * 同一個角色穿好幾層時，ctx.layers 會記住已經穿上的衣服，外層會被推到內層外面。
+ * 同一個角色穿好幾層時，ctx.meshes 會記住已經穿上的衣服：外層放在內層外緣再外面，內層在被蓋住的地方壓到外層底下。
  * 回傳穿好的 SkinnedMesh 陣列。
  */
 export async function wearOutfit(ctx, spec) {
+  if (window.__outfitOnly && spec.name !== window.__outfitOnly) return []; // 除錯用：只穿某一件
   const { holder, body, bone } = ctx, skinned = !!body.isSkinnedMesh;
-  const def = OUTFITS[spec.name];
-  const { geos, all: allGeos } = await loadSource(spec.name);
+  const isRobe = spec.name === 'robe'; // 程式做的巫師袍（robe.mjs），不用衣服模型
+  const def = isRobe ? { sh: 0.07, sw: 0.15, hip: 0.5 } : OUTFITS[spec.name];
+  const { geos, all: allGeos } = isRobe ? { geos: [], all: [] } : await loadSource(spec.name);
   holder.updateMatrixWorld(true);
 
   // ---------- 身體現在的姿勢（每個點、每個面的方向） ----------
   const bp = body.geometry.attributes.position, n = bp.count, posed = new Float32Array(n * 3), v = new THREE.Vector3();
+  // 前一件衣服會把蓋住的皮膚縮掉；量身體要用還沒縮掉的原本形狀（不然下一件在那裡會缺一塊）
+  const now = bp.array.slice(); if (ctx.bodyOrig) bp.array.set(ctx.bodyOrig); else ctx.bodyOrig = now.slice();
   for (let i = 0; i < n; i++) { body.getVertexPosition(i, v); v.applyMatrix4(body.matrixWorld); holder.worldToLocal(v); posed[i * 3] = v.x; posed[i * 3 + 1] = v.y; posed[i * 3 + 2] = v.z; }
+  bp.array.set(now);
   const pnorm = new Float32Array(n * 3), a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
-  // 身體的頂點沒有共用，每三個是一個三角形。同一個位置的面方向加起來取平均，
-  // 不然小三角形的方向亂指，衣服會被推成一根根尖刺
+  // 身體的三角形（有的模型頂點不共用、每三個一個三角形，有的有索引）；前一件衣服可能拿掉了一些，用原本的
+  const g0idx = body.geometry.index; if (g0idx && !ctx.bodyIndex) ctx.bodyIndex = g0idx.array.slice();
+  const TRI = ctx.bodyIndex ?? Uint32Array.from({ length: n }, (_, i) => i), nT = TRI.length;
+  // 同一個位置的面方向加起來取平均，不然小三角形的方向亂指，衣服會被推成一根根尖刺
   const pkey = (i) => `${Math.round(posed[i * 3] * 2000)},${Math.round(posed[i * 3 + 1] * 2000)},${Math.round(posed[i * 3 + 2] * 2000)}`;
   const acc = new Map();
-  for (let i = 0; i < n; i += 3) {
-    a.fromArray(posed, i * 3); b.fromArray(posed, i * 3 + 3); c.fromArray(posed, i * 3 + 6);
+  for (let t = 0; t < nT; t += 3) {
+    a.fromArray(posed, TRI[t] * 3); b.fromArray(posed, TRI[t + 1] * 3); c.fromArray(posed, TRI[t + 2] * 3);
     const nn = b.clone().sub(a).cross(c.clone().sub(a)); // 不正規化：大的面份量重
-    for (let k = 0; k < 3; k++) { const key = pkey(i + k); const s = acc.get(key); if (s) s.add(nn); else acc.set(key, nn.clone()); }
+    for (let k = 0; k < 3; k++) { const key = pkey(TRI[t + k]); const s = acc.get(key); if (s) s.add(nn); else acc.set(key, nn.clone()); }
   }
-  for (let i = 0; i < n; i++) { const s = acc.get(pkey(i)); (s.lengthSq() > 0 ? s.clone().normalize() : s.set(0, 0, 1)).toArray(pnorm, i * 3); }
+  for (let i = 0; i < n; i++) { const s = acc.get(pkey(i)); (s && s.lengthSq() > 0 ? s.clone().normalize() : new THREE.Vector3(0, 0, 1)).toArray(pnorm, i * 3); }
+  // 同一個位置的點併成一個「身體節點」，節點之間照三角形連起來
+  const wid = new Int32Array(n), wmap = new Map();
+  for (let i = 0; i < n; i++) { const k = pkey(i); let w = wmap.get(k); if (w === undefined) wmap.set(k, (w = wmap.size)); wid[i] = w; }
+  const W = wmap.size, wnb = Array.from({ length: W }, () => []);
+  for (let t = 0; t < nT; t += 3) for (let k = 0; k < 3; k++) { const A = wid[TRI[t + k]], B = wid[TRI[t + (k + 1) % 3]]; if (A !== B) { wnb[A].push(B); wnb[B].push(A); } }
   const nearBody = grid(posed, 0.03);
 
   // ---------- 身上的參考點 ----------
@@ -154,6 +168,36 @@ export async function wearOutfit(ctx, spec) {
   const hip = LM ? LM.hip : wp('Hip'), neck = LM ? LM.neck : wp('NeckTwist01');
   const bodySW = (shL.x - shR.x) / 2, bodyShY = (shL.y + shR.y) / 2, bodyHipY = hip.y;
   const bodyArm = Math.atan2(shL.y - elL.y, Math.abs(elL.x - shL.x)); // 手臂往下幾度（弧度）
+  const cx = (shL.x + shR.x) / 2;
+  // 手腕：有骨架用手的骨頭；沒有的話，手肘再往前一段（跟上臂一樣長）
+  const mirror = (q) => new THREE.Vector3(2 * cx - q.x, q.y, q.z);
+  const wristL = LM ? (LM.wrL ?? elL.clone().multiplyScalar(2).sub(shL)) : wp('L_Hand'), wristR = LM ? (LM.wrR ?? mirror(wristL)) : wp('R_Hand');
+  const elR = LM ? mirror(elL) : wp('R_Forearm');
+
+  // ---------- 身體每個點是哪個部位：0 軀幹、1 手臂、2 手、3 腿 ----------
+  const vreg = new Uint8Array(n);
+  if (skinned) {
+    const reg = body.skeleton.bones.map((bn) => (/(Hand|Finger|Thumb|Index|Mid\d|Ring|Pinky)/i.test(bn.name) ? 2 : /(Upperarm|Forearm|Elbow)/i.test(bn.name) ? 1 : /(Thigh|Calf|Knee|Foot|Toe|Ankle)/i.test(bn.name) ? 3 : 0));
+    const bi0 = body.geometry.attributes.skinIndex, bw0 = body.geometry.attributes.skinWeight;
+    for (let i = 0; i < n; i++) { let best = 0, bk = 0; for (let k = 0; k < 4; k++) { const w = bw0.getComponent(i, k); if (w > best) { best = w; bk = bi0.getComponent(i, k); } } vreg[i] = reg[bk]; }
+  } else { // 沒有骨架：看離手臂（肩膀→手肘→手腕）、手（手腕再往下 18 公分）的線多近
+    const seg = (pt, A, B) => { const ab = B.clone().sub(A), t = THREE.MathUtils.clamp(pt.clone().sub(A).dot(ab) / ab.lengthSq(), 0, 1); return pt.distanceTo(A.clone().addScaledVector(ab, t)); };
+    const arms = [[shL, elL, wristL], [shR, elR, wristR]];
+    for (let i = 0; i < n; i++) {
+      v.fromArray(posed, i * 3); const dx = Math.abs(v.x - cx);
+      let r = 0;
+      for (const [S, E, Wr] of arms) {
+        const hand = Wr.clone().add(Wr.clone().sub(E).setLength(0.18));
+        if (seg(v, Wr, hand) < 0.065 && dx > bodySW * 0.7) { r = 2; break; }
+        if ((seg(v, S, E) < 0.07 || seg(v, E, Wr) < 0.06) && dx > bodySW * 0.78) { r = 1; break; }
+      }
+      if (!r && v.y < hip.y - 0.06) r = 3;
+      vreg[i] = r;
+    }
+  }
+  // 只有軀幹和腿（不含手臂、手）：女生的手垂在屁股旁邊，衣服的身體部分如果找到手上的點，會被往旁邊推得亂七八糟。袖子才用 nearBody。
+  const tp = posed.slice(); for (let i = 0; i < n; i++) if (vreg[i] === 1 || vreg[i] === 2) tp[i * 3] = tp[i * 3 + 1] = tp[i * 3 + 2] = 1e6;
+  const nearTorso = grid(tp, 0.03);
 
   // ---------- 衣服的參考點（自動量） ----------
   const all = allGeos.map((g) => g.attributes.position);
@@ -171,9 +215,17 @@ export async function wearOutfit(ctx, spec) {
   const drop = Math.max(0, bodyArm - clothArm);
 
   const meshes = [];
-  const tex = await houseTexture(def.tex, spec.hue ?? null, spec.sat ?? 1, def.flipY, spec.light ?? 1, spec.colorize ?? null);
+  const tex = isRobe ? null : await houseTexture(def.tex, spec.hue ?? null, spec.sat ?? 1, def.flipY, spec.light ?? 1, spec.colorize ?? null, def.maxLight ?? 2.5);
   const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85, side: THREE.DoubleSide, color: spec.tint || '#ffffff' });
-  const clothPts = [], layers = (ctx.layers ||= []), newLayer = { pts: [], nor: [] };
+  if (window.__outfitTint?.[spec.name]) { mat.map = null; mat.color.set(window.__outfitTint[spec.name]); }
+  const clothPts = [], inner = (ctx.meshes ||= []);
+  // 衣服的點掛在哪個身體點上（袖子掛手臂，其他只掛軀幹和腿）
+  const attach = (x, y, z, isSleeve) => {
+    let [q] = (isSleeve ? nearBody : nearTorso)(x, y, z, 6);
+    if (q < 0) [q] = nearBody(x, y, z, 15); // 離身體很遠的（大衣下擺、裙襬）：放寬範圍
+    return q;
+  };
+  const height = (x, y, z, q) => (x - posed[q * 3]) * pnorm[q * 3] + (y - posed[q * 3 + 1]) * pnorm[q * 3 + 1] + (z - posed[q * 3 + 2]) * pnorm[q * 3 + 2];
   for (const g0 of geos) {
     const g = g0.clone(), p = g.attributes.position, cnt = p.count;
     // 1) 袖子放下：繞衣服的肩膀轉
@@ -186,39 +238,40 @@ export async function wearOutfit(ctx, spec) {
       const an = drop * w, cs = Math.cos(an), sn2 = Math.sin(an);
       p.setX(i, side * (clothSW + uu * cs + vv * sn2)); p.setY(i, clothShY - uu * sn2 + vv * cs);
     }
+    const sleeve = new Uint8Array(cnt); for (let i = 0; i < cnt; i++) sleeve[i] = Math.abs(p.getX(i)) - clothSW > 0.02 * H ? 1 : 0; // 袖子的點
+    g.userData.sleeve = sleeve;
     // 外面還要穿大衣時，裡面這件的袖子剪掉（大衣的長袖會蓋住手臂，留著反而會從大衣穿出來）
     if (spec.noSleeves && g.index) {
-      const idx = g.index, keep = [], cut = (k) => Math.abs(p.getX(k)) > clothSW + 0.015 * H && p.getY(k) > clothShY - 0.25 * H;
+      const idx = g.index, keep = [], cut = (k) => Math.abs(p.getX(k)) > clothSW - 0.005 * H && p.getY(k) > clothShY - 0.25 * H; // 剪在肩膀線內側一點，免得留下往旁邊翹的短袖頭
       for (let i = 0; i < idx.count; i += 3) { const x = idx.getX(i), y = idx.getX(i + 1), z = idx.getX(i + 2); if (!(cut(x) || cut(y) || cut(z))) keep.push(x, y, z); }
       g.setIndex(keep);
     }
     // 2) 縮放、對齊到身上（衣服的肩膀＝角色的肩膀）
     const cz = (spec.zOffset ?? 0);
     for (let i = 0; i < cnt; i++) p.setXYZ(i, p.getX(i) * sx, bodyShY + (p.getY(i) - clothShY) * sy, p.getZ(i) * sx + cz);
-    // 3) 陷進身體的地方往外推；4) 抄最近那個身體點的骨架設定
+    // 3) 往外推：離皮膚至少 puff，也要在裡面那層的外緣再外面 puff（都沿著身體往外的方向量；衣服自己的法線有些是反的，不能用）
+    // 4) 抄掛著的那個身體點的骨架設定
     const puff = spec.puff ?? 0.006;
     const si = new Uint16Array(cnt * 4), sw = new Float32Array(cnt * 4), orig = p.array.slice();
     const bi = body.geometry.attributes.skinIndex, bw = body.geometry.attributes.skinWeight; // 沒有骨架時是 undefined
+    // 只推離皮膚：外層照自己的形狀穿在身上，不被裡面那層撐開（撐開會皺、會鼓起來）；
+    // 裡面那層跟外層的距離，由下面「壓進去」讓裡面那層讓位
+    const Q = new Int32Array(cnt).fill(-1);
+    const lift = (i, want) => {
+      const q = Q[i]; if (q < 0) return; const h = height(p.getX(i), p.getY(i), p.getZ(i), q); if (h >= want) return;
+      p.setXYZ(i, p.getX(i) + pnorm[q * 3] * (want - h), p.getY(i) + pnorm[q * 3 + 1] * (want - h), p.getZ(i) + pnorm[q * 3 + 2] * (want - h));
+    };
     for (let i = 0; i < cnt; i++) {
-      v.set(p.getX(i), p.getY(i), p.getZ(i));
-      for (const L of layers) { // 先推到裡面那層衣服外面
-        const [lq] = L.near(v.x, v.y, v.z, 2); if (lq < 0) continue;
-        a.fromArray(L.pts, lq * 3); b.fromArray(L.nor, lq * 3);
-        const o2 = v.clone().sub(a).dot(b); if (o2 < puff) v.addScaledVector(b, puff - o2);
-      }
-      const [q] = nearBody(v.x, v.y, v.z, 6);
-      if (q < 0) continue;
-      a.fromArray(posed, q * 3); b.fromArray(pnorm, q * 3);
-      const out = v.clone().sub(a).dot(b);
-      if (out < puff) v.addScaledVector(b, puff - out);
-      p.setXYZ(i, v.x, v.y, v.z);
+      const q = attach(p.getX(i), p.getY(i), p.getZ(i), sleeve[i]); if (q < 0) continue;
+      Q[i] = q; lift(i, puff);
       if (skinned) for (let k = 0; k < 4; k++) { si[i * 4 + k] = bi.getComponent(q, k); sw[i * 4 + k] = bw.getComponent(q, k); }
     }
     smoothPush(g, orig);
+    for (let i = 0; i < cnt; i++) lift(i, puff * 0.8); // 抹平時被平均掉的地方，再確實推一次
     for (let i = 0; i < cnt; i++) clothPts.push(p.getX(i), p.getY(i), p.getZ(i));
+    g.userData.Q = Q;
     if (skinned) { g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4)); g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4)); }
     g.computeVertexNormals();
-    newLayer.pts.push(...p.array); newLayer.nor.push(...g.attributes.normal.array);
     const m = skinned ? new THREE.SkinnedMesh(g, mat) : new THREE.Mesh(g, mat); m.castShadow = m.receiveShadow = true; m.frustumCulled = false;
     holder.add(m); m.updateMatrixWorld(true);
     // 用「現在的姿勢」當衣服的綁定姿勢：之後骨頭怎麼動，衣服就跟著動
@@ -226,33 +279,61 @@ export async function wearOutfit(ctx, spec) {
     meshes.push(m);
   }
 
-  // 裡面那幾層衣服被這一層蓋住的三角形藏起來（大衣前面敞開，前面的襯衫、領結還看得到）
-  const nearNew = grid(new Float32Array(newLayer.pts), 0.03);
-  for (const prev of (ctx.meshes ||= [])) {
-    const g = prev.geometry, p = g.attributes.position, nr = g.attributes.normal, idx = g.index; if (!idx) continue;
-    const hid = new Uint8Array(p.count), np = newLayer.pts;
-    for (let i = 0; i < p.count; i++) {
-      const [q, d] = nearNew(p.getX(i), p.getY(i), p.getZ(i), 2);
-      if (q < 0 || d > (spec.hideInner ?? 0.05)) continue;
-      // 外層要在「外面」才藏：外層的點在這個點的外側（沿著法線方向）
-      const out = (np[q * 3] - p.getX(i)) * nr.getX(i) + (np[q * 3 + 1] - p.getY(i)) * nr.getY(i) + (np[q * 3 + 2] - p.getZ(i)) * nr.getZ(i);
-      hid[i] = out > 0.2 * d ? 1 : 0;
-    }
-    const keep = []; for (let i = 0; i < idx.count; i += 3) { const x = idx.getX(i), y = idx.getX(i + 1), z = idx.getX(i + 2); if (!(hid[x] && hid[y] && hid[z])) keep.push(x, y, z); }
-    g.setIndex(keep);
+  if (isRobe) {
+    const wreg = new Uint8Array(W); for (let i = 0; i < n; i++) wreg[wid[i]] = vreg[i];
+    const { geometry: g, material } = buildRobe({ posed, pnorm, wid, W, wnb, n, TRI, region: wreg, skinned, bones: skinned ? body.skeleton.bones : [],
+      bw: body.geometry.attributes.skinWeight, bi: body.geometry.attributes.skinIndex, cx, neckY: neck.y, hipY: hip.y, hands: [wristL, wristR] }, spec);
+    if (window.__outfitTint?.robe) { material.vertexColors = false; material.color.set(window.__outfitTint.robe); }
+    const p = g.attributes.position; for (let i = 0; i < p.count; i++) clothPts.push(p.getX(i), p.getY(i), p.getZ(i));
+    const m = skinned ? new THREE.SkinnedMesh(g, material) : new THREE.Mesh(g, material); m.castShadow = m.receiveShadow = true; m.frustumCulled = false;
+    holder.add(m); m.updateMatrixWorld(true);
+    if (skinned) m.bind(new THREE.Skeleton(body.skeleton.bones), m.matrixWorld);
+    meshes.push(m);
   }
-  ctx.meshes.push(...meshes);
-  newLayer.pts = new Float32Array(newLayer.pts); newLayer.nor = new Float32Array(newLayer.nor); newLayer.near = grid(newLayer.pts, 0.03); layers.push(newLayer);
+
+  // 裡面那幾層：從每個點沿著身體往外的方向看出去，有碰到這一層（外層）的話，就壓到外層底下 gap。
+  // 外層前面敞開的地方看不到外層，襯衫、領結不動。不刪三角形，所以不會有破洞。
+  if (inner.length) {
+    const op = []; for (const m of meshes) op.push(...m.geometry.attributes.position.array);
+    const nearOut = grid(new Float32Array(op), 0.025), gap = spec.gap ?? 0.012;
+    // 沿著方向 n 從 x 出發，-6 到 +30 公分之間，第一個離外層 1.5 公分內的位置（找不到回傳 null）
+    const hit = (x, y, z, nx, ny, nz) => {
+      for (let t = -0.06; t <= 0.3; t += 0.008) { const [, d] = nearOut(x + nx * t, y + ny * t, z + nz * t, 1); if (d < 0.015) return t; }
+      return null;
+    };
+    for (const m of inner) {
+      const g = m.geometry, p = g.attributes.position, sl = g.userData.sleeve, orig = p.array.slice(), cnt = p.count;
+      const Qi = new Int32Array(cnt).fill(-1); for (let i = 0; i < cnt; i++) Qi[i] = attach(p.getX(i), p.getY(i), p.getZ(i), sl?.[i]);
+      const T = new Float32Array(cnt).fill(NaN); // 外層在這個點外面多遠（NaN：沒蓋住）
+      for (let i = 0; i < cnt; i++) { const q = Qi[i]; if (q < 0) continue; const t = hit(p.getX(i), p.getY(i), p.getZ(i), pnorm[q * 3], pnorm[q * 3 + 1], pnorm[q * 3 + 2]); if (t !== null) T[i] = t; }
+      const press = (want) => {
+        for (let i = 0; i < cnt; i++) {
+          const q = Qi[i]; if (q < 0 || Number.isNaN(T[i])) continue;
+          const moved = height(p.getX(i), p.getY(i), p.getZ(i), q) - height(orig[i * 3], orig[i * 3 + 1], orig[i * 3 + 2], q); // 已經壓了多少（負的）
+          const d = Math.min(want - (T[i] - moved) > 0 ? want - (T[i] - moved) : 0, height(p.getX(i), p.getY(i), p.getZ(i), q) - 0.002); if (d <= 0) continue;
+          p.setXYZ(i, p.getX(i) - pnorm[q * 3] * d, p.getY(i) - pnorm[q * 3 + 1] * d, p.getZ(i) - pnorm[q * 3 + 2] * d);
+        }
+      };
+      press(gap); smoothPush(g, orig, 3); press(gap * 0.7); // 抹平後再確實壓一次
+      p.needsUpdate = true; g.computeVertexNormals();
+      if (window.__outfitDebug) { let c = 0; for (const t of T) if (!Number.isNaN(t)) c++; console.error('壓進去 ' + spec.name + ' 被蓋住 ' + c + '/' + cnt); }
+    }
+  }
+  inner.push(...meshes);
 
   // 5) 被衣服蓋住的皮膚藏起來：三個頂點都在衣服底下（離衣服 4 公分內）的三角形縮成一點
   const nearCloth = grid(new Float32Array(clothPts), 0.03);
   const covered = new Uint8Array(n), headY = neck.y - 0.02;
   for (let i = 0; i < n; i++) {
-    const y = posed[i * 3 + 1]; if (y > headY) continue;
+    const y = posed[i * 3 + 1]; if (y > headY || vreg[i] === 2) continue; // 頭、手不藏
     const [, d] = nearCloth(posed[i * 3], y, posed[i * 3 + 2], 2);
     covered[i] = d < (spec.hideDist ?? 0.035) ? 1 : 0;
   }
-  for (let i = 0; i < n; i += 3) if (covered[i] && covered[i + 1] && covered[i + 2]) { bp.setXYZ(i + 1, bp.getX(i), bp.getY(i), bp.getZ(i)); bp.setXYZ(i + 2, bp.getX(i), bp.getY(i), bp.getZ(i)); }
+  if (g0idx) { // 有索引：把三個點都蓋住的三角形拿掉（接著前一件衣服拿掉的）
+    const cur = body.geometry.index.array, keep = [];
+    for (let t = 0; t < cur.length; t += 3) if (!(covered[cur[t]] && covered[cur[t + 1]] && covered[cur[t + 2]])) keep.push(cur[t], cur[t + 1], cur[t + 2]);
+    body.geometry.setIndex(keep);
+  } else for (let i = 0; i < n; i += 3) if (covered[i] && covered[i + 1] && covered[i + 2]) { bp.setXYZ(i + 1, bp.getX(i), bp.getY(i), bp.getZ(i)); bp.setXYZ(i + 2, bp.getX(i), bp.getY(i), bp.getZ(i)); }
   bp.needsUpdate = true;
   return meshes;
 }

@@ -1,12 +1,17 @@
-// 主角的服裝（教室、角色一覽共用）：裡面是制服，外面是學院色的長大衣。
-// 女生：JK 制服（格子裙、領結換成學院色）＋長大衣；男生：男生制服＋長大衣。
-// 外面要穿大衣，所以裡面那件剪掉袖子（noSleeves），程式做的筒狀斗篷關掉（cloak: false）。
+// 角色的服裝（教室、角色一覽、烘焙共用）：裡面是制服（襯衫），外面是學院色的巫師袍（robe.mjs，照身體形狀做，不會穿模）。
+// 2026-10-21 製作人：制服是「襯衫＋外袍」；四位主角的衣服不要一樣，配角可以一樣。
+// 外面穿袍子時，裡面那件剪掉袖子（noSleeves）；程式做的筒狀斗篷關掉（cloak: false）；手臂張開一點（armDrop），手才不會陷進袍子。
+// robe 的參數見 robe.mjs：hem 下擺高度、sleeveFlare 喇叭袖、openTop／openWaist 開襟、openHem 下擺開衩、collar 立領、belt 腰帶。
 export const COSTUMES = {
-  elora: { cloak: false, outfit: [{ name: 'jk', hue: 212, sat: 1.0, noSleeves: true }, { name: 'coat', colorize: '#6a7284', puff: 0.03 }] }, // 艾爾德林：淡藍格子、灰藍大衣
-  yuexi: { cloak: false, outfit: [{ name: 'jk', hue: 352, sat: 1.4, light: 0.55, noSleeves: true }, { name: 'coat', colorize: '#6a2028', puff: 0.03 }] }, // 格里莫瓦：深紅格子、酒紅大衣
-  cyril: { outfit: [{ name: 'boy', noSleeves: true }, { name: 'coat', colorize: '#28463a', puff: 0.03 }] }, // 烏洛波斯：墨綠大衣（西里爾沒有骨架，衣服直接固定）
-  vaughn: { cloak: false, outfit: [{ name: 'boy', noSleeves: true }, { name: 'coat', colorize: '#4a4030', puff: 0.03 }] }, // 貝爾蒙特：深褐近黑的大衣
-  // 老師：長大衣套裝（外套＋襯衫＋長褲）
-  helga: { cloak: false, outfit: [{ name: 'coatFull', colorize: '#55555e', puff: 0.012 }] }, // 舍監：灰色
-  knox: { cloak: false, outfit: [{ name: 'coatFull', colorize: '#2c4434', puff: 0.012 }] }, // 魔藥學教授：墨綠
+  // 艾爾德林：淡藍格子 JK，月白長袍到腳踝、藍色滾邊、微喇叭袖
+  elora: { cloak: false, armDrop: 1.12, outfit: [{ name: 'jk', hue: 212, sat: 1.0, noSleeves: true }, { name: 'robe', color: '#c9cfdb', trim: '#5f8fc8', hem: 0.12, sleeveFlare: 0.05, openTop: 0.075, openWaist: 0.05, openHem: 0.42 }] },
+  // 格里莫瓦：深紅格子 JK，短的酒紅外袍（到大腿）、寬袖、金色滾邊、沒有立領
+  yuexi: { cloak: false, armDrop: 1.12, outfit: [{ name: 'jk', hue: 352, sat: 1.4, light: 0.55, noSleeves: true }, { name: 'robe', color: '#4a1218', trim: '#d8c49a', hem: 0.62, flare: 0.25, sleeveFlare: 0.1, openTop: 0.065, openWaist: 0.07, openHem: 0.55, collar: false }] },
+  // 貝爾蒙特：男生制服，黑色長袍到小腿、金色滾邊、窄袖
+  vaughn: { cloak: false, armDrop: 1.15, outfit: [{ name: 'boy', noSleeves: true }, { name: 'robe', color: '#17171b', trim: '#b8902e', hem: 0.25, sleeveFlare: 0, openTop: 0.09, openWaist: 0.075, openHem: 0.3 }] },
+  // 烏洛波斯：男生制服，墨綠長袍到膝蓋、前面幾乎合起來（只有領口一個小 V）、銀色滾邊、窄袖、高立領
+  cyril: { outfit: [{ name: 'boy', noSleeves: true }, { name: 'robe', color: '#12301f', trim: '#c0c4c8', hem: 0.5, flare: 0.08, sleeveFlare: 0, openTop: 0.035, openWaist: 0, openHem: 0.12 }] },
+  // 老師：前面合起來的長袍（看不到裡面）
+  helga: { cloak: false, armDrop: 1.15, outfit: [{ name: 'robe', color: '#4a4a52', trim: '#c8c2b8', hem: 0.1, sleeveFlare: 0.04, openTop: 0.03, openWaist: 0, openHem: 0 }] }, // 舍監：灰
+  knox: { cloak: false, armDrop: 1.15, outfit: [{ name: 'robe', color: '#1e3326', trim: '#9a8a4a', hem: 0.1, sleeveFlare: 0.07, openTop: 0.04, openWaist: 0, openHem: 0 }] }, // 魔藥學教授：墨綠
 };

@@ -149,7 +149,7 @@ export function ccMaterial(m, { hair = '#1e1510' } = {}) {
 /** opts：{ body: 'male' | 'female' | 'elora', house: { main, trim }, hair, hairTip, skin, cloakScale, height（整體縮放）, glasses（艾洛拉的模型附眼鏡，預設不戴）,
  *         hideHair（拿掉原本的頭髮）, headGear（戴在頭上的零件，例如 extras.mjs 的髮髻、帽子；原點是頭的中心、臉朝 +z）,
  *         outfit（要穿的衣服，outfit.mjs 的 spec 陣列）, cloak（要不要程式做的斗篷，穿了衣服通常關掉） } */
-export function loadCC(scene, { body = 'male', house = { main: '#121214', trim: '#b8902e' }, hair = '#1e1510', hairTip = '#4a3426', skin = '#e8bfa2', cloakScale = 1, height = 1, glasses = false, hideHair = false, headGear = null, outfit = null, cloak: wantCloak = true } = {}) {
+export function loadCC(scene, { body = 'male', house = { main: '#121214', trim: '#b8902e' }, hair = '#1e1510', hairTip = '#4a3426', skin = '#e8bfa2', cloakScale = 1, height = 1, glasses = false, hideHair = false, headGear = null, outfit = null, cloak: wantCloak = true, armDrop = 1.25 } = {}) {
   return new Promise((resolve, reject) => {
     new FBXLoader().load(FILES[body], async (o) => {
       o.scale.setScalar(0.01 * height);
@@ -180,7 +180,7 @@ export function loadCC(scene, { body = 'male', house = { main: '#121214', trim: 
         b.quaternion.copy(pw.clone().invert().multiply(q).multiply(pw).multiply(b.quaternion)); b.updateMatrixWorld(true);
       };
       const Z = new THREE.Vector3(0, 0, 1), X = new THREE.Vector3(1, 0, 0);
-      rotWorld(bone('L_Upperarm'), Z, -1.25); rotWorld(bone('R_Upperarm'), Z, 1.25);
+      rotWorld(bone('L_Upperarm'), Z, -armDrop); rotWorld(bone('R_Upperarm'), Z, armDrop); // armDrop：手臂從 T 字往下轉多少（穿長袍時小一點，手才不會陷進袍子）
       rotWorld(bone('L_Forearm'), X, -0.25); rotWorld(bone('R_Forearm'), X, -0.25); // 手肘微彎
 
       const holder = new THREE.Group(); holder.add(o);
