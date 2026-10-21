@@ -7,6 +7,7 @@
 開始做一件事前在這裡登記；做完就移除。格式：`- 分支名稱：在做什麼（會動到的檔案或資料夾）`
 
 
+- `claude/sweet-goldberg-nklgb6`：衣服重做（製作人：大衣有破洞、白點、穿模，不可以）——改成「襯衫＋學院色巫師袍」，配角也換制服；修穿模。會動 `prototype/src/`（outfit、costumes、cast、cc、extras）、`prototype/models/clothes/`、`game/models/chars/`。
 
 
 ## 等製作人回答
