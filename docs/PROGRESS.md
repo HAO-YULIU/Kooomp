@@ -1,14 +1,14 @@
 # 進度
 
 ## 目前階段
-**階段一：角色與故事大綱，製作人已確認（2026-10-21）。** 見 `docs/01-characters.md`、`docs/02-story.md`。**階段二：第一章完整劇情，製作人已確認**（`docs/03-chapter1.md`）。**階段三：第一章地圖，製作人已確認**（`docs/04-map-ch1.md`）。**階段四：第一章謎題，製作人已確認**（`docs/05-puzzles-ch1.md`，含答案，不可發佈）。**階段五技術雛形：完成，美術確定用寫實模型；另一個帳號正在做人物。** **階段五遊戲系統規劃：製作人已確認**（`docs/07-system.md`），省額度做法確定 A＋B＋D。**第 1 批（架構）完成**，見 `docs/07-system.md` 第 14 節；等製作人在 Cloudflare 建立 Worker `milner`。（`prototype/`，說明見 `prototype/README.md`）。
+**階段一：角色與故事大綱，製作人已確認（2026-10-21）。** 見 `docs/01-characters.md`、`docs/02-story.md`。**階段二：第一章完整劇情，製作人已確認**（`docs/03-chapter1.md`）。**階段三：第一章地圖，製作人已確認**（`docs/04-map-ch1.md`）。**階段四：第一章謎題，製作人已確認**（`docs/05-puzzles-ch1.md`，含答案，不可發佈）。**階段五技術雛形：完成，美術確定用寫實模型；另一個帳號正在做人物。** **階段五遊戲系統規劃：製作人已確認**（`docs/07-system.md`），省額度做法確定 A＋B＋D。**第 1 批（架構）完成**，見 `docs/07-system.md` 第 14 節；已部署到 https://kooomp.noron.workers.dev/（Worker `kooomp`）。（`prototype/`，說明見 `prototype/README.md`）。
 
 ## 進行中
 開始做一件事前在這裡登記；做完就移除。格式：`- 分支名稱：在做什麼（會動到的檔案或資料夾）`
 
 
 ## 等製作人回答
-- 在 Cloudflare 建立 Worker `milner`（步驟見 `docs/07-system.md` 14-4），之後才有線上測試網址。
+- 要不要先把遊戲加進大廳（設成「未公開」，只有管理員看得到），才能用正式帳號登入測試？要在共用的 Supabase `games` 表新增一筆、在 escape-room 的 `HIDDEN` 加上 `milner`。
 - 技術雛形（`prototype/`）試玩後：
   1. ~~角色美術走哪個方向？~~ 已決定：**寫實模型**（2026-10-21）。
   1-1. 第一章的角色都做好了，看 `prototype/cast.html`（角色一覽）。要確認：撞臉可不可以接受（校長＝男學生、赫爾嘉＝月晞、薇拉＝艾洛拉）；西里爾沒有表情可不可以；守夜人的上色。
@@ -46,3 +46,4 @@
 - 2026-10-21：省額度做法確定 A＋B＋D；開始遊戲系統第 1 批。
 - 2026-10-21：技術雛形：艾洛拉換成有骨架的模型；加入西里爾、守夜人（驚嚇時出現）、龍首法杖；配角（校長、副校長、赫爾嘉、薇拉、背景學生）與角色一覽頁 `prototype/cast.html`。
 - 2026-10-21：遊戲系統第 1 批完成：Cloudflare Worker＋Durable Object 房間（登入、等待室、位置同步 A＋B、聊天、標記、伺服器判斷第一章全部答案與提示）、遊戲外殼、build、13 項自動測試通過。房間與答案改放 Cloudflare，Supabase 只做登入（不用建新資料表）。
+- 2026-10-21：製作人在 Cloudflare 建立 Worker `kooomp`（https://kooomp.noron.workers.dev/）；wrangler.jsonc 名稱改成 kooomp。

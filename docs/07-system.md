@@ -118,7 +118,7 @@
 | 遊戲畫面 | `game/` | 18+ 提示、語言、選單（單人／建立／加入、謎題語言）、等待室（分學院→預選角色、選角色、準備、開始）、測試場景（沿用技術雛形的教室）、聊天、快捷標記（按鈕或 1／2／3 鍵） |
 | 位置同步 | `game/src/net/sync.mjs` | A：只在開始走、停、轉彎、換區時送，畫面自己推算；B：伺服器只轉給同一區 |
 | build | `tools/build.mjs` | 產生 `dist/`（程式混淆，three.js 另外載入），並檢查發佈版裡沒有答案 |
-| 部署 | `wrangler.jsonc` | Worker 名稱 `milner`，只發佈 `dist/` |
+| 部署 | `wrangler.jsonc` | Worker 名稱 `kooomp`，只發佈 `dist/` |
 
 - **跟原本規劃不同的地方**：房間和答案判斷也放在 Cloudflare（跟即時同步同一個地方），Supabase 只負責登入。好處是**完全不用在夜語工作室的 Supabase 建新的資料表**，不會動到大廳和其他遊戲。雲端存檔、遊玩紀錄之後再用大廳原本就有的 `game_saves`、`play_records`。
 
@@ -143,6 +143,7 @@ cd .. && npx --prefix tools wrangler dev   # 打開 http://localhost:8787/?dev=�
 - 開兩個瀏覽器分頁、用不同名字，就能測多人。
 
 ### 14-4 正式上線要製作人做的事（第一次）
+> ✅ 2026-10-21 製作人已建立：Worker 名稱 **`kooomp`**（`milner` 已被占用），網址 **https://kooomp.noron.workers.dev/**。
 1. Cloudflare 後台 → Workers & Pages → 建立 → 匯入 GitHub 儲存庫 **Kooomp**。
 2. Worker 名稱填 `milner`；Production branch 選 `main`；Build command 留空；Deploy command 填 `npx wrangler deploy`；Root directory 填 `/`。
 3. 之後每次推上 `main` 就會自動部署，網址會是 `https://milner.<你的帳號>.workers.dev/`。

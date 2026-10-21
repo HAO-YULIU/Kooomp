@@ -1,8 +1,9 @@
-// Cloudflare Workers 部署設定（《魔蝕milner》）
+// Cloudflare Workers 部署設定（《魔蝕milner》）：https://kooomp.noron.workers.dev/
+// Worker 名稱要跟 Cloudflare 後台一樣（kooomp），不然自動部署會失敗
 // - 網頁：tools/build.mjs 產生 dist/（程式打包、混淆），只發佈 dist/
 // - 遊戲 API 與房間：server/worker.mjs、server/room.mjs（Durable Objects，答案只在這裡，不會出現在網頁）
 {
-  "name": "milner",
+  "name": "kooomp",
   "main": "server/worker.mjs",
   "compatibility_date": "2025-10-01",
   "build": {

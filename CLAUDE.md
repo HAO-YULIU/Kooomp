@@ -15,7 +15,7 @@
 
 ## 程式在哪裡、怎麼跑
 - `game/`：遊戲畫面原始碼（發佈前由 build 打包混淆）。`server/`：Cloudflare Worker＋房間（Durable Object），**答案只在伺服器判斷**。`data/puzzles/`：答案與提示（不發佈）。`prototype/`：技術雛形與美術（帳號二）。
-- 發佈版是 `dist/`（不 commit），由 `tools/build.mjs` 產生；Cloudflare（Worker：`milner`）照 `wrangler.jsonc` 自動 build、部署。
+- 發佈版是 `dist/`（不 commit），由 `tools/build.mjs` 產生；Cloudflare（Worker：`kooomp`，https://kooomp.noron.workers.dev/）照 `wrangler.jsonc` 自動 build、部署（推上 `main` 就會更新）。
 - 本機：`cd tools && npm install && npm run build:plain`，再 `npx --prefix tools wrangler dev`，網址加 `?dev=名字` 免登入並顯示測試作答面板。
 - 測試：`cd tools && npm test`（答案判斷＋房間整合測試）。
 - 寫答案的規則：答案只放 `data/puzzles/`，畫面（`game/`）裡不能出現答案；build 會檢查。要顯示答案（例如 P06 解開後的時辰）由伺服器回傳 `reveal`。
