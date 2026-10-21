@@ -11,7 +11,7 @@ export const COSTUMES = {
   vaughn: { cloak: false, armDrop: 1.15, outfit: [{ name: 'boy', noSleeves: true }, { name: 'robe', color: '#17171b', trim: '#b8902e', hem: 0.25, sleeveFlare: 0, openTop: 0.09, openWaist: 0.075, openHem: 0.3 }] },
   // 烏洛波斯：男生制服，墨綠長袍到膝蓋、前面整個合起來（扣到領口）、銀色滾邊、窄袖、立領
   cyril: { outfit: [{ name: 'boy', noSleeves: true }, { name: 'robe', color: '#12301f', trim: '#c0c4c8', hem: 0.5, flare: 0.08, sleeveFlare: 0, openTop: 0, openWaist: 0, openHem: 0.12 }] },
-  // 老師：前面合起來的長袍（看不到裡面）
-  helga: { cloak: false, armDrop: 1.15, outfit: [{ name: 'robe', color: '#4a4a52', trim: '#c8c2b8', hem: 0.1, sleeveFlare: 0.04, openTop: 0.03, openWaist: 0, openHem: 0 }] }, // 舍監：灰
-  knox: { cloak: false, armDrop: 1.15, outfit: [{ name: 'robe', color: '#1e3326', trim: '#9a8a4a', hem: 0.1, sleeveFlare: 0.07, openTop: 0.04, openWaist: 0, openHem: 0 }] }, // 魔藥學教授：墨綠
+  // 老師：前面整個合起來的長袍（裡面沒穿衣服，開口會露出皮膚）
+  helga: { cloak: false, armDrop: 1.15, outfit: [{ name: 'robe', color: '#4a4a52', trim: '#c8c2b8', hem: 0.1, sleeveFlare: 0.04, openTop: 0, openWaist: 0, openHem: 0 }] }, // 舍監：灰
+  knox: { cloak: false, armDrop: 1.15, outfit: [{ name: 'robe', color: '#1e3326', trim: '#9a8a4a', hem: 0.1, sleeveFlare: 0.07, openTop: 0, openWaist: 0, openHem: 0 }] }, // 魔藥學教授：墨綠
 };

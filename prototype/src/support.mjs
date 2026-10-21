@@ -29,7 +29,7 @@ export const SUPPORT = {
   // 校長：沃恩的臉，白色油頭、長白鬍子，紫金色長袍（前面合起來）
   aldric: async (scene) => loadCC(scene, { body: 'male', hair: '#e4e0d8', hairTip: '#f4f0e8', skin: '#e8c4aa', height: 1.02, cloak: false, armDrop: 1.15,
     headGear: await gear(null, [makeBeard('#ece8e0')]),
-    outfit: [{ name: 'robe', color: '#2e1a3a', trim: '#c8a24a', hem: 0.08, sleeveFlare: 0.08, openTop: 0.04, openWaist: 0, openHem: 0 }] }),
+    outfit: [{ name: 'robe', color: '#2e1a3a', trim: '#c8a24a', hem: 0.08, sleeveFlare: 0.08, openTop: 0, openWaist: 0, openHem: 0 }] }),
   // 男學生（艾爾德林）：沃恩的臉，換成月晞的空氣瀏海（栗色）
   studentEldrin: async (scene) => loadCC(scene, { body: 'male', skin: '#e6c2a6', height: 0.97, cloak: false, armDrop: 1.15, hideHair: true,
     headGear: await gear([{ from: 'female', parts: ['Air_bangs', 'Double_high'], hair: '#5a3a22', hairTip: '#8a6040' }]), outfit: student('eldrin', false) }),
