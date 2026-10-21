@@ -138,6 +138,20 @@ test('多人：加入、選角色、準備、開始、同步、聊天、作答',
   await a.wait((m) => m.t === 'zone' && m.uid === b.uid && m.z === 'starhall');
   assert.equal((await a.request({ t: 'answer', pid: 'P08', value: 'grimoire:11,ouroboros:3,belmont:9,eldrin:8' })).solved, true);
   assert.equal((await b.wait((m) => m.t === 'state' && m.segment === 'act2')).segment, 'act2');
+
+  // 第二幕：異常長廊——誰做決定都算，結果告訴全隊；連續對 8 趟才過；再解開 P10 進到第三幕
+  let peek = await a.request({ t: 'peek', pid: 'P09' });
+  assert.equal(peek.next, null); // 第一趟一定正常
+  for (let i = 0; i < 8; i++) {
+    const who = i % 2 ? a : b, other = i % 2 ? b : a;
+    const res = await who.request({ t: 'answer', pid: 'P09', value: { loop: peek.loop, choice: peek.next ? 'back' : 'forward' } });
+    const told = await other.wait((m) => m.t === 'corridor' && m.by === who.uid && m.streak === i + 1);
+    assert.equal(told.right, true);
+    peek = { loop: res.reply.loop, next: res.reply.next };
+    if (i === 7) assert.equal(res.solved, true);
+  }
+  assert.equal((await a.request({ t: 'answer', pid: 'P10', value: 'NW|1626' })).solved, true);
+  assert.equal((await b.wait((m) => m.t === 'state' && m.segment === 'act3a')).segment, 'act3a');
   assert.equal((await b.request({ t: 'answer', pid: 'P05', value: '9' })).error, 'already_solved');
 
   // 提示：全隊都看得到，最多三張

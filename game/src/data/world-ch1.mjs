@@ -15,8 +15,12 @@ export const ROOMS = [
   { id: 'dorm_grimoire', name: L('格里莫瓦交誼廳', 'Grimoire Common Room'), x: [-23, -9], z: [-7, 7], h: 6, floor: 'wood', light: '#ff8a6a', house: 'grimoire' },
   { id: 'dorm_belmont', name: L('貝爾蒙特交誼廳', 'Belmont Common Room'), x: [-9, 0], z: [9, 23], h: 6, floor: 'wood', light: '#ffd27a', house: 'belmont' },
   { id: 'dorm_ouroboros', name: L('烏洛波斯交誼廳', 'Ouroboros Common Room'), x: [0, 9], z: [9, 23], h: 5, floor: 'stone', light: '#6fd0a0', house: 'ouroboros' },
-  // ---- 第二幕（第 3 批）：北邊的門先鎖著 ----
-  { id: 'north_hall', name: L('往北翼的走廊', 'Corridor to the North Wing'), x: [-2.5, 2.5], z: [-25, -9], h: 6, floor: 'stone', light: '#5a5a7a' },
+  // ---- 第二幕：往北翼的走廊 → 肖像畫長廊（會重複）→ 創辦人的畫像 ----
+  { id: 'north_hall', name: L('往北翼的走廊', 'Corridor to the North Wing'), x: [-2.5, 2.5], z: [-20, -9], h: 6, floor: 'stone', light: '#5a5a7a' },
+  { id: 'corridor', name: L('肖像畫長廊', 'The Portrait Gallery'), x: [-2.5, 2.5], z: [-64, -20], h: 6, floor: 'stone', light: '#ffb070' },
+  { id: 'founder', name: L('創辦人的畫像', 'The Founder’s Portrait'), x: [-7, 7], z: [-80, -64], h: 9, floor: 'stone', light: '#c49060' },
+  // ---- 第三幕（第 4 批）：往地下的樓梯，先鎖著 ----
+  { id: 'north_stairs', name: L('北翼樓梯', 'North Wing Stairs'), x: [-2, 2], z: [-92, -80], h: 6, floor: 'stone', light: '#4a4a66' },
 ];
 
 // 門：位在兩個房間共用的牆上。axis＝門所在那面牆的方向（'x'＝東西向的牆，'z'＝南北向的牆）
@@ -32,6 +36,9 @@ export const DOORS = [
   { id: 'belmont-star', a: 'dorm_belmont', b: 'starhall', x: -4.5, z: 9, w: 2.4, axis: 'x', lock: { puzzle: 'P05' } },
   { id: 'ouroboros-star', a: 'dorm_ouroboros', b: 'starhall', x: 4.5, z: 9, w: 2.4, axis: 'x', lock: { puzzle: 'P06' } },
   { id: 'star-north', a: 'starhall', b: 'north_hall', x: 0, z: -9, w: 3, axis: 'x', lock: { segment: 'act2' } },
+  { id: 'north-corridor', a: 'north_hall', b: 'corridor', x: 0, z: -20, w: 5, axis: 'x', lock: null },
+  { id: 'corridor-founder', a: 'corridor', b: 'founder', x: 0, z: -64, w: 2.4, axis: 'x', lock: { puzzle: 'P09' } },
+  { id: 'founder-stairs', a: 'founder', b: 'north_stairs', x: 0, z: -80, w: 2.4, axis: 'x', lock: { segment: 'act3a' } },
 ];
 
 // 每一段開始時站的位置。第一幕依自己角色的學院，從自己的宿舍出發
@@ -44,6 +51,7 @@ export const SPAWNS = {
     ouroboros: { x: 4.5, z: 20, yaw: 0 },
   },
   act2: { x: 0, z: -12, yaw: 0 },
+  act3a: { x: 0, z: -84, yaw: 0 },
 };
 
 // 場景裡可以調查的東西。kind：
@@ -52,7 +60,10 @@ export const SPAWNS = {
 //   puzzle  打開謎題畫面（puzzle＝題號）
 //   hide    躲藏點（站在裡面，赫爾嘉夫人看不到）
 //   pillar  柱子（擋視線）
-// size：[寬, 高, 深]；solid：會擋路
+//   loopdoor 異常長廊盡頭的門（往前走）
+//   snuff   熄滅燭火（P10：熄燈時畫像的眼睛會看向同一個方向）
+//   plaques 一整面牆的畫像銘牌（顯示 HEADMASTERS）
+// size：[寬, 高, 深]；solid：會擋路；hidden：不畫灰盒方塊（外觀由 corridor.mjs 之類的程式畫）
 export const THINGS = [
   // 碼頭
   { id: 'boat', room: 'dock', kind: 'prop', x: 0, z: 168, size: [3, 1.2, 6], solid: true, label: L('渡船', 'The ferry'),
@@ -103,6 +114,21 @@ export const THINGS = [
   ...[[-8.3, -4], [8.3, 4]].map(([x, z], i) => ({ id: `curtain${i}`, room: 'starhall', kind: 'hide', x, z, size: [1, 3, 2], solid: false, label: L('厚窗簾後面', 'Behind the heavy curtain') })),
   { id: 'north_door', room: 'starhall', kind: 'prop', x: 0, z: -8.6, size: [3, 3, 0.3], solid: false, label: L('往北翼的門', 'The door to the North Wing'),
     text: L('門很重，上面沒有鎖孔，只有四個學院的徽章。', 'A heavy door with no keyhole — only the crests of the four houses.') },
+
+  // 肖像畫長廊（P09）：盡頭的門。位置會跟著「走廊變長」的異常移動（corridor.mjs 會改 z）
+  { id: 'loop_door', hidden: true, room: 'corridor', kind: 'loopdoor', x: 0, z: -55.7, size: [2.4, 2.6, 0.3], solid: false,
+    label: L('推開盡頭的門（往前走）', 'Push the door at the end (go on)') },
+  // 創辦人的畫像（P10）
+  { id: 'founder_painting', hidden: true, room: 'founder', kind: 'puzzle', puzzle: 'P10', x: 0, z: -79.6, size: [2.6, 3.6, 0.3], y: 1.2, solid: false,
+    label: L('創辦人艾德蒙・米爾納的畫像', 'Portrait of the founder, Edmund Milner') },
+  { id: 'snuffer', room: 'founder', kind: 'snuff', x: 5.6, z: -66, size: [0.6, 1.4, 0.6], solid: true,
+    label: L('熄滅燭火', 'Snuff out the candles') },
+  { id: 'headmasters_w', hidden: true, room: 'founder', kind: 'plaques', side: 'w', x: -6.6, z: -72, size: [0.3, 3, 14], solid: false,
+    label: L('西側牆：歷任校長的畫像', 'West wall: portraits of the headmasters') },
+  { id: 'headmasters_e', hidden: true, room: 'founder', kind: 'plaques', side: 'e', x: 6.6, z: -72, size: [0.3, 3, 14], solid: false,
+    label: L('東側牆：歷任校長的畫像', 'East wall: portraits of the headmasters') },
+  { id: 'compass', hidden: true, room: 'founder', kind: 'prop', x: 0, z: -72, size: [3, 0.05, 3], solid: false, label: L('地上的羅盤', 'The compass rose in the floor'),
+    text: L('地板上嵌著一個銅製的羅盤。北方（N）指向創辦人的畫像。', 'A brass compass rose is set into the floor. North (N) points at the founder’s portrait.') },
 ];
 
 // P02：四張長桌各聽得到兩段半句話（有兩段是編的）

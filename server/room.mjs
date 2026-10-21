@@ -14,7 +14,7 @@ const MAX = { solo: 1, multi: 4 };
 const WRONG_COOLDOWN = 3000; // 答錯後同一題要等多久（毫秒）
 // 第一章的段落（docs/07-system.md 第 5 節）。解開「結尾題」就進到下一段
 export const SEGMENTS = ['prologue', 'act1', 'act2', 'act3a', 'act3b', 'act3c', 'act4', 'epilogue'];
-const SEG_END = { P02: 'act1', P08: 'act2' };
+const SEG_END = { P02: 'act1', P08: 'act2', P10: 'act3a' };
 
 export class Room extends DurableObject {
   constructor(ctx, env) {
@@ -193,6 +193,8 @@ export class Room extends DurableObject {
           seed: r.seed, lang: r.lang, house: CHARS[me.char], solo: r.mode === 'solo', aiHouses: this.aiHouses(), state, key: state.key ?? pid,
         });
         if (res.error) { await this.save(); return reply({ t: 'error', error: res.error, ...(res.reply ? { reply: res.reply } : {}) }); }
+        // 異常長廊：全隊同一條長廊，誰做決定都算；結果告訴所有人（大家一起被送回長廊起點）
+        if (def.kind === 'corridor') this.broadcast({ t: 'corridor', by: uid, ...res.reply }, (u) => u !== uid);
         if (res.solved) {
           r.solved[pid] = { by: uid, at: Date.now() };
           if (res.flag) r.flags[pid] = res.flag;

@@ -118,3 +118,36 @@ button.small { padding: 5px 10px; font-size: 13px; }
 .mirror-q { font-size: 18px; }
 .choice { display: block; width: 100%; text-align: left; margin: 6px 0; padding: 10px 12px; }
 .mirror-result { font-size: 30px; text-align: center; color: #f3d98e; margin: 30px 0; }
+
+/* 手機方向提示（沿用技術雛形） */
+#rotate { position: fixed; inset: 0; z-index: 50; background: #05060a; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 16px; text-align: center; }
+#rotate[hidden] { display: none; }
+#rotate p { font-size: 1.2rem; margin: 0; }
+#rotate .phone { width: 46px; height: 80px; border: 3px solid var(--ink); border-radius: 9px; position: relative; animation: rot 2s ease-in-out infinite; }
+#rotate .phone::after { content: ""; position: absolute; left: 50%; bottom: 5px; width: 8px; height: 8px; margin-left: -4px; border-radius: 50%; background: var(--ink); }
+#rotate[data-mode="portrait"] .phone { animation-name: rotBack; }
+@keyframes rot { 0%, 20% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
+@keyframes rotBack { 0%, 20% { transform: rotate(-90deg); } 60%, 100% { transform: rotate(0); } }
+
+/* 視窗打開時，藏起底下的按鈕（劇情對話時保留，方便看到） */
+body.modal #hud #actions, body.modal #hud #marks, body.modal #hud #chat { visibility: hidden; }
+body.modal #hud #dialog { visibility: visible; }
+/* 手機橫放：畫面矮，視窗與文字縮小 */
+@media (max-height: 500px) {
+  #panel { max-height: 96vh; padding: 10px 12px 12px; font-size: 14px; width: min(640px, 96vw); }
+  .panel-head { margin-bottom: 4px; } .panel-head b { font-size: 15px; }
+  #panel-body p { margin: 4px 0; line-height: 1.5; }
+  .runes { gap: 3px; } .runes .rune { font-size: 17px; padding: 2px 0; }
+  .zodiac b { font-size: 18px; }
+  .rune-canvas { height: 60vh; }
+  #dialog { bottom: 64px; padding: 10px 14px 14px; } #dialog-text { font-size: 14px; line-height: 1.5; }
+  #actions button { padding: 7px 10px; font-size: 13px; }
+  #marks button { padding: 4px 8px; }
+  .card { padding: 16px; } .logo { font-size: 26px; margin-bottom: 6px; }
+}
+
+#flash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 40; transition: opacity .15s; }
+#flash.on { opacity: 0.85; transition: none; }
+.plaques { padding-left: 18px; line-height: 1.8; }
+.compass { display: grid; grid-template-columns: repeat(3, 56px); gap: 6px; justify-content: center; margin: 8px 0; }
+.compass button { padding: 8px 0; } .compass button.on { border-color: var(--accent); color: #f3d98e; } .compass span { display: block; }

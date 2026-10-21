@@ -172,6 +172,20 @@ const BUILD = {
     void state;
   },
 
+  // P10：創辦人畫像的鎖（方向＋年份）
+  P10(body, { submit }) {
+    body.append(el('p', { text: t('p10_intro') }), el('p', { class: 'dim', text: t('p10_dir') }));
+    let dir = '';
+    const grid = el('div', { class: 'compass' });
+    for (const d of ['NW', 'N', 'NE', 'W', '', 'E', 'SW', 'S', 'SE']) {
+      if (!d) { grid.append(el('span')); continue; }
+      const b = el('button', { text: d, onclick: () => { dir = d; for (const x of grid.querySelectorAll('button')) x.classList.toggle('on', x === b); } });
+      grid.append(b);
+    }
+    const year = el('input', { inputmode: 'numeric', maxlength: '4', class: 'num', onkeydown: (e) => e.stopPropagation() });
+    body.append(grid, el('p', { class: 'dim', text: t('p10_year') }), el('div', { class: 'row' }, year, el('button', { text: t('answer'), onclick: () => submit(`${dir}|${year.value.trim()}`) })));
+  },
+
   // P08：星盤對位
   P08(body, { submit }) {
     body.append(el('p', { text: t('p08_intro') }), el('blockquote', { text: t('p08_inscription') }));

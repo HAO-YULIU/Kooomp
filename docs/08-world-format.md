@@ -32,7 +32,8 @@
 |---|---|
 | `id` | 代號（美術用它來對應模型） |
 | `room` | 在哪個房間 |
-| `kind` | `prop` 擺設、`rumor` 傳聞、`puzzle` 謎題、`hide` 躲藏點、`pillar` 柱子（擋赫爾嘉夫人的視線） |
+| `kind` | `prop` 擺設、`rumor` 傳聞、`puzzle` 謎題、`hide` 躲藏點、`pillar` 柱子（擋赫爾嘉夫人的視線）、`loopdoor` 長廊盡頭的門、`snuff` 熄燈、`plaques` 校長銘牌牆 |
+| `hidden` | `true`＝不畫灰盒方塊，外觀由別的程式畫（長廊、創辦人的房間在 `game/src/world/corridor.mjs`），美術換這些東西時改 corridor.mjs 或用掛鉤蓋掉 |
 | `x`、`z`、`y` | 位置（`y` 是底部離地多高，預設 0） |
 | `size` | `[寬, 高, 深]`，也是「調查」的範圍 |
 | `solid` | 會不會擋路 |

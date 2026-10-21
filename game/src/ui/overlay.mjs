@@ -7,8 +7,9 @@ const $ = (id) => document.getElementById(id);
 let pause = () => {}; // 由 main 設定：pause(true/false) 暫停／恢復操作
 export const setPauseHandler = (f) => { pause = f; };
 let openCount = 0;
-const hold = () => { if (openCount++ === 0) pause(true); };
-const release = () => { if (--openCount === 0) pause(false); };
+// 打開視窗時藏起下面的按鈕和聊天（手機畫面矮，不然會蓋住作答按鈕）
+const hold = () => { if (openCount++ === 0) { pause(true); document.body.classList.add('modal'); } };
+const release = () => { if (--openCount === 0) { pause(false); document.body.classList.remove('modal'); } };
 
 // ---------- 劇情對話 ----------
 const queue = []; let showing = false;

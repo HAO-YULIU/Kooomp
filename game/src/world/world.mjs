@@ -78,6 +78,7 @@ export function createWorld(canvas, lang = 'zh') {
   const resize = () => { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); };
   addEventListener('resize', resize); resize();
 
+  let dark = null; // 熄燈前的亮度
   const lastPos = controls.state.pos.clone();
   const vel = new THREE.Vector3();
   const fwd = new THREE.Vector3();
@@ -94,6 +95,11 @@ export function createWorld(canvas, lang = 'zh') {
       return [+p.x.toFixed(2), +p.z.toFixed(2)];
     },
     setDoor: world.setDoor,
+    // 熄燈（P10）：房間的燈和手上的燈一起關掉
+    setDark(on) { // 調亮度而不是關掉燈，避免畫面重新編譯而卡一下
+      if (on && !dark) dark = [world.roomLight.intensity, lamp.intensity];
+      if (on) { world.roomLight.intensity = 0; lamp.intensity = 0.05; } else if (dark) { [world.roomLight.intensity, lamp.intensity] = dark; dark = null; }
+    },
     // 現在看著、而且夠近的東西（給「調查」用）
     target(filter = () => true) {
       const s = controls.state; fwd.set(-Math.sin(s.yaw), 0, -Math.cos(s.yaw));

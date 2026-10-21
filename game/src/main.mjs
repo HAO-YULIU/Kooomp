@@ -105,6 +105,7 @@ function onMessage(msg) {
       renderTeam();
       break;
     }
+    case 'corridor': game?.onCorridor(msg); break;
     case 'chat': addChat(msg); break;
     case 'mark': game?.world.addMark(msg.kind, msg.p); if (msg.uid !== myUid) toast(`${nameOf(msg.uid)}：${t(`mark_${msg.kind}`)}`); break;
     case 'solved': game?.onSolved(msg.pid, msg.by); toast(`${nameOf(msg.by)}：${t('solved', { pid: msg.pid })}`); devOut(msg); break;
@@ -156,7 +157,7 @@ function renderWait() {
   $('btn-ready').textContent = mine?.ready ? t('not_ready') : t('ready');
   $('btn-ready').onclick = async () => { const r = await conn.request({ t: 'ready', ready: !mine?.ready }); $('wait-err').textContent = r.t === 'error' ? errText(r.error) : ''; };
   $('btn-start').hidden = state.host !== myUid;
-  $('btn-start').onclick = async () => { const r = await conn.request({ t: 'start' }); $('wait-err').textContent = r.t === 'error' ? errText(r.error) : ''; };
+  $('btn-start').onclick = async () => { import('../../prototype/src/orient.mjs').then((o) => o.enterFullscreen()); const r = await conn.request({ t: 'start' }); $('wait-err').textContent = r.t === 'error' ? errText(r.error) : ''; };
 }
 $('btn-leave').onclick = () => { conn?.close(); conn = null; state = null; history.replaceState(null, '', location.pathname + (params.has('dev') ? `?dev=${params.get('dev')}` : '')); show('s-menu'); };
 
@@ -168,6 +169,10 @@ async function startGame() {
   for (const s of screens) $(s).hidden = true;
   $('view').hidden = false; $('hud').hidden = false; $('dev').hidden = !DEV;
   const { startPlay } = await import('./logic/play.mjs');
+  // 手機：遊戲中強制橫向（Android 全螢幕時會真的鎖住；iPhone 只能蓋提示）
+  const orient = await import('../../prototype/src/orient.mjs');
+  orient.initOrientation($('rotate'));
+  orient.requireOrientation('landscape', { text: t('rotate_landscape') });
   game = startPlay({ conn, getState: () => state, myUid, toast, dev: DEV });
   if (pendingNotes) game.setNotes(pendingNotes);
   game.onState(state, null);
