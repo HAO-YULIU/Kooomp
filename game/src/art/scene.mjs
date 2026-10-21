@@ -80,12 +80,17 @@ const STYLE = {
   dorm_grimoire: { house: 'grimoire', wainscot: 1.1 },
   dorm_belmont: { house: 'belmont', wainscot: 1.1 },
   dorm_ouroboros: { house: 'ouroboros', wall: () => T.stoneWall('#3e4a40'), wainscot: 0.9 },
+  // 第二幕：長廊只換牆、地、天花板，不放會動、會數的東西（蠟燭、畫像、盔甲都是找異常用的，由帳號一的 corridor.mjs 管）
+  north_hall: { wall: () => T.stoneWall('#4a4640'), wainscot: 0 },
+  corridor: { paper: ['#2a1214', '#5a4020'], wainscot: 1.2 },
+  founder: { paper: ['#1e1a12', '#6a5022'], wainscot: 1.6 },
+  north_stairs: { wall: () => T.stoneWall('#3e3a36'), wainscot: 0 },
 };
 
 // 牆面內側的貼面（每個房間自己那一面，避開門）
 function cladding(group, r, st) {
   const inset = 0.17, h = r.h;
-  const upperTex = st.wall ? st.wall() : T.wallpaper(HOUSE[st.house].wall, HOUSE[st.house].accent);
+  const upperTex = st.wall ? st.wall() : st.paper ? T.wallpaper(...st.paper) : T.wallpaper(HOUSE[st.house].wall, HOUSE[st.house].accent);
   const repeatScale = st.wall ? 2 : 1; // 石牆一張＝2 公尺，壁紙一張＝1 公尺
   const sides = [
     { axis: 'x', at: r.z[0], from: r.x[0], to: r.x[1], n: 1 }, { axis: 'x', at: r.z[1], from: r.x[0], to: r.x[1], n: -1 },
@@ -188,6 +193,8 @@ function rugAt(group, house, cx, cz, w, d) {
 const ROOM_DECOR = {
   dock(r, group) {
     const k = new Kit();
+    // 月光：很淡的藍光從高處照碼頭和城堡正面（不投影），一開場看得出身在哪裡
+    const moonFill = new THREE.PointLight('#8aa0d8', 30, 45, 1.2); moonFill.position.set(-8, 14, 152); group.add(moonFill);
     // 碼頭四周的黑湖
     const lake = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), MAT.water()); lake.rotation.x = -Math.PI / 2; lake.position.set(0, -0.6, 150); group.add(lake);
     // 木樁、欄杆、燈籠
@@ -246,6 +253,21 @@ const ROOM_DECOR = {
     // 漂浮的蠟燭（典禮廳的招牌）
     const spots = []; for (let i = 0; i < 90; i++) spots.push([r.x[0] + 2 + ((i * 37) % 100) / 100 * (r.x[1] - r.x[0] - 4), 6 + ((i * 53) % 100) / 100 * 3.5, r.z[0] + 3 + ((i * 71) % 100) / 100 * (r.z[1] - r.z[0] - 6)]);
     candles(group, spots, { h: 0.3, r: 0.035 });
+  },
+  corridor(r, group) { // 尖拱的肋拱天花板（每 2.7 公尺一道，跟畫像對齊）；不加會被當成異常的東西
+    const k = new Kit(), rib = MAT.stone();
+    for (let z = r.z[1] - 1.65; z > r.z[0] + 1; z -= 2.7) {
+      k.add(new THREE.TorusGeometry(2.3, 0.1, 6, 20, Math.PI), rib, 0, r.h - 2.4, z);
+      for (const sx of [-1, 1]) k.box(0.3, r.h - 2.4, 0.22, rib, sx * 2.2, (r.h - 2.4) / 2, z);
+    }
+    k.build(group);
+  },
+  north_hall(r, group) { ROOM_DECOR.corridor(r, group); },
+  founder(r, group) { // 創辦人的房間：方格天花板、深色木地板邊框（畫像、羅盤、燭台由 corridor.mjs 畫）
+    const k = new Kit(), w = r.x[1] - r.x[0], d = r.z[1] - r.z[0], cx = (r.x[0] + r.x[1]) / 2, cz = (r.z[0] + r.z[1]) / 2;
+    for (let x = r.x[0] + 2; x < r.x[1] - 1; x += 2.33) k.box(0.18, 0.3, d - 0.4, MAT.darkWood(), x, r.h - 0.15, cz);
+    for (let z = r.z[0] + 2; z < r.z[1] - 1; z += 2.66) k.box(w - 0.4, 0.3, 0.18, MAT.darkWood(), cx, r.h - 0.15, z);
+    k.build(group);
   },
   starhall(r, group) {
     // 地上的星圖（星盤底下的一大圈）
