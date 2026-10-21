@@ -189,6 +189,22 @@ export class Room extends DurableObject {
         const coolKey = `${pid}:${uid}`;
         if ((r.cool[coolKey] ?? 0) > Date.now()) return reply({ t: 'error', error: 'cooldown', wait: r.cool[coolKey] - Date.now() });
         const state = (r.puz[pid] ??= {});
+        // 異常長廊（多人）：每個人的決定是一票，過半數同意才算數（2 人要兩票、3 人兩票、4 人三票）
+        if (def.kind === 'corridor' && r.mode === 'multi') {
+          if (+msg.value?.loop !== (state.n ?? 0)) return reply({ t: 'error', error: 'bad_value', reply: { loop: state.n ?? 0 } });
+          const choice = msg.value?.choice === 'back' ? 'back' : 'forward';
+          state.votes = { ...(state.votes?.loop === state.n ? state.votes : { loop: state.n ?? 0 }), [uid]: choice };
+          const online = r.order.filter((u) => r.members[u].online);
+          const need = Math.floor(online.length / 2) + 1;
+          const count = (c) => online.filter((u) => state.votes[u] === c).length;
+          const tally = { forward: count('forward'), back: count('back'), need };
+          if (tally[choice] < need) {
+            await this.save();
+            this.broadcast({ t: 'vote', pid, by: uid, choice, ...tally }, (u) => u !== uid);
+            return reply({ t: 'result', pid, solved: false, pending: true, ...tally });
+          }
+          state.votes = null; // 決定了：照多數的選擇判斷
+        }
         const res = judge(pid, msg.value, {
           seed: r.seed, lang: r.lang, house: CHARS[me.char], solo: r.mode === 'solo', aiHouses: this.aiHouses(), state, key: state.key ?? pid,
         });

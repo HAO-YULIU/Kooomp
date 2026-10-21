@@ -72,7 +72,7 @@ export const SCRIPT = {
   ],
   'enter:corridor': [
     [null, '燭火輕輕搖晃。你有種奇怪的感覺：這條走廊，好像走不完。', 'The candles flicker. You have the strangest feeling that this corridor never ends.'],
-    [null, '（找異常：每一趟走廊，有東西不一樣就回頭，沒有就推開盡頭的門。連續判斷正確 8 次才能走出去，錯一次就從頭來。）', '(Spot the anomaly: if anything on this walk is different, turn back; if not, push open the door at the end. Get it right 8 times in a row to escape — one mistake and you start over.)'],
+    [null, '（找異常：每一趟走廊，有東西不一樣就回頭，沒有就推開盡頭的門。連續判斷正確 8 次才能走出去，錯一次就從頭來。多人時要投票：推門＝往前、退回北翼走廊＝回頭，過半數同意才算數。）', '(Spot the anomaly: if anything on this walk is different, turn back; if not, push open the door at the end. Get it right 8 times in a row to escape — one mistake and you start over. With friends, it’s a vote: pushing the door votes to go on, walking back votes to turn back; a majority decides.)'],
   ],
   'corridor:liana': [['elora', '……姊姊？', '…Sister?'], ['cyril', '（看了艾洛拉一眼，什麼都沒說）', '(glances at Elora and says nothing)']],
   'solved:P09': [

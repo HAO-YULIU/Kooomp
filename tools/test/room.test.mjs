@@ -142,9 +142,16 @@ test('多人：加入、選角色、準備、開始、同步、聊天、作答',
   // 第二幕：異常長廊——誰做決定都算，結果告訴全隊；連續對 8 趟才過；再解開 P10 進到第三幕
   let peek = await a.request({ t: 'peek', pid: 'P09' });
   assert.equal(peek.next, null); // 第一趟一定正常
+  // 多人要投票：兩個人都要選一樣的才算數
+  const split = await a.request({ t: 'answer', pid: 'P09', value: { loop: peek.loop, choice: 'back' } });
+  assert.equal(split.pending, true); assert.equal(split.need, 2);
+  assert.equal((await b.wait((m) => m.t === 'vote')).back, 1);
   for (let i = 0; i < 8; i++) {
     const who = i % 2 ? a : b, other = i % 2 ? b : a;
-    const res = await who.request({ t: 'answer', pid: 'P09', value: { loop: peek.loop, choice: peek.next ? 'back' : 'forward' } });
+    const choice = peek.next ? 'back' : 'forward';
+    const first = await other.request({ t: 'answer', pid: 'P09', value: { loop: peek.loop, choice } });
+    assert.equal(first.pending, true);
+    const res = await who.request({ t: 'answer', pid: 'P09', value: { loop: peek.loop, choice } });
     const told = await other.wait((m) => m.t === 'corridor' && m.by === who.uid && m.streak === i + 1);
     assert.equal(told.right, true);
     peek = { loop: res.reply.loop, next: res.reply.next };
