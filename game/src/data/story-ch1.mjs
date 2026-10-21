@@ -120,6 +120,10 @@ export const SCRIPT = {
     [null, '一扇刻滿盧恩符文的大門。門後傳來像心跳一樣的聲音。', 'A great door carved with runes. From behind it comes a sound like a heartbeat.'],
     [null, '角落裡有什麼東西在發亮。', 'Something glints in the corner.'],
   ],
+  // P19～P21 各給一個符文（P18 符文大門的線索，docs/05-puzzles-ch1.md）
+  'solved:P19': [[null, '月光打在水晶上，水晶裡浮出一個符文：ᛚ。（記在筆記本裡）', 'Moonlight strikes the crystal, and a rune rises inside it: ᛚ. (Noted in your notebook.)']],
+  'solved:P20': [[null, '四座石像鬼歸位，它們的底座一起亮出一個符文：ᚷ。（記在筆記本裡）', 'The four gargoyles settle into place; their plinths light up with one rune: ᚷ. (Noted in your notebook.)']],
+  'solved:P21': [[null, '被污染的那瓶藥劑碎了，瓶底刻著一個符文：ᛏ。（記在筆記本裡）', 'The tainted vial shatters; a rune is etched on its base: ᛏ. (Noted in your notebook.)']],
   'solved:P18': [[null, '符文一個接一個亮起，大門開了一條縫。門後是一片漆黑。', 'The runes light one after another, and the door opens a crack. Beyond it is pitch black.']],
   'solved:P24': [[null, '門開了。冷風從底下吹上來。', 'The door opens. Cold air rises from below.']],
   'enter:lib_well': [[null, '井室。一口很深的井，井底傳來低沉的鐘聲。', 'The well chamber. A deep well; from its bottom comes a low tolling.']],

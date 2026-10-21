@@ -2,7 +2,7 @@
 import { createLibrary, mazePhase, mazeDark, cellAt, cellCenter } from '../world/library.mjs';
 import { MAZE, mazeLayout, NOTES, LETTER } from '../data/library-ch1.mjs';
 import { playFile, chime } from '../world/sound.mjs';
-import { openPanel, el, L } from '../ui/overlay.mjs';
+import { openPanel, el, L, LP } from '../ui/overlay.mjs';
 import { t } from './i18n.mjs';
 
 export function createAct3({ world, conn, toast, say, S, myChar, solvedByMe, serverNow }) {
@@ -11,7 +11,7 @@ export function createAct3({ world, conn, toast, say, S, myChar, solvedByMe, ser
 
   const items = () => S().items ?? [];
   function showNote(n) {
-    openPanel(t('note_title', { n }), (body) => body.append(el('p', { class: 'note', text: L(NOTES[n]) })));
+    openPanel(t('note_title', { n }), (body) => body.append(el('p', { class: 'note', text: LP(NOTES[n]) })));
   }
 
   return {

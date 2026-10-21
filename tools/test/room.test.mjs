@@ -411,3 +411,15 @@ test('整章：單人從序幕玩到尾聲，存檔記下結果，可以回來�
   assert.equal((await fetch(`${base}/api/me`)).status, 401);
   p.close();
 });
+
+test('第三幕多人：電腦控制的學院的題目，其他人也可以做（不會卡在前廳）', async () => {
+  const code = await create('前廳甲');
+  const a = await player(code, '前廳甲'), b = await player(code, '前廳乙');
+  await a.request({ t: 'char', char: 'elora' }); await b.request({ t: 'char', char: 'vaughn' }); // 格里莫瓦、烏洛波斯由電腦控制
+  await a.request({ t: 'ready', ready: true }); await b.request({ t: 'ready', ready: true }); await a.request({ t: 'start' });
+  await a.request({ t: 'dev', segment: 'act3c' });
+  assert.equal((await a.request({ t: 'answer', pid: 'P20', value: 'done' })).error, 'not_your_house'); // 貝爾蒙特有人扮演（沃恩）
+  let w = (await b.request({ t: 'answer', pid: 'P21', value: { weigh: { left: [0, 1, 2], right: [3, 4, 5] } } })).reply.result; // 烏洛波斯沒人扮演
+  assert.ok(['left', 'right', 'equal'].includes(w));
+  a.close(); b.close();
+});

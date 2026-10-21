@@ -157,3 +157,14 @@ test('S4 說謊者題：每一組都只有一個解', () => {
     assert.deepEqual(sols, [L.root], L.says.join());
   }
 });
+
+test('多人：電腦控制的學院的題目誰都可以做；那個學院的長廊異常不會出現', () => {
+  const multi = (o) => ctx({ solo: false, house: 'grimoire', ...o });
+  assert.equal(judge('P20', 'done', multi()).error, 'not_your_house');
+  assert.equal(judge('P20', 'done', multi({ aiHouses: ['belmont'] })).solved, true);
+  assert.equal(ok('P02', ['north wing', 'green lamp', '13']), true); // 中文房間也接受英文說法
+  for (let a = 0; a < 40; a++) for (let n = 1; n < 9; n++) {
+    const x = corridorLoop('seed-skip', a, n, { skip: ['eldrin', 'belmont'] });
+    assert.ok(!x || !['eldrin', 'belmont'].includes(x.house));
+  }
+});

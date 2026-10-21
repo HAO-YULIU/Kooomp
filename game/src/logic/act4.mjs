@@ -73,8 +73,19 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
     return out;
   }
 
+  // 判定輸：「你們被同化了」＋重來的按鈕（收到訊息時，或重新整理後從房間狀態看到）
+  function showLost(reason) {
+    if (grabbed) { clearTimeout(grabbed); grabbed = null; fight.hidden = true; }
+    closePanel(); lost.hidden = false;
+    $('a4lost-title').textContent = t('a4_lost_title');
+    $('a4lost-text').textContent = t(`a4_lost_${reason}`);
+    ai.stun(9999, performance.now());
+  }
+
   function begin(retry) {
     active = true; introDone = false; ai = newAI(); roofAt = null;
+    if (boundOpen) { boundOpen = false; world.controls.setEnabled(true); } // 重來：被綁住的人也回到開頭
+    if (retry) { if (S().nest) S().nest = {}; if (S().act4) S().act4.lost = null; } // 新的房間狀態馬上會到，先清掉，免得又被拉回蝕巢、又顯示判定輸
     shown = { ...shown, x: WARDEN_START.x, z: WARDEN_START.z, mode: 'idle', zone: WARDEN_START.zone }; target = { ...shown };
     lost.hidden = true; bound.hidden = true; fight.hidden = true;
     world.teleport(A4_SPAWN);
@@ -103,6 +114,8 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
       }
       scenery.frame(dt, mine.z);
       const now = serverNow(), st = S();
+      if (st.act4?.lost && lost.hidden) showLost(st.act4.lost); // 重新整理後也要看得到「重來」
+      else if (!st.act4?.lost && !lost.hidden) lost.hidden = true;
       // 倒數
       const left = (st.act4?.deadline ?? now) - now;
       hud.hidden = false; hud.textContent = `${t('a4_clock')} ${fmt(left)}`; hud.classList.toggle('urgent', left < 180000);
@@ -193,13 +206,7 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
         case 'freed': if (msg.uid !== myUid) toast(t('a4_freed_other', { name: S().members.find((m) => m.uid === msg.uid)?.name ?? '?' })); break;
         case 'repel': if (isSim()) ai.stun(WARDEN.repel, now); toast(t('a4_repelled')); $('flash')?.classList.add('on'); setTimeout(() => $('flash')?.classList.remove('on'), 300); break;
         case 'noise': if (isSim()) { const p = S().members.find((m) => m.uid === msg.uid); if (p && msg.p) ai.noise({ x: msg.p[0], z: msg.p[1], zone: msg.z }); } break;
-        case 'lost': {
-          if (grabbed) { clearTimeout(grabbed); grabbed = null; fight.hidden = true; }
-          closePanel(); lost.hidden = false;
-          $('a4lost-title').textContent = t('a4_lost_title');
-          $('a4lost-text').textContent = t(`a4_lost_${msg.reason}`);
-          ai.stun(9999, now); break;
-        }
+        case 'lost': showLost(msg.reason); break;
         case 'retry': begin(true); break;
       }
     },

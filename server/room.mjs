@@ -337,7 +337,7 @@ export class Room extends DurableObject {
         if (pid === 'P14') { const b = Math.trunc(+msg.value?.book), p = Math.trunc(+msg.value?.page); if (!(b >= 1 && b <= 12 && p >= 1 && p <= 120)) return err('bad_value'); return reply({ t: 'peek', pid, content: { words: bookPage(r.seed, r.lang, b, p) } }); }
         if (pid === 'P12') { if (!r.items?.lantern) return err('need_item'); return reply({ t: 'peek', pid, content: { shadows: def.ans.split(',') } }); } // 站在標記上舉燈才看得到影子
         if (pid === 'P24') return reply({ t: 'peek', pid, content: { cells: brailleDoor() } });
-        if (def.kind === 'corridor') return reply({ t: 'peek', pid, loop: st.n ?? 0, streak: st.streak ?? 0, next: corridorLoop(r.seed, st.attempt ?? 0, st.n ?? 0, { rate: def.rate }) });
+        if (def.kind === 'corridor') return reply({ t: 'peek', pid, loop: st.n ?? 0, streak: st.streak ?? 0, next: corridorLoop(r.seed, st.attempt ?? 0, st.n ?? 0, { rate: def.rate, skip: r.mode === 'solo' ? [] : this.aiHouses() }) });
         return err('bad_puzzle');
       }
 
@@ -390,7 +390,7 @@ export class Room extends DurableObject {
         const n = r.hints[pid]?.length ?? 0;
         if (n >= 3) return err('no_more_hints');
         let focus;
-        if (PUZZLES[pid].kind === 'corridor') { const st = r.puz[pid] ?? {}; focus = corridorFocus(corridorLoop(r.seed, st.attempt ?? 0, st.n ?? 0, { rate: PUZZLES[pid].rate }), r.lang); }
+        if (PUZZLES[pid].kind === 'corridor') { const st = r.puz[pid] ?? {}; focus = corridorFocus(corridorLoop(r.seed, st.attempt ?? 0, st.n ?? 0, { rate: PUZZLES[pid].rate, skip: r.mode === 'solo' ? [] : this.aiHouses() }), r.lang); }
         const text = hint(pid, n, r.lang, { focus });
         (r.hints[pid] ??= []).push(text);
         await this.save();
