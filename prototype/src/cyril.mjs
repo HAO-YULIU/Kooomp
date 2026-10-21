@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { FBXLoader } from '../vendor/addons/loaders/FBXLoader.js';
 import { paintSkin, skinMat, makeCloak, hash3 } from './cc.mjs';
+import { wearOutfit } from './outfit.mjs';
 
 // 模型原本的座標（公分）：x 左右、y 往上、z 往前。眼睛在 (0, 135.7)，下巴約 y 126，脖子根約 y 124。
 const EYE_Y = 135.65, SHOULDER = { x: 13, y: 117 }, DROP = THREE.MathUtils.degToRad(80);
@@ -63,9 +64,10 @@ function paintHair(geo, root, tip) {
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
 }
 
-export function loadCyril(scene, { house = { main: '#0f2a1e', trim: '#c0c4c8' }, hair = '#8c8270', hairTip = '#d8d0bc', skin = '#f0cdb6', iris = '#3f7a52', height = 1.78 } = {}) {
+/** outfit：要穿的衣服（outfit.mjs 的 spec 陣列）；穿了衣服就不做程式的斗篷，原本的 T 恤、短褲也藏起來 */
+export function loadCyril(scene, { house = { main: '#0f2a1e', trim: '#c0c4c8' }, hair = '#8c8270', hairTip = '#d8d0bc', skin = '#f0cdb6', iris = '#3f7a52', height = 1.78, outfit = null } = {}) {
   return new Promise((resolve, reject) => {
-    new FBXLoader().load('models/cyril/Modern_Tarzan.fbx', (o) => {
+    new FBXLoader().load('models/cyril/Modern_Tarzan.fbx', async (o) => {
       o.updateMatrixWorld(true);
       const model = new THREE.Group();
       o.traverse((m) => {
@@ -84,8 +86,18 @@ export function loadCyril(scene, { house = { main: '#0f2a1e', trim: '#c0c4c8' },
       });
       const s = height / 145.5; model.scale.setScalar(s);
       const holder = new THREE.Group(); holder.add(model);
-      const cloak = makeCloak(house); cloak.position.y = 124 * s - 0.2; cloak.position.z = 0.01; cloak.scale.set(0.96, 1, 0.96);
-      holder.add(cloak);
+      if (outfit) {
+        // 沒有骨架：用量好的位置當參考點（模型原本的座標，公分），換成 holder 的座標
+        const P = (x, y, z = 0) => new THREE.Vector3(x * s, y * s, z * s);
+        const landmarks = { shL: P(15, 117), shR: P(-15, 117), elL: P(19, 89), hip: P(0, 82), neck: P(0, 124) };
+        for (const m of model.children) if (/T-Shirt|Shorts/.test(m.name)) m.visible = false;
+        holder.updateMatrixWorld(true);
+        const ctx = { holder, body: model.children.find((m) => m.name === 'Body'), landmarks };
+        try { for (const spec of outfit) await wearOutfit(ctx, spec); } catch (e) { console.warn('西里爾穿衣服失敗', e); }
+      } else {
+        const cloak = makeCloak(house); cloak.position.y = 124 * s - 0.2; cloak.position.z = 0.01; cloak.scale.set(0.96, 1, 0.96);
+        holder.add(cloak);
+      }
       scene.add(holder);
       const base = { rotY: 0 };
       resolve({
