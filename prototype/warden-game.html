@@ -1,0 +1,31 @@
+<!doctype html><meta charset="utf-8"><title>守夜人（正式遊戲版）測試</title>
+<style>html,body{margin:0;background:#111;overflow:hidden}</style>
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js" } }</script>
+<!-- 帳號二的測試頁：用帳號一的 createWarden（灰盒）＋美術掛鉤，看正式模型有沒有換上、動作對不對。從儲存庫根目錄開伺服器。
+     網址加 #chase、#grab、#stun 指定狀態；#auto 不呼叫 userData.update（測自己看速度選動作）。 -->
+<script type="module">
+import * as THREE from 'three';
+import '../game/src/art/index.mjs';
+import { setWardenBase } from '../game/src/art/warden.mjs';
+import { createWarden } from '../game/src/world/warden.mjs';
+setWardenBase('../game/models/chars/');
+const renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(innerWidth, innerHeight); document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene(); scene.add(new THREE.HemisphereLight('#8090a0', '#202020', 1.2));
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshStandardMaterial({ color: '#333' })); floor.rotation.x = -Math.PI / 2; scene.add(floor);
+const cam = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 100); cam.position.set(0, 1.6, -4.5); cam.lookAt(0, 1.1, 0);
+const w = createWarden(scene);
+const mode = location.hash.slice(1) || 'patrol', auto = mode === 'auto';
+let t = 0, z = 0; const clock = new THREE.Clock();
+window.step = (sec) => { const n = Math.round(sec * 30); for (let i = 0; i < n; i++) tick(1 / 30); };
+function tick(dt) {
+  t += dt; const spd = mode === 'chase' ? 3 : mode === 'stun' || mode === 'grab' ? 0 : 1.2;
+  z = (z - spd * dt); if (z < -2) z = 2;
+  w.set({ x: 0, z: auto ? z : 0, yaw: 0, mode: auto ? 'patrol' : mode });
+  w.frame(dt, mode);
+  if (!auto) w.group.userData.update?.(dt, mode);
+  renderer.render(scene, cam);
+}
+const loop = () => { tick(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(loop); }; loop();
+setTimeout(() => { window.ready = !!w.group.userData.update; }, 100);
+const iv = setInterval(() => { if (w.group.userData.update) { window.ready = true; clearInterval(iv); } }, 200);
+</script>

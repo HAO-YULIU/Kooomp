@@ -80,6 +80,41 @@ function grid(points, cell) {
     return [best, Math.sqrt(bd)];
   };
 }
+// 往外推的量在布上抹平：每個點的推移跟旁邊的點平均幾次（接縫上同位置的點當成同一個），
+// 推得不一樣多的相鄰點不會被拉成鋸齒；平均時取「推比較多的那邊」為主，避免又陷回去
+function smoothPush(g, orig, rounds = 4) {
+  const p = g.attributes.position, cnt = p.count, idx = g.index;
+  if (!idx) return;
+  const weld = new Map(), id = new Int32Array(cnt);
+  for (let i = 0; i < cnt; i++) {
+    const k = `${Math.round(orig[i * 3] * 5000)},${Math.round(orig[i * 3 + 1] * 5000)},${Math.round(orig[i * 3 + 2] * 5000)}`;
+    let w = weld.get(k); if (w === undefined) weld.set(k, (w = weld.size)); id[i] = w;
+  }
+  const m = weld.size, nb = Array.from({ length: m }, () => new Set());
+  for (let t = 0; t < idx.count; t += 3) {
+    const A = id[idx.getX(t)], B = id[idx.getX(t + 1)], C = id[idx.getX(t + 2)];
+    nb[A].add(B).add(C); nb[B].add(A).add(C); nb[C].add(A).add(B);
+  }
+  let d = new Float32Array(m * 3), cntW = new Uint16Array(m);
+  for (let i = 0; i < cnt; i++) { const w = id[i]; for (let k = 0; k < 3; k++) d[w * 3 + k] += p.array[i * 3 + k] - orig[i * 3 + k]; cntW[w]++; }
+  for (let w = 0; w < m; w++) for (let k = 0; k < 3; k++) d[w * 3 + k] /= cntW[w] || 1;
+  for (let r = 0; r < rounds; r++) {
+    const nd = new Float32Array(m * 3);
+    for (let w = 0; w < m; w++) {
+      let sx = 0, sy = 0, sz = 0, sn = 0;
+      for (const o of nb[w]) { sx += d[o * 3]; sy += d[o * 3 + 1]; sz += d[o * 3 + 2]; sn++; }
+      if (!sn) { nd.set(d.subarray(w * 3, w * 3 + 3), w * 3); continue; }
+      sx /= sn; sy /= sn; sz /= sn;
+      const own = Math.hypot(d[w * 3], d[w * 3 + 1], d[w * 3 + 2]), avg = Math.hypot(sx, sy, sz);
+      const t = avg > own ? 0.7 : 0.5; // 鄰居推得多就多跟一點
+      nd[w * 3] = d[w * 3] * (1 - t) + sx * t; nd[w * 3 + 1] = d[w * 3 + 1] * (1 - t) + sy * t; nd[w * 3 + 2] = d[w * 3 + 2] * (1 - t) + sz * t;
+    }
+    d = nd;
+  }
+  for (let i = 0; i < cnt; i++) { const w = id[i]; p.setXYZ(i, orig[i * 3] + d[w * 3], orig[i * 3 + 1] + d[w * 3 + 1], orig[i * 3 + 2] + d[w * 3 + 2]); }
+  p.needsUpdate = true;
+}
+
 const smooth = (a, b, x) => { const t = THREE.MathUtils.clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 
 /**
@@ -100,11 +135,16 @@ export async function wearOutfit(ctx, spec) {
   const bp = body.geometry.attributes.position, n = bp.count, posed = new Float32Array(n * 3), v = new THREE.Vector3();
   for (let i = 0; i < n; i++) { body.getVertexPosition(i, v); v.applyMatrix4(body.matrixWorld); holder.worldToLocal(v); posed[i * 3] = v.x; posed[i * 3 + 1] = v.y; posed[i * 3 + 2] = v.z; }
   const pnorm = new Float32Array(n * 3), a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
-  for (let i = 0; i < n; i += 3) { // 身體的頂點沒有共用，每三個是一個三角形
+  // 身體的頂點沒有共用，每三個是一個三角形。同一個位置的面方向加起來取平均，
+  // 不然小三角形的方向亂指，衣服會被推成一根根尖刺
+  const pkey = (i) => `${Math.round(posed[i * 3] * 2000)},${Math.round(posed[i * 3 + 1] * 2000)},${Math.round(posed[i * 3 + 2] * 2000)}`;
+  const acc = new Map();
+  for (let i = 0; i < n; i += 3) {
     a.fromArray(posed, i * 3); b.fromArray(posed, i * 3 + 3); c.fromArray(posed, i * 3 + 6);
-    const nn = b.clone().sub(a).cross(c.clone().sub(a)).normalize();
-    for (let k = 0; k < 3; k++) nn.toArray(pnorm, (i + k) * 3);
+    const nn = b.clone().sub(a).cross(c.clone().sub(a)); // 不正規化：大的面份量重
+    for (let k = 0; k < 3; k++) { const key = pkey(i + k); const s = acc.get(key); if (s) s.add(nn); else acc.set(key, nn.clone()); }
   }
+  for (let i = 0; i < n; i++) { const s = acc.get(pkey(i)); (s.lengthSq() > 0 ? s.clone().normalize() : s.set(0, 0, 1)).toArray(pnorm, i * 3); }
   const nearBody = grid(posed, 0.03);
 
   // ---------- 身上的參考點 ----------
@@ -157,7 +197,7 @@ export async function wearOutfit(ctx, spec) {
     for (let i = 0; i < cnt; i++) p.setXYZ(i, p.getX(i) * sx, bodyShY + (p.getY(i) - clothShY) * sy, p.getZ(i) * sx + cz);
     // 3) 陷進身體的地方往外推；4) 抄最近那個身體點的骨架設定
     const puff = spec.puff ?? 0.006;
-    const si = new Uint16Array(cnt * 4), sw = new Float32Array(cnt * 4);
+    const si = new Uint16Array(cnt * 4), sw = new Float32Array(cnt * 4), orig = p.array.slice();
     const bi = body.geometry.attributes.skinIndex, bw = body.geometry.attributes.skinWeight; // 沒有骨架時是 undefined
     for (let i = 0; i < cnt; i++) {
       v.set(p.getX(i), p.getY(i), p.getZ(i));
@@ -173,8 +213,9 @@ export async function wearOutfit(ctx, spec) {
       if (out < puff) v.addScaledVector(b, puff - out);
       p.setXYZ(i, v.x, v.y, v.z);
       if (skinned) for (let k = 0; k < 4; k++) { si[i * 4 + k] = bi.getComponent(q, k); sw[i * 4 + k] = bw.getComponent(q, k); }
-      clothPts.push(v.x, v.y, v.z);
     }
+    smoothPush(g, orig);
+    for (let i = 0; i < cnt; i++) clothPts.push(p.getX(i), p.getY(i), p.getZ(i));
     if (skinned) { g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4)); g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4)); }
     g.computeVertexNormals();
     newLayer.pts.push(...p.array); newLayer.nor.push(...g.attributes.normal.array);

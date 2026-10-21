@@ -1,0 +1,76 @@
+<!doctype html><script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js" } }</script>
+<!-- 烘焙工具（開發用）：把角色組好（衣服、換來的頭髮），存成 GLB，再用 gltfpack -cc -kn 壓縮成 game/models/chars/。用法見 game/src/art/README.md -->
+<script type="module">
+// 把角色（含衣服、換來的頭髮）組好，轉成可以匯出的材質，存成一個 GLB。只在開發時用（烘焙）。
+import * as THREE from 'three';
+import { loadCC } from './src/cc.mjs';
+import { COSTUMES } from './src/costumes.mjs';
+import { loadHairSet } from './src/hairbank.mjs';
+import { loadCyril } from './src/cyril.mjs';
+import { loadMan } from './src/extras.mjs';
+import { GLTFExporter } from './bake/GLTFExporter.js';
+const J = window.JOB;
+const scene = new THREE.Scene();
+const CFG = {
+  elora: async () => loadCC(scene, { body: 'elora', house: { main: '#cdd3df', trim: '#7fa7d6' }, hair: '#9a7444', hairTip: '#dcc08a', skin: '#f2d2bd', height: 0.9, ...COSTUMES.elora }),
+  yuexi: async () => loadCC(scene, { body: 'female', house: { main: '#2a0c10', trim: '#d8c49a' }, hair: '#0d0a0a', hairTip: '#2a2226', skin: '#efcdb4', ...COSTUMES.yuexi }),
+  vaughn: async () => loadCC(scene, { body: 'male', house: { main: '#121214', trim: '#b8902e' }, hair: '#1e1510', hairTip: '#4a3426', skin: '#e8bfa2', ...COSTUMES.vaughn }),
+  helga: async () => loadCC(scene, { body: 'female', house: { main: '#3a3a40', trim: '#e8e4dc' }, hair: '#6a655c', hairTip: '#c8c2b8', skin: '#e8c8b4', cloakScale: 0.98, height: 1.02, hideHair: true, ...COSTUMES.helga,
+    headGear: await loadHairSet([{ from: 'elora', parts: ['Scalp'], hair: '#6a655c', hairTip: '#c8c2b8' }, { from: 'elora', parts: ['glasses'] }]) }),
+  knox: async () => loadCC(scene, { body: 'elora', house: { main: '#1a2a20', trim: '#7a6a3a' }, hair: '#3a1610', hairTip: '#6a2a1a', skin: '#ecc8b0', height: 0.93, cloakScale: 0.92, hideHair: true, ...COSTUMES.knox,
+    headGear: await loadHairSet([{ from: 'female', parts: ['Double_high', 'Air_bangs'], hair: '#3a1610', hairTip: '#6a2a1a' }]) }),
+  cyril: async () => loadCyril(scene, COSTUMES.cyril),
+  moray: async () => loadCyril(scene, { house: { main: '#0c0c10', trim: '#9aa0a8' }, hair: '#22201e', hairTip: '#8a857c', iris: '#5a6a62', skin: '#e8c8b2', height: 1.88 }),
+  aldric: async () => loadMan(scene, { hair: '#e4e0d8', beard: '#ece8e0', skin: '#e8c4aa', robe: { main: '#2e1a3a', trim: '#c8a24a' }, height: 1.8 }),
+};
+const c = await CFG[J.key]();
+// 先讓角色動一格：換來的頭髮、斗篷的位置是在每一格的更新裡算的
+c.update?.(0, 0.016, new THREE.Vector3(0, 1.6, 50));
+const root = c.root; root.updateMatrixWorld(true);
+
+// 頭飾（換來的頭髮、眼鏡）原本每一格跟著頭骨移動；匯出時直接掛在頭骨底下
+let head = null; root.traverse((o) => { if (o.isBone && /_Base_Head$/.test(o.name) && !head) head = o; });
+for (const g of [...root.children]) if (g.isGroup && g.userData.eyeWidth) head.attach(g);
+// 程式做的斗篷（關掉的）拿掉
+for (const g of [...root.children]) if (!g.visible) root.remove(g);
+
+// 先等所有貼圖都載好（從別的模型拆來的頭髮、眼鏡，貼圖是之後才非同步載入的）
+const texs = []; root.traverse((o) => { if (o.isMesh) for (const m of [].concat(o.material)) for (const t of [m.map, m.alphaMap, m.normalMap]) if (t) texs.push(t); });
+const ready = (t) => t.image && (t.image.complete !== false) && (t.image.width > 0);
+for (let i = 0; i < 300 && !texs.every(ready); i++) await new Promise((r) => setTimeout(r, 200));
+// 材質轉成 glTF 能存的：透明度貼圖（alphaMap）合併到顏色貼圖的透明通道
+const texCache = new Map();
+function mergeAlpha(map, alpha) {
+  const key = (map?.uuid || '-') + '|' + (alpha?.uuid || '-'); if (texCache.has(key)) return texCache.get(key);
+  if (map && !map.image) map = null; if (alpha && !alpha.image) alpha = null; // 真的沒載到的貼圖就不用
+  if (!map && !alpha) return null;
+  const src = (alpha || map).image, w = Math.min(J.tex, src.width), h = Math.min(J.tex, src.height);
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const g = cv.getContext('2d');
+  if (map) g.drawImage(map.image, 0, 0, w, h); else { g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); }
+  if (alpha) {
+    const a = document.createElement('canvas'); a.width = w; a.height = h; const ag = a.getContext('2d'); ag.drawImage(alpha.image, 0, 0, w, h);
+    const d = g.getImageData(0, 0, w, h), ad = ag.getImageData(0, 0, w, h).data;
+    for (let i = 0; i < d.data.length; i += 4) d.data[i + 3] = ad[i + 1];
+    g.putImageData(d, 0, 0);
+  }
+  const t = new THREE.CanvasTexture(cv); t.flipY = (alpha || map).flipY; t.colorSpace = THREE.SRGBColorSpace; t.userData.mimeType = alpha ? 'image/png' : 'image/jpeg';
+  texCache.set(key, t); return t;
+}
+const matCache = new Map();
+const conv = (m) => matCache.get(m.uuid) || (matCache.set(m.uuid, conv1(m)), matCache.get(m.uuid));
+const conv1 = (m) => {
+  if (!m.visible) { const h = new THREE.MeshStandardMaterial({ name: 'hidden', transparent: true, opacity: 0 }); return h; }
+  const hasA = !!m.alphaMap;
+  const n = new THREE.MeshStandardMaterial({ name: m.name, color: m.color?.clone() ?? new THREE.Color('#fff'), vertexColors: m.vertexColors, side: m.side,
+    roughness: m.roughness ?? 0.8, metalness: m.metalness ?? 0, transparent: m.transparent, opacity: m.opacity ?? 1, alphaTest: m.alphaTest || (hasA ? 0.05 : 0) });
+  if (m.map || hasA) n.map = mergeAlpha(m.map, m.alphaMap) || null;
+  if (m.normalMap) n.normalMap = m.normalMap;
+  return n;
+};
+let tris = 0;
+root.traverse((o) => { if (!o.isMesh) return; o.material = Array.isArray(o.material) ? o.material.map(conv) : conv(o.material); tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; });
+const glb = await new GLTFExporter().parseAsync(root, { binary: true, onlyVisible: true, maxTextureSize: J.tex });
+const bytes = new Uint8Array(glb); window.parts = []; const CH = 8 << 20;
+for (let i = 0; i < bytes.length; i += CH) { let bin = ''; const sub = bytes.subarray(i, i + CH); for (let k = 0; k < sub.length; k += 0x8000) bin += String.fromCharCode.apply(null, sub.subarray(k, k + 0x8000)); window.parts.push(btoa(bin)); }
+window.result = { size: bytes.length, tris: Math.round(tris) };
+</script>

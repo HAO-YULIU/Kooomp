@@ -1,0 +1,32 @@
+<!doctype html><script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js" } }</script>
+<!-- 帳號二的工具：把守夜人（模型＋四個 Mixamo 動作）烘焙成 game/models/chars/warden.glb。用法跟 bake.html 一樣（Playwright 讀 window.parts）。
+     燈不放進檔案：遊戲裡的燈由 game/src/art/warden.mjs 加在右手上。 -->
+<script type="module">
+import * as THREE from 'three';
+import { FBXLoader } from './vendor/addons/loaders/FBXLoader.js';
+import { GLTFExporter } from './bake/GLTFExporter.js';
+
+const LOOK = { // 跟 src/warden.mjs 一樣
+  Head_1: { color: '#8f9488', roughness: 0.8 }, Hands_1: { color: '#7d8276', roughness: 0.8 },
+  Torso_1: { color: '#26231f', roughness: 0.95 }, Legs_1: { color: '#1d1b18', roughness: 0.95 },
+  LegArmor_1: { color: '#3a2c20', roughness: 0.6 }, Equip_1: { color: '#4a3424', roughness: 0.55 },
+  Equip_2: { color: '#3b3832', roughness: 0.9 }, Equip_3: { color: '#3e3a36', roughness: 0.45, metalness: 0.6 },
+};
+const mgr = new THREE.LoadingManager(); mgr.setURLModifier((u) => (/\.fbx$/i.test(u) ? u : 'data:,'));
+const load = (f) => new FBXLoader(mgr).loadAsync('models/warden/' + f);
+const [o, walk, run, attack] = await Promise.all(['idle', 'walk', 'run', 'attack'].map((n) => load(n + '.fbx')));
+const clips = [['idle', o], ['walk', walk], ['run', run], ['attack', attack]].map(([n, f]) => { const c = f.animations[0].clone(); c.name = n; return c; });
+o.traverse((c) => {
+  if (!c.isMesh) return;
+  if (/Eyes/.test(c.name)) { c.material = new THREE.MeshStandardMaterial({ name: 'warden_eyes', color: '#000000', emissive: '#7dff9a' }); return; }
+  if (/teeth/.test(c.name)) { c.material = new THREE.MeshStandardMaterial({ name: 'teeth', color: '#b5a882', roughness: 0.5 }); return; }
+  const mats = [].concat(c.material).map((m) => new THREE.MeshStandardMaterial({ name: m.name, ...(LOOK[m.name] || { color: '#333' }) }));
+  c.material = Array.isArray(c.material) ? mats : mats[0];
+});
+o.scale.setScalar(0.0098); // 公分 → 公尺
+const root = new THREE.Group(); root.name = 'warden'; root.add(o); root.updateMatrixWorld(true);
+const glb = await new GLTFExporter().parseAsync(root, { binary: true, animations: clips });
+const bytes = new Uint8Array(glb); window.parts = []; const CH = 8 << 20;
+for (let i = 0; i < bytes.length; i += CH) { let bin = ''; const sub = bytes.subarray(i, i + CH); for (let k = 0; k < sub.length; k += 0x8000) bin += String.fromCharCode.apply(null, sub.subarray(k, k + 0x8000)); window.parts.push(btoa(bin)); }
+window.result = { size: bytes.length, clips: clips.map((c) => c.name + ':' + c.duration.toFixed(2)) };
+</script>
