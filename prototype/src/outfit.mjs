@@ -305,15 +305,15 @@ export async function wearOutfit(ctx, spec) {
     const op = []; for (const m of meshes) op.push(...m.geometry.attributes.position.array);
     const nearOut = grid(new Float32Array(op), 0.025), gap = spec.gap ?? 0.012;
     // 沿著方向 n 從 x 出發，-6 到 +30 公分之間，第一個離外層 1.5 公分內的位置（找不到回傳 null）
-    const hit = (x, y, z, nx, ny, nz) => {
-      for (let t = -0.06; t <= 0.3; t += 0.008) { const [, d] = nearOut(x + nx * t, y + ny * t, z + nz * t, 1); if (d < 0.015) return t; }
+    const hit = (x, y, z, nx, ny, nz, tol = 0.015) => {
+      for (let t = -0.06; t <= 0.3; t += 0.008) { const [, d] = nearOut(x + nx * t, y + ny * t, z + nz * t, 1); if (d < tol) return t; }
       return null;
     };
     for (const m of inner) {
       const g = m.geometry, p = g.attributes.position, sl = g.userData.sleeve, orig = p.array.slice(), cnt = p.count;
       const Qi = new Int32Array(cnt).fill(-1); for (let i = 0; i < cnt; i++) Qi[i] = attach(p.getX(i), p.getY(i), p.getZ(i), sl?.[i]);
-      const T = new Float32Array(cnt).fill(NaN); // 外層在這個點外面多遠（NaN：沒蓋住）
-      for (let i = 0; i < cnt; i++) { const q = Qi[i]; if (q < 0) continue; const t = hit(p.getX(i), p.getY(i), p.getZ(i), pnorm[q * 3], pnorm[q * 3 + 1], pnorm[q * 3 + 2]); if (t !== null) T[i] = t; }
+      const T = new Float32Array(cnt).fill(NaN), T2 = new Float32Array(cnt).fill(NaN); // 外層在這個點外面多遠（NaN：沒蓋住）；T2 用比較嚴格的標準（藏三角形用）
+      for (let i = 0; i < cnt; i++) { const q = Qi[i]; if (q < 0) continue; const t = hit(p.getX(i), p.getY(i), p.getZ(i), pnorm[q * 3], pnorm[q * 3 + 1], pnorm[q * 3 + 2]); if (t !== null) { T[i] = t; const t2 = hit(p.getX(i), p.getY(i), p.getZ(i), pnorm[q * 3], pnorm[q * 3 + 1], pnorm[q * 3 + 2], 0.008); if (t2 !== null) T2[i] = t2; } }
       const press = (want) => {
         for (let i = 0; i < cnt; i++) {
           const q = Qi[i]; if (q < 0 || Number.isNaN(T[i])) continue;
@@ -325,7 +325,7 @@ export async function wearOutfit(ctx, spec) {
       press(gap); smoothPush(g, orig, 3); press(gap * 0.7); // 抹平後再確實壓一次
       // 確定被外層蓋住的三角形（三個點往外看都碰得到外層）不用畫：粗的衣服模型三角形很大，壓進去了中間還是可能凸出來
       if (g.index && spec.hideCovered !== false) {
-        const ix = g.index.array, keep = [], cov = (k) => !Number.isNaN(T[k]) && T[k] > -0.01;
+        const ix = g.index.array, keep = [], cov = (k) => !Number.isNaN(T2[k]) && T2[k] > -0.01;
         for (let t = 0; t < ix.length; t += 3) if (!(cov(ix[t]) && cov(ix[t + 1]) && cov(ix[t + 2]))) keep.push(ix[t], ix[t + 1], ix[t + 2]);
         g.setIndex(keep);
       }

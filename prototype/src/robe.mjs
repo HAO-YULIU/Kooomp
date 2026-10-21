@@ -87,7 +87,7 @@ export function buildRobe(B, spec = {}) {
       }
     };
     const Pb = new Float32Array(W * 3); for (let w = 0; w < W; w++) if (keep[w]) for (let k = 0; k < 3; k++) Pb[w * 3 + k] = posed[rep[w] * 3 + k];
-    smoothField(Pb, 15);
+    smoothField(Pb, 60); // 抹得多一點：胸部的細節（乳頭這種小凸起）才會完全消失
     const S = new Float32Array(W * 3);
     for (let w = 0; w < W; w++) if (keep[w]) { const r = rep[w] * 3, d = want(w); for (let k = 0; k < 3; k++) S[w * 3 + k] = Pb[w * 3 + k] + pnorm[r + k] * d; }
     smoothField(S, 6);
@@ -217,7 +217,7 @@ export function buildRobe(B, spec = {}) {
     const body = profile(y - 0.02, y + 0.02, notArm);
     const r = new Float32Array(K);
     for (let k = 0; k < K; k++) {
-      let v = body[k] > 0 ? body[k] + off * (i < 2 ? 0.5 : 1) + (i < 2 ? 0 : 0.006) : (last ? last[k] : 0.15); // 最上面兩圈收在上半身裡面，看不到開口的邊
+      let v = body[k] > 0 ? body[k] + off * Math.min(1, 0.5 + i * 0.17) + 0.006 * Math.min(1, i / 3) : (last ? last[k] : 0.15); // 最上面幾圈收在上半身裡面，慢慢放出來
       if (last) v = Math.max(v, last[k] + flare * step); // 往下只會變寬
       r[k] = v;
     }
