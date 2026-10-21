@@ -85,6 +85,16 @@ const STYLE = {
   corridor: { paper: ['#2a1214', '#5a4020'], wainscot: 1.2 },
   founder: { paper: ['#1e1a12', '#6a5022'], wainscot: 1.6 },
   north_stairs: { wall: () => T.stoneWall('#3e3a36'), wainscot: 0 },
+  // 第三幕：沉眠圖書館（書架迷宮、血跡等由帳號一的 library.mjs 畫，這裡只換牆面）
+  lib_entry: { wall: () => T.stoneWall('#5a544a'), wainscot: 1.8 },
+  lib_maze: { paper: ['#1e1a14', '#4a3a20'], wainscot: 2.2 },
+  lib_reading: { paper: ['#22180e', '#6a5022'], wainscot: 1.4 },
+  lib_ante: { wall: () => T.stoneWall('#3a3e4a'), wainscot: 0 },
+  lib_well: { wall: () => T.stoneWall('#34383e'), wainscot: 0 },
+  // 第四幕：通道、機械室、蝕巢（石牆，越往裡越暗、越髒）
+  a4_pass: { wall: () => T.stoneWall('#3a3832'), wainscot: 0 },
+  a4_gears: { wall: () => T.stoneWall('#4a443a'), wainscot: 0 },
+  a4_nest: { wall: () => T.stoneWall('#2a1416'), wainscot: 0 },
 };
 
 // 牆面內側的貼面（每個房間自己那一面，避開門）
