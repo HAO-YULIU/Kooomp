@@ -12,3 +12,4 @@
 - [階段二：第一章《開學夜》完整劇情](docs/03-chapter1.md)
 - [階段三：第一章地圖](docs/04-map-ch1.md)
 - [階段四：第一章謎題（含答案）](docs/05-puzzles-ch1.md)
+- [第一章：錄音稿與童謠](docs/06-audio-ch1.md)
