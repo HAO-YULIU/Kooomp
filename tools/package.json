@@ -1,0 +1,17 @@
+{
+  "name": "milner-tools",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "build:plain": "node build.mjs --plain",
+    "dev": "node build.mjs --plain && cd .. && npx --prefix tools wrangler dev",
+    "test": "node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.10",
+    "javascript-obfuscator": "4.1.1",
+    "wrangler": "4.42.0",
+    "undici": "7.14.0"
+  }
+}

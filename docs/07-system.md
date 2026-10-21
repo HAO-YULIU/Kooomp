@@ -104,3 +104,49 @@
 | D. 改用 Cloudflare 的即時連線 | 遊戲本來就放在 Cloudflare。移動與守夜人的同步改走 Cloudflare 的 Durable Objects；登入、房間、答案還是 Supabase | 免費額度大約每天幾十個房間小時（Supabase 是每個月幾十個） | 多一個要維護的服務 |
 
 **建議：A＋B＋D。** 預測移動和只送區域先把訊息量壓到最低，再把即時同步放到 Cloudflare，Supabase 只做登入、房間、作答。實作前會再確認兩邊最新的免費額度。
+
+## 14. 第 1 批成果：架構（2026-10-21）
+
+### 14-1 做了什麼
+| 部分 | 檔案 | 內容 |
+|---|---|---|
+| 伺服器 | `server/worker.mjs` | 建立房間、查房間、加入房間（WebSocket）；其他網址交給 `dist/` |
+| 房間 | `server/room.mjs` | Cloudflare Durable Object：成員、選角色、準備、開始、位置轉送（只轉給同一區）、聊天、標記、作答、提示、守夜人計算者換手。用 WebSocket 休眠省運作時間 |
+| 判斷答案 | `server/judge.mjs` | 第一章 27 題＋救援 4 題＋自救 4 題的判斷；沙漏、天平、異常長廊、拉桿由伺服器模擬；隨機題用房間亂數 |
+| 登入 | `server/auth.mjs`、`game/src/net/platform.mjs` | 夜語工作室帳號（大廳的 #sd= 登入碼）；伺服器向 Supabase 確認身分 |
+| 謎題資料 | `data/puzzles/ch1.mjs` | 答案與三張提示（中英文），只在伺服器用 |
+| 遊戲畫面 | `game/` | 18+ 提示、語言、選單（單人／建立／加入、謎題語言）、等待室（分學院→預選角色、選角色、準備、開始）、測試場景（沿用技術雛形的教室）、聊天、快捷標記（按鈕或 1／2／3 鍵） |
+| 位置同步 | `game/src/net/sync.mjs` | A：只在開始走、停、轉彎、換區時送，畫面自己推算；B：伺服器只轉給同一區 |
+| build | `tools/build.mjs` | 產生 `dist/`（程式混淆，three.js 另外載入），並檢查發佈版裡沒有答案 |
+| 部署 | `wrangler.jsonc` | Worker 名稱 `milner`，只發佈 `dist/` |
+
+- **跟原本規劃不同的地方**：房間和答案判斷也放在 Cloudflare（跟即時同步同一個地方），Supabase 只負責登入。好處是**完全不用在夜語工作室的 Supabase 建新的資料表**，不會動到大廳和其他遊戲。雲端存檔、遊玩紀錄之後再用大廳原本就有的 `game_saves`、`play_records`。
+
+### 14-2 測試結果
+- `cd tools && npm test`：13 項全部通過。
+  - 每一題的正確、錯誤答案
+  - 學院限定、單人限定
+  - 沙漏、天平、異常長廊、拉桿的模擬
+  - 救援題的內容與答案一致
+  - 難度比例
+  - 房間流程：建房、加入、搶角色、準備、開始、區域轉送、聊天、標記、作答冷卻、提示上限、房主斷線換手、單人英文房間
+- 瀏覽器實測：兩個玩家同一個房間。
+  - 玩家 A 看到的玩家 B 位置跟 B 實際位置一致（誤差 0.01 公尺以內）。
+  - B 走了一小段路只送了 8 則位置訊息，站著 3 秒送 0 則。
+
+### 14-3 怎麼在本機試
+```
+cd tools && npm install && npm run build:plain
+cd .. && npx --prefix tools wrangler dev   # 打開 http://localhost:8787/?dev=名字
+```
+- 網址加 `?dev=名字` 可以不登入（只有本機有效），還會出現「測試作答」面板。
+- 開兩個瀏覽器分頁、用不同名字，就能測多人。
+
+### 14-4 正式上線要製作人做的事（第一次）
+1. Cloudflare 後台 → Workers & Pages → 建立 → 匯入 GitHub 儲存庫 **Kooomp**。
+2. Worker 名稱填 `milner`；Production branch 選 `main`；Build command 留空；Deploy command 填 `npx wrangler deploy`；Root directory 填 `/`。
+3. 之後每次推上 `main` 就會自動部署，網址會是 `https://milner.<你的帳號>.workers.dev/`。
+4. 要放上大廳時，再請你決定上架日期，由我們準備大廳 `games` 資料的內容。
+
+### 14-5 還沒做的（之後的批次）
+- 分院鏡問答（第 2 批）、正式場景與謎題畫面、角色模型換上（帳號二）、劇情系統、存檔與段落、守夜人與追逐。

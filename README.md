@@ -2,7 +2,9 @@
 
 夜語工作室原創・以米爾納學校（西方魔法學院）為舞台的第一人稱恐怖解謎網頁遊戲，1～4 人。
 
-目前在規劃階段。技術雛形（樣品教室）在 `prototype/`，說明見 [prototype/README.md](prototype/README.md)。
+目前在製作遊戲系統（第 1 批完成）。技術雛形（樣品教室）在 `prototype/`，說明見 [prototype/README.md](prototype/README.md)。
+
+本機試玩：`cd tools && npm install && npm run build:plain`，再 `npx --prefix tools wrangler dev`，打開 `http://localhost:8787/?dev=名字`。
 
 - [製作人確認過的決定](docs/DECISIONS.md)
 - [做法與規劃](docs/PLAN.md)
