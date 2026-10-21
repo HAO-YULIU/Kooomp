@@ -1,6 +1,6 @@
 // 判斷答案（只在伺服器執行）。題目資料見 data/puzzles/ch1.mjs。
 // 隨機的題目（P09、P21、救援題、自救題）用房間的亂數種子決定，同一個房間每次結果一樣，不同房間不同。
-import { CHAPTER1, RESCUE, SELF_RESCUE, HOUSE_HOUR } from '../data/puzzles/ch1.mjs';
+import { CHAPTER1, RESCUE, SELF_RESCUE, HOUSE_HOUR, BOOK_CIPHER, BRAILLE_DOOR } from '../data/puzzles/ch1.mjs';
 
 export const PUZZLES = { ...CHAPTER1, ...RESCUE, ...SELF_RESCUE };
 export const HOUSES = ['eldrin', 'grimoire', 'belmont', 'ouroboros'];
@@ -124,6 +124,18 @@ function rescueAnswer(pid, seed, key) {
     default: return null;
   }
 }
+
+// P14：書的某一頁（每頁 24 個字或詞）。答案的字放在指定位置，其他是隨機的填充文字
+const FILL_ZH = '的一是在不了有和人這中大為上個國我以要他時來用們生到作地於出就分對成會可主發年動同工也能下過子說產種面而方後多定行學法所民得經十三之進著等部度家電力裡如水化高自二理起小物現實加量都兩體制機當使點從業本去把性好應開它合還因由其些然前外天政四日那社義事平形相全表間樣與關各重新線內數正心反你明看原又麼利比或但質氣第向道命此變條只沒結解問意建月公無系軍很情者最立代想已通並提直題黨程展五果料象員革位入常文總次品式活設及管特件長求老頭基資邊流路級少圖山統接知較將組見計別她手角期根論運農指幾九區強放決西被幹做必戰先回則任取據處府研隊南給色光門即保治北造百規熱領七海口東導器壓志世金增爭濟階油思術極交受聯什認六共權收證改清己美再採轉更單風切打白教速花帶安場身車例真務具萬每目至達走積示議聲報鬥完類八離華名確才科張信馬節話米整空元況今集溫傳土許步群廣石記需段研界拉林律叫且究觀越織裝影算低持音眾書布復容兒須際商非驗連斷深難近礦千週委素技備半辦青省列習響約支般史感勞便團往酸歷市克何除消構府稱太準精值號率族維劃選標寫存候毛親快效斯院查江型眼王按格養易置派層片始卻專狀育廠京識適屬圓包火住調滿縣局照參紅細引聽該鐵價嚴';
+const FILL_EN = 'the of and a to in is was he for it with as his on be at by i had not are but from or have an they which one you were her all she there would their we him been has when who will more no if out so said what up its about into than them can only other new some could time these two may then do first any my now such like our over man me even most made after also did many before must through back years where much your way well down should because each just those people how too little state good very make world still own see men work long get here between both life being under never day same another know while last might us great old year off come since against go came right used take three'.split(' ');
+export function bookPage(seed, lang, book, page) {
+  const en = lang === 'en';
+  const r = rng(seed, `book:${book}:${page}`);
+  const words = Array.from({ length: 24 }, () => (en ? FILL_EN[Math.floor(r() * FILL_EN.length)] : FILL_ZH[Math.floor(r() * FILL_ZH.length)]));
+  for (const [b, p, w, word] of BOOK_CIPHER[en ? 'en' : 'zh']) if (b === book && p === page) words[w - 1] = en ? word.toLowerCase() : word;
+  return words;
+}
+export const brailleDoor = () => BRAILLE_DOOR;
 
 // P07 的燭光（摩斯密碼）：只送電腦控制的同伴那幾座塔
 const MORSE = ['-----', '.----', '..---', '...--', '....-', '.....', '-....', '--...', '---..', '----.'];

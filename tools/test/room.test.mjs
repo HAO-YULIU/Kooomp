@@ -221,3 +221,50 @@ test('製作人的測試登入：密碼對才能用，可以跳段', async () =>
   assert.equal(got.find((g) => g.t === 'hello').you, 'test-製作人');
   ws.close();
 });
+
+test('第三幕：道具、書本密碼、段落一段一段推進、西里爾的抉擇', async () => {
+  const code = await create('圖書館', 'solo');
+  const p = await player(code, '圖書館');
+  await p.request({ t: 'char', char: 'yuexi' }); await p.request({ t: 'ready', ready: true }); await p.request({ t: 'start' });
+  await p.request({ t: 'dev', segment: 'act3a' });
+  const ans = (pid, value) => p.request({ t: 'answer', pid, value });
+  assert.equal((await ans('P12', 'wind,fire,earth,water')).error, 'need_item'); // 要先拿到提燈
+  assert.equal((await p.request({ t: 'peek', pid: 'P12' })).error, 'need_item'); // 沒有燈看不到影子
+  assert.equal((await ans('P11', '257')).solved, true);
+  assert.ok((await p.wait((m) => m.t === 'state' && m.items.includes('lantern'))).items.includes('lantern'));
+  assert.deepEqual((await p.request({ t: 'peek', pid: 'P12' })).content.shadows, ['wind', 'fire', 'earth', 'water']);
+  assert.equal((await ans('P12', 'wind,fire,earth,water')).solved, true);
+  // 書本密碼：第 12 本第 3 頁第 7 個字是「鐘」（答案在伺服器產生的頁面裡）
+  const page = await p.request({ t: 'peek', pid: 'P14', value: { book: 12, page: 3 } });
+  assert.equal(page.content.words.length, 24); assert.equal(page.content.words[6], '鐘');
+  assert.equal((await ans('P13', 'done')).solved, true);
+  assert.equal((await ans('P14', '鐘在井底')).solved, true);
+  await p.wait((m) => m.t === 'state' && m.segment === 'act3b');
+  assert.equal((await p.request({ t: 'collect', item: 'note1' })).t, 'ok');
+  assert.equal((await p.request({ t: 'collect', item: 'mirror' })).error, 'bad_value'); // 道具不能自己撿
+  for (const [pid, v] of [['P15', '3141'], ['P16', 'XXXIII'], ['P17', '110111']]) assert.equal((await ans(pid, v)).solved, true, pid);
+  const s3c = await p.wait((m) => m.t === 'state' && m.segment === 'act3c');
+  assert.ok(s3c.solved.includes('P22')); assert.equal(s3c.flags.P22, 'hide'); // 沒人扮演西里爾：電腦替他收起徽章
+  assert.deepEqual(['chartpage', 'lantern', 'mirror', 'note1', 'note3'].every((i) => s3c.items.includes(i)), true);
+  // 天平：照方法秤兩次
+  let r = (await ans('P21', { weigh: { left: [0, 1, 2], right: [3, 4, 5] } })).reply.result;
+  const g = r === 'left' ? [0, 1, 2] : r === 'right' ? [3, 4, 5] : [6, 7, 8];
+  r = (await ans('P21', { weigh: { left: [g[0]], right: [g[1]] } })).reply.result;
+  assert.equal((await ans('P21', { pick: r === 'left' ? g[0] : r === 'right' ? g[1] : g[2] })).solved, true);
+  for (const [pid, v] of [['P18', 'b,l,i,g,h,t'], ['P19', 'done'], ['P20', 'done'], ['P23', '1,6,11,16,15,14,13'], ['P24', 'WELL']]) assert.equal((await ans(pid, v)).solved, true, pid);
+  assert.deepEqual((await p.request({ t: 'peek', pid: 'P24' })).content.cells.length, 4);
+  assert.equal((await ans('P25', '5,7,3')).solved, true);
+  assert.equal((await p.wait((m) => m.t === 'state' && m.segment === 'act4')).segment, 'act4');
+  p.close();
+});
+
+test('第三幕多人：西里爾的抉擇只有扮演西里爾的人能做', async () => {
+  const code = await create('西里爾');
+  const a = await player(code, '西里爾'), b = await player(code, '月晞');
+  await a.request({ t: 'char', char: 'cyril' }); await b.request({ t: 'char', char: 'yuexi' });
+  await a.request({ t: 'ready', ready: true }); await b.request({ t: 'ready', ready: true }); await a.request({ t: 'start' });
+  await a.request({ t: 'dev', segment: 'act3c' });
+  assert.equal((await b.request({ t: 'answer', pid: 'P22', value: 'show' })).error, 'not_yours');
+  assert.equal((await a.request({ t: 'answer', pid: 'P22', value: 'show' })).solved, true);
+  a.close(); b.close();
+});

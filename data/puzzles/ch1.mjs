@@ -9,6 +9,7 @@
 // solo / multi：只在單人或多人時出現
 // reveal：解開後只告訴作答者的資訊（例如宿舍門鎖的「時辰」，要自己轉告隊友）
 // gather：要全隊都站在這個區域才能作答
+// gives：解開後全隊拿到的東西（道具、莉安娜的筆記）；needs：要先有這個道具才能作答
 // diff：難度（6～10）；score:false 表示不計入難度比例
 // 數字題的 ans 一律寫成字串（作答時會先正規化）
 
@@ -68,12 +69,12 @@ export const CHAPTER1 = {
   },
 
   P11: {
-    seg: 'act3a', diff: 6, kind: 'text', ans: '257',
+    seg: 'act3a', diff: 6, kind: 'text', ans: '257', gives: 'lantern',
     hints: H(['公告上有生還者的名字。', '名單上不在公告裡的人，就是沒有回來的人。', '沒有回來的是 2、5、7 號。'],
              ['The notice lists the survivors.', 'Whoever is on the roster but not on the notice never came back.', 'Numbers 2, 5 and 7 never came back.']),
   },
   P12: {
-    seg: 'act3a', diff: 6, kind: 'seq', ans: 'wind,fire,earth,water',
+    seg: 'act3a', diff: 6, kind: 'seq', ans: 'wind,fire,earth,water', needs: 'lantern',
     hints: H(['柵門的裝飾看起來沒有意義，但它的影子有。', '地上有一個小小的圓形標記，站在那裡照。', '影子由左到右是風、火、土、水。'],
              ['The gate’s ornaments mean nothing — their shadows do.', 'There’s a small round mark on the floor. Shine from there.', 'Left to right the shadows are wind, fire, earth, water.']),
   },
@@ -89,17 +90,17 @@ export const CHAPTER1 = {
              ['Each group is: book, page, line, word.', 'Book numbers are on the spines. Read them while the lights are on.', 'It decodes to: THE BELL LIES IN THE WELL.']),
   },
   P15: {
-    seg: 'act3b', diff: 8, kind: 'text', ans: '3141',
+    seg: 'act3b', diff: 8, kind: 'text', ans: '3141', gives: 'note3',
     hints: H(['聲音太快了，而且好像是反過來的。', '兩個轉盤都要調。', '反轉，速度 0.5 倍。'],
              ['It’s too fast — and it sounds backwards.', 'You need to set both dials.', 'Reverse, at 0.5× speed.']),
   },
   P16: {
-    seg: 'act3b', diff: 7, kind: 'text', ans: ['33', 'XXXIII'],
+    seg: 'act3b', diff: 7, kind: 'text', ans: ['33', 'XXXIII'], gives: 'chartpage',
     hints: H(['先把羅馬數字換成數字：2、3、5、9、17。', '每一個數字跟前一個的關係都一樣。', '每次都是「乘以 2 減 1」：17×2－1＝33。'],
              ['Convert the numerals first: 2, 3, 5, 9, 17.', 'Each number relates to the one before in the same way.', 'Each time it’s “× 2 − 1”: 17 × 2 − 1 = 33.']),
   },
   P17: {
-    seg: 'act3b', diff: 9, kind: 'text', ans: '110111',
+    seg: 'act3b', diff: 9, kind: 'text', ans: '110111', gives: 'mirror',
     hints: H(['家書裡的「父親」「小女兒」是八卦裡的卦。', '父親是乾（三條實線），小女兒是兌（下面兩條實線，上面一條斷線）。', '六條橫槓要從下往上數：下卦兌，上卦乾。'],
              ['“Father” and “youngest daughter” in the letter are trigrams.', 'Father is Qian (three solid lines); youngest daughter is Dui (two solid below, one broken on top).', 'Count the six lines from the bottom: Dui below, Qian above.']),
   },
@@ -108,16 +109,15 @@ export const CHAPTER1 = {
     hints: H(['門要的是一個字，字母數跟門上的空格一樣是 6 個。', '莉安娜在筆記裡寫了一半的字母。把你們找到的四個符文換成字母，填進空格。', '這個字是 BLIGHT（魔蝕的古名），對應的符文是 ᛒ ᛚ ᛁ ᚷ ᚺ ᛏ。'],
              ['The door wants one word — six letters, like the six slots.', 'Liana wrote half the letters in her notes. Turn your four runes into letters and fill the gaps.', 'The word is BLIGHT: ᛒ ᛚ ᛁ ᚷ ᚺ ᛏ.']),
   },
-  // P19、P20 的第三張提示要等關卡配置做好後對照修改
   P19: {
-    seg: 'act3c', diff: 8, kind: 'event', house: 'eldrin',
-    hints: H(['先放好銀色小鏡子，四座鏡座都要用到。', '從窗戶開始，一座一座往前調。', '第一座鏡子朝東南，第二座朝東北。'],
-             ['Place the small silver mirror first — all four stands are needed.', 'Start at the window and adjust one mirror at a time.', 'The first mirror faces south-east, the second north-east.']),
+    seg: 'act3c', diff: 8, kind: 'event', house: 'eldrin', needs: 'mirror',
+    hints: H(['先放好銀色小鏡子（第 4 座），四座鏡座都要用到。', '從窗戶開始，一座一座往前調；光要繞過石柱。', '第 1 座＝\\、第 2 座＝/、第 3 座＝/、第 4 座＝\\。'],
+             ['Place the small silver mirror first (stand 4) — all four stands are needed.', 'Start at the window and adjust one mirror at a time; the light must go around the pillars.', 'Stand 1 = \\, stand 2 = /, stand 3 = /, stand 4 = \\.']),
   },
   P20: {
     seg: 'act3c', diff: 6, kind: 'event', house: 'belmont',
-    hints: H(['石像只能推、不能拉。', '先推離門最遠的那座。', '先把最遠的那座往牆邊推兩格，再推中間那兩座。'],
-             ['Statues can be pushed, never pulled.', 'Start with the one farthest from the door.', 'Push the farthest one two squares toward the wall, then the middle two.']),
+    hints: H(['石像只能推、不能拉。', '每座石像正下方都有一個標記。', '先把下面那排的兩座往下推一格，再推上面那排的兩座。'],
+             ['Statues can be pushed, never pulled.', 'Each statue has a mark directly below it.', 'Push the bottom two statues down one square first, then the top two.']),
   },
   P21: {
     seg: 'act3c', diff: 8, kind: 'balance', house: 'ouroboros', count: 9, weighings: 2,
@@ -179,3 +179,11 @@ export const SELF_RESCUE = {
 
 // 學院的時辰（P03～P08、R3 用）
 export const HOUSE_HOUR = { eldrin: 8, grimoire: 11, belmont: 9, ouroboros: 3 };
+
+// P14 書本密碼：哪本書、哪一頁、第幾個字（英文版是第幾個詞）是答案的字。其他位置由伺服器隨機產生填充文字
+export const BOOK_CIPHER = {
+  zh: [[12, 3, 7, '鐘'], [4, 41, 2, '在'], [9, 88, 15, '井'], [4, 41, 9, '底']],
+  en: [[12, 3, 7, 'THE'], [4, 41, 2, 'BELL'], [9, 88, 15, 'LIES'], [4, 41, 9, 'IN'], [7, 19, 4, 'THE'], [2, 57, 11, 'WELL']],
+};
+// P24 門把上的四格點字（WELL）
+export const BRAILLE_DOOR = [[2, 4, 5, 6], [1, 5], [1, 2, 3], [1, 2, 3]];

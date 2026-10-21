@@ -54,10 +54,16 @@ async function load(url) {
   if (!cache.has(url)) cache.set(url, fetch(url).then((r) => r.arrayBuffer()).then((b) => ac().decodeAudioData(b)).catch(() => null));
   return cache.get(url);
 }
-export async function playFile(url, { volume = 0.6, loop = false } = {}) {
+// reverse：倒著播；rate：速度（0.5＝慢一倍，音也會變低）——P15 的留聲水晶用
+export async function playFile(url, { volume = 0.6, loop = false, reverse = false, rate = 1 } = {}) {
   try { ac(); } catch { return null; }
-  const buf = await load(url); if (!buf) return null;
-  const src = ctx.createBufferSource(); src.buffer = buf; src.loop = loop;
+  let buf = await load(url); if (!buf) return null;
+  if (reverse) {
+    const rev = ctx.createBuffer(buf.numberOfChannels, buf.length, buf.sampleRate);
+    for (let ch = 0; ch < buf.numberOfChannels; ch++) rev.getChannelData(ch).set(Float32Array.from(buf.getChannelData(ch)).reverse());
+    buf = rev;
+  }
+  const src = ctx.createBufferSource(); src.buffer = buf; src.loop = loop; src.playbackRate.value = rate;
   const g = ctx.createGain(); g.gain.value = volume; src.connect(g).connect(master); src.start();
   return { stop: () => { try { src.stop(); } catch { /* 已停止 */ } } };
 }

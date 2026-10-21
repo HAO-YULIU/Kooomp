@@ -89,6 +89,48 @@ export const SCRIPT = {
     ['elora', '……就是這裡。往下。', '…This is it. Down.'],
   ],
 
+  // ---- 第三幕：沉眠圖書館 ----
+  'segment:act3a': [
+    [null, '你們沿著北翼樓梯一路往下。空氣越來越冷，牆上的火把一盞接一盞熄滅。', 'You follow the North Wing stairs down and down. The air grows colder; the torches go out one by one.'],
+    ['vaughn', '這裡……是圖書館？', 'Is this… a library?'],
+  ],
+  'enter:lib_entry': [
+    [null, '地上有乾掉的血跡，一路被拖向深處。', 'Dried blood streaks the floor, dragged toward the depths.'],
+    [null, '血跡的盡頭躺著一個人——去年搜救隊的高年級生。他的下半身已經結晶化，和地板長在一起；上半身被啃過，肋骨露在外面，手裡還緊握著提燈。', 'At the end of the trail lies a body — a senior from last year’s search party. Below the waist he has crystallized into the floor; above it, he has been gnawed, his ribs bared, a lantern still clenched in his hand.'],
+    ['elora', '……搜救隊。他們真的下來過。', '…The search party. They really came down here.'],
+    [null, '（入口的柵門鎖著。先查查四周。）', '(The gate is locked. Search the room first.)'],
+  ],
+  'solved:P11': [[null, '箱子打開了，裡面是一盞搜救用的提燈。', 'The case opens. Inside is a search-party lantern.']],
+  'solved:P12': [[null, '影子對上了。柵門緩緩升起，後面是一整片高聳的書架。', 'The shadows align. The gate grinds upward, revealing towering shelves.']],
+  'enter:lib_maze': [
+    [null, '書架高得看不到頂。書頁上長出了黑色的紋路，空氣裡飄著細細的黑灰。', 'The shelves vanish into darkness above. Black veins grow across the pages; fine black ash drifts in the air.'],
+    [null, '（燈會定時熄滅。熄燈之後，書架會移動。）', '(The lamps go out at intervals. When they do, the shelves move.)'],
+  ],
+  'solved:P13': [[null, '你們找到了出口。身後的書架在黑暗中又移動了一次。', 'You find the way out. Behind you, the shelves shift once more in the dark.']],
+  'enter:lib_reading': [
+    ['yuexi', '閱覽室……這些書還在自己翻頁。', 'The reading room… the books are still turning their own pages.'],
+    [null, '角落的水晶發出微弱的聲音，像有人在說話。', 'A crystal in the corner murmurs faintly, like someone speaking.'],
+  ],
+  'solved:P15': [[null, '抽屜裡是莉安娜筆記的第三頁。', 'Inside the drawer is the third page of Liana’s notes.']],
+  'solved:P16': [[null, '夾在第 33 頁裡的，是一張符文表殘頁。', 'Pressed between the pages is a fragment of a rune chart.']],
+  'solved:P17': [[null, '抽屜裡是一面銀色的小鏡子。', 'Inside the drawer is a small silver mirror.']],
+  'segment:act3c': [[null, '閱覽室深處的門，自己打開了。', 'At the far end of the reading room, a door opens by itself.']],
+  'enter:lib_ante': [
+    [null, '一扇刻滿盧恩符文的大門。門後傳來像心跳一樣的聲音。', 'A great door carved with runes. From behind it comes a sound like a heartbeat.'],
+    [null, '角落裡有什麼東西在發亮。', 'Something glints in the corner.'],
+  ],
+  'solved:P18': [[null, '符文一個接一個亮起，大門開了一條縫。門後是一片漆黑。', 'The runes light one after another, and the door opens a crack. Beyond it is pitch black.']],
+  'solved:P24': [[null, '門開了。冷風從底下吹上來。', 'The door opens. Cold air rises from below.']],
+  'enter:lib_well': [[null, '井室。一口很深的井，井底傳來低沉的鐘聲。', 'The well chamber. A deep well; from its bottom comes a low tolling.']],
+  'solved:P25': [
+    [null, '三個圓環咬合，井蓋打開了。井口邊緣卡著一枚髮夾。', 'The three rings lock, and the well cover opens. A hairpin is caught on the rim.'],
+    ['elora', '（撿起髮夾）……這是姊姊的。', '(picking up the hairpin) …This is my sister’s.'],
+    [null, '艾洛拉往井邊衝過去，沃恩一把拉住她。', 'Elora lunges toward the well; Vaughn catches her arm.'],
+    ['elora', '我姊姊……她在這裡。對不起，是我帶大家來的。我只是想找到她。', 'My sister… she’s here. I’m sorry — I brought you all here. I just wanted to find her.'],
+    ['vaughn', '……沒事。我們一起找。', '…It’s all right. We’ll find her together.'],
+    [null, '就在這時，鐘塔的鐘聲從頭頂傳來。十二響之後——還有一響。', 'Then the clock tower tolls above. Twelve strokes — and then one more.'],
+  ],
+
 };
 
 // 分院鏡的問答（P01）：每題四個選項，依序對應 艾爾德林、格里莫瓦、貝爾蒙特、烏洛波斯
