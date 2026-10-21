@@ -58,7 +58,7 @@ export async function loadWardenModel() {
 decorators.npc.push(({ key, group }) => {
   if (key !== 'warden') return;
   loadWardenModel().then((w) => {
-    for (const c of group.children) if (c.isMesh) c.visible = false; // 灰盒藏起來，燈光留著
+    group.traverse((c) => { if (c.isMesh) c.visible = false; }); // 灰盒（含肋骨那一組）藏起來，燈光留著
     group.add(w.root);
     let told = false, last = null, speed = 0;
     const clock = new THREE.Clock();

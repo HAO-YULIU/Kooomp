@@ -17,13 +17,21 @@ c.talk(秒數); c.setMood('calm' | 'smile' | 'scared');
 ## 目前的檔案大小
 | 角色 | 大小 | 說明 |
 |---|---|---|
-| elora 艾洛拉 | 4.1 MB | 有骨架、表情、JK 制服＋大衣 |
-| yuexi 月晞 | 4.0 MB | 同上 |
-| vaughn 沃恩 | 2.2 MB | 有骨架、表情、男生制服＋大衣 |
-| cyril 西里爾 | 0.6 MB | 沒有骨架（不會轉頭、眨眼），制服＋大衣 |
+| elora 艾洛拉 | 4.3 MB | 有骨架、表情、JK 制服＋大衣 |
+| yuexi 月晞 | 4.2 MB | 同上 |
+| vaughn 沃恩 | 2.4 MB | 有骨架、表情、男生制服＋大衣 |
+| cyril 西里爾 | 0.8 MB | 沒有骨架（不會轉頭、眨眼），制服＋大衣 |
+| helga 赫爾嘉夫人 | 3.2 MB | 有骨架、表情、長大衣、艾洛拉的短捲髮＋眼鏡 |
+| knox 諾克斯 | 3.2 MB | 有骨架、表情、長大衣 |
 | moray 副校長 | 0.3 MB | 沒有骨架 |
 | aldric 校長 | 0.25 MB | 沒有骨架 |
-| helga、knox | 製作中 | |
+| warden 守夜人（蝕化後） | 0.2 MB | 有骨架、待機／走路／跑步／撲抓四個動作（見下面「守夜人」） |
+
+## 守夜人
+`game/src/art/warden.mjs` 用美術掛鉤 `decorators.npc`（key＝`warden`）把 `game/src/world/warden.mjs` 的灰盒換成正式模型，綠色的光（玩法用）不動。
+動作照 AI 狀態：`idle`、`stun` → 待機；`patrol`、`search` → 走路；`chase` → 跑步；`grab` → 撲抓。
+測試頁：在儲存庫根目錄開伺服器，開 `prototype/warden-game.html#chase`（`#patrol`、`#grab`、`#auto`）。
+守夜人用 `prototype/bake-warden.html` 烘焙。
 
 ## 怎麼重新烘焙（帳號二）
 1. 在 `prototype/` 開伺服器，用瀏覽器開 `bake.html`（加 `window.JOB = { key, tex }`，用 Playwright 跑，見帳號二的工作紀錄），存成 `<代號>_raw.glb`。
@@ -40,4 +48,6 @@ c.talk(秒數); c.setMood('calm' | 'smile' | 'scared');
    ```
    每一格對看得見的角色呼叫 `g.userData.char?.update(dt, camera.position)`；有移動就 `setMoving(速度)`。
    赫爾嘉夫人用 `loadCharacter('helga')`。
-3. 手機效能：同一個畫面裡的角色建議 4 個以內。
+3. **註冊美術掛鉤**：在蓋場景、建立守夜人之前 `import '../art/index.mjs';`（例如放在 `world.mjs` 最上面）。沒有這行，守夜人還是灰盒。
+4. **守夜人的動作**：`game/src/world/warden.mjs` 的 `frame(dt, mode)` 最後加一行 `g.userData.update?.(dt, mode);`，動作就會照 AI 狀態（撲抓也會播）。沒加的話，模型自己看移動速度選走路／跑步，不會撲抓。
+5. 手機效能：同一個畫面裡的角色建議 4 個以內。
