@@ -152,21 +152,27 @@ export function buildRobe(B, spec = {}) {
       const Sx = B.arms[side]; // [肩膀, 手肘, 手腕]
       const pts = []; for (let k = 0; k < 2; k++) { const A = Sx[k], E = Sx[k + 1], L = A.distanceTo(E); for (let t = 0; t < L; t += 0.02) pts.push({ c: A.clone().lerp(E, t / L), d: E.clone().sub(A).normalize() }); }
       pts.push({ c: Sx[2].clone(), d: Sx[2].clone().sub(Sx[1]).normalize() });
-      let prev = null;
-      pts.forEach(({ c, d }, j) => {
+      // 先量每一圈，再沿著手臂抹平、截面弄圓一點（低面數的模型點很少，不抹平會一節一節的）
+      const frames = pts.map(({ c, d }) => {
         const u = new THREE.Vector3().crossVectors(d, new THREE.Vector3(0, 0, 1)).normalize(), vv = new THREE.Vector3().crossVectors(u, d);
         const r = new Float32Array(segsA).fill(-1);
         for (let w = 0; w < W; w++) {
           if (region[w] !== 1) continue;
-          const q = new THREE.Vector3(PX(w), PY(w), PZ(w)).sub(c), along = q.dot(d); if (Math.abs(along) > 0.015) continue;
+          const q = new THREE.Vector3(PX(w), PY(w), PZ(w)).sub(c), along = q.dot(d); if (Math.abs(along) > 0.03) continue;
           const x = q.dot(u), y = q.dot(vv), rad = Math.hypot(x, y); if (rad > 0.12) continue;
           const k = ((Math.round((Math.atan2(y, x) / (Math.PI * 2)) * segsA) % segsA) + segsA) % segsA; if (rad > r[k]) r[k] = rad;
         }
         let mx = 0; for (const v of r) mx = Math.max(mx, v); for (let k = 0; k < segsA; k++) if (r[k] < 0) r[k] = mx > 0 ? mx : 0.045;
-        const flareNow = sleeveFlare * sm(0.22, 0.0, c.distanceTo(Sx[2])), cuff = j >= pts.length - 2;
+        const mean = r.reduce((a, b) => a + b, 0) / segsA; for (let k = 0; k < segsA; k++) r[k] = Math.max(r[k] * 0.4 + mean * 0.6, mean * 0.9);
+        return { c, u, vv, r };
+      });
+      for (let it = 0; it < 4; it++) for (let j = 1; j < frames.length - 1; j++) for (let k = 0; k < segsA; k++) frames[j].r[k] = (frames[j - 1].r[k] + frames[j].r[k] * 2 + frames[j + 1].r[k]) / 4;
+      let prev = null;
+      frames.forEach(({ c, u, vv, r }, j) => {
+        const flareNow = sleeveFlare * sm(0.22, 0.0, c.distanceTo(Sx[2])), cuff = j >= frames.length - 2;
         const row = [];
         for (let k = 0; k <= segsA; k++) {
-          const a = (k / segsA) * Math.PI * 2, rr = Math.max(r[k % segsA], (r[(k + segsA - 1) % segsA] + r[(k + 1) % segsA]) / 2) + off + flareNow;
+          const a = (k / segsA) * Math.PI * 2, rr = r[k % segsA] + off + flareNow;
           const p = c.clone().addScaledVector(u, Math.cos(a) * rr).addScaledVector(vv, Math.sin(a) * rr);
           row.push(vert(p.x, p.y, p.z, cuff ? trim : color, rigid(0)));
         }
