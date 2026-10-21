@@ -13,6 +13,11 @@
 - 製作人新確認的決定寫進 `docs/DECISIONS.md`（附日期）。
 - commit、推上自己的分支，再合併進 `main`（先合併最新的 `main` 進來、解決衝突）。
 
+## 兩個帳號的分工（2026-10-21 製作人確認）
+- 帳號一（`claude/loving-brahmagupta-mhxt6t`）：伺服器（`supabase/`）、遊戲資料與謎題（`data/`）、房間與同步、作答、劇情系統（`game/src/net/`、`game/src/logic/`）、build 與發佈、測試（`tools/`）。
+- 帳號二（`claude/sweet-goldberg-nklgb6`）：角色模型與動畫、場景美術、守夜人外型與蝕化演出、魔杖（`game/src/art/`、`game/models/`、`prototype/`）。
+- 共用的資料格式（例如場景裡謎題物件的位置）由帳號一先定，帳號二照格式擺放。要動對方的資料夾，先在 PROGRESS.md 講好。
+
 ## 開發方式
 - 依 `docs/PLAN.md` 的階段進行，**每個階段做完都停下來等製作人確認**，確認後才進入下一階段。
 - 跟製作人溝通用繁體中文，用詞淺白，不要用太多工程術語。
