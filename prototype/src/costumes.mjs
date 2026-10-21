@@ -6,4 +6,7 @@ export const COSTUMES = {
   yuexi: { cloak: false, outfit: [{ name: 'jk', hue: 352, sat: 1.4, light: 0.55, noSleeves: true }, { name: 'coat', colorize: '#6a2028', puff: 0.03 }] }, // 格里莫瓦：深紅格子、酒紅大衣
   cyril: { outfit: [{ name: 'boy', noSleeves: true }, { name: 'coat', colorize: '#28463a', puff: 0.03 }] }, // 烏洛波斯：墨綠大衣（西里爾沒有骨架，衣服直接固定）
   vaughn: { cloak: false, outfit: [{ name: 'boy', noSleeves: true }, { name: 'coat', colorize: '#4a4030', puff: 0.03 }] }, // 貝爾蒙特：深褐近黑的大衣
+  // 老師：長大衣套裝（外套＋襯衫＋長褲）
+  helga: { cloak: false, outfit: [{ name: 'coatFull', colorize: '#55555e', puff: 0.012 }] }, // 舍監：灰色
+  knox: { cloak: false, outfit: [{ name: 'coatFull', colorize: '#2c4434', puff: 0.012 }] }, // 魔藥學教授：墨綠
 };

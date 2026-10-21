@@ -9,7 +9,8 @@
 - `claude/loving-brahmagupta-mhxt6t`：遊戲系統第 4 批（第三幕：沉眠圖書館 P11～P25）——`server/`、`data/`、`game/src/data/`、`game/src/world/library.mjs`、`game/src/logic/`、`game/src/ui/`、`tools/test/`。
 
 
-- `claude/sweet-goldberg-nklgb6`： 角色模型壓到每個 5MB 以下、放進 `game/models/`，並在 `game/src/art/` 提供載入角色的程式，給遊戲換掉隊友的簡單人形。不會動 `game/src/` 其他資料夾。
+- `claude/sweet-goldberg-nklgb6`：角色模型壓到每個 5MB 以下、放進 `game/models/chars/`，並在 `game/src/art/characters.mjs` 提供載入角色的程式。不會動 `game/src/` 其他資料夾。
+  - **請帳號一**：照 `game/src/art/README.md` 的兩點，(1) `tools/build.mjs` 複製 `game/models/` 到 `dist/models/`；(2) `world.mjs` 的 `makeAvatar` 載入正式模型換掉簡單人形。
 
 
 ## 等製作人回答
