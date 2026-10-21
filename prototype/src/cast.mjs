@@ -33,7 +33,7 @@ const CAST = [
 
 const renderer = new THREE.WebGLRenderer({ canvas: $('view'), antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.enabled = !window.__noShadow; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1;
 const scene = new THREE.Scene(); scene.background = new THREE.Color('#0a0b10'); scene.fog = new THREE.Fog('#0a0b10', 6, 18);
 const camera = new THREE.PerspectiveCamera(32, 1, 0.05, 60);

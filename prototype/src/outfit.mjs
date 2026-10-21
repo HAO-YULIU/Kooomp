@@ -177,7 +177,8 @@ export async function wearOutfit(ctx, spec) {
   // ---------- 身體每個點是哪個部位：0 軀幹、1 手臂、2 手、3 腿 ----------
   const vreg = new Uint8Array(n);
   if (skinned) {
-    const reg = body.skeleton.bones.map((bn) => (/(Hand|Finger|Thumb|Index|Mid\d|Ring|Pinky)/i.test(bn.name) ? 2 : /(Upperarm|Forearm|Elbow)/i.test(bn.name) ? 1 : /(Thigh|Calf|Knee|Foot|Toe|Ankle)/i.test(bn.name) ? 3 : 0));
+    const reg = body.skeleton.bones.map((bn) => (/(Thigh|Calf|Knee|Foot|Toe|Ankle)/i.test(bn.name) ? 3 : /(Hand|Finger|Thumb|Index|Mid\d|Ring|Pinky)/i.test(bn.name) ? 2 : /(Upperarm|Forearm|Elbow)/i.test(bn.name) ? 1 : 0)); // 腳趾（IndexToe…）先判斷成腿
+    if (window.__outfitDebug === 2) console.error('骨頭 ' + body.skeleton.bones.map((b, i) => (reg[i] ? reg[i] + ':' : '') + b.name.replace(/^.*_Base_/, '')).join(' '));
     const bi0 = body.geometry.attributes.skinIndex, bw0 = body.geometry.attributes.skinWeight;
     for (let i = 0; i < n; i++) { let best = 0, bk = 0; for (let k = 0; k < 4; k++) { const w = bw0.getComponent(i, k); if (w > best) { best = w; bk = bi0.getComponent(i, k); } } vreg[i] = reg[bk]; }
   } else { // 沒有骨架：看離手臂（肩膀→手肘→手腕）、手（手腕再往下 18 公分）的線多近
@@ -276,7 +277,7 @@ export async function wearOutfit(ctx, spec) {
     const m = skinned ? new THREE.SkinnedMesh(g, mat) : new THREE.Mesh(g, mat); m.castShadow = m.receiveShadow = true; m.frustumCulled = false;
     holder.add(m); m.updateMatrixWorld(true);
     // 用「現在的姿勢」當衣服的綁定姿勢：之後骨頭怎麼動，衣服就跟著動
-    if (skinned) m.bind(new THREE.Skeleton(body.skeleton.bones), m.matrixWorld);
+    if (skinned) { m.normalizeSkinWeights(); m.bind(new THREE.Skeleton(body.skeleton.bones), m.matrixWorld); } // 身體的權重有的加起來不是 1（只留 4 個），不補成 1 的話衣服會被拉進去或推出來
     meshes.push(m);
   }
 
@@ -292,10 +293,11 @@ export async function wearOutfit(ctx, spec) {
     const { geometry: g, material } = buildRobe({ posed, pnorm, wid, W, wnb, n, TRI, region: wreg, skinned, bones: skinned ? body.skeleton.bones : [],
       bw: body.geometry.attributes.skinWeight, bi: body.geometry.attributes.skinIndex, cx, neckY: neck.y, hipY: hip.y, hands: [wristL, wristR], arms: [[shL, elL, wristL], [shR, elR, wristR]], innerH }, spec);
     if (window.__outfitTint?.robe) { material.vertexColors = false; material.color.set(window.__outfitTint.robe); }
+    if (window.__noNormalMap) { material.normalMap = null; material.needsUpdate = true; }
     const p = g.attributes.position; for (let i = 0; i < p.count; i++) clothPts.push(p.getX(i), p.getY(i), p.getZ(i));
-    const m = skinned ? new THREE.SkinnedMesh(g, material) : new THREE.Mesh(g, material); m.castShadow = m.receiveShadow = true; m.frustumCulled = false;
+    const robeSkin = skinned && !window.__robeStatic; const m = robeSkin ? new THREE.SkinnedMesh(g, material) : new THREE.Mesh(g, material); m.castShadow = m.receiveShadow = true; m.frustumCulled = false;
     holder.add(m); m.updateMatrixWorld(true);
-    if (skinned) m.bind(new THREE.Skeleton(body.skeleton.bones), m.matrixWorld);
+    if (robeSkin) { m.normalizeSkinWeights(); m.bind(new THREE.Skeleton(body.skeleton.bones), m.matrixWorld); } // 身體的權重有的加起來不是 1（只留 4 個），不補成 1 的話衣服會被拉進去或推出來
     meshes.push(m);
   }
 

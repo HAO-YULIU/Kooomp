@@ -7,23 +7,21 @@ import * as THREE from 'three';
 
 const sm = (a, b, x) => { const t = THREE.MathUtils.clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 
-// 布紋：細的斜紋＋一點雜訊，做成法線貼圖（可以重複鋪）
+// 布紋：細的斜紋＋一點雜訊，做成顏色貼圖（灰階，乘上袍子的顏色）。
+// 不用法線貼圖：貼圖座標是照位置算的，胸部這種彎曲的地方算出來的方向會亂掉，看起來像凸起
 let fabricTex = null;
-function fabricNormal() {
+function fabricColor() {
   if (fabricTex) return fabricTex;
   const S = 256, c = document.createElement('canvas'); c.width = c.height = S;
-  const g = c.getContext('2d'), d = g.createImageData(S, S), hgt = new Float32Array(S * S);
+  const g = c.getContext('2d'), d = g.createImageData(S, S);
   for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
     const twill = Math.sin(((x + y) / S) * Math.PI * 2 * 48) * 0.5 + Math.sin((x / S) * Math.PI * 2 * 96) * 0.15;
-    hgt[y * S + x] = twill + (Math.sin(x * 12.9898 + y * 78.233) * 43758.5453 % 1) * 0.3;
-  }
-  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
-    const h = (xx, yy) => hgt[((yy + S) % S) * S + ((xx + S) % S)];
-    const dx = (h(x + 1, y) - h(x - 1, y)) * 0.6, dy = (h(x, y + 1) - h(x, y - 1)) * 0.6, l = Math.hypot(dx, dy, 1), i = (y * S + x) * 4;
-    d.data[i] = (-dx / l * 0.5 + 0.5) * 255; d.data[i + 1] = (-dy / l * 0.5 + 0.5) * 255; d.data[i + 2] = (1 / l * 0.5 + 0.5) * 255; d.data[i + 3] = 255;
+    const noise = (Math.abs(Math.sin(x * 12.9898 + y * 78.233) * 43758.5453) % 1) - 0.5;
+    const v = Math.round(255 * (0.9 + twill * 0.05 + noise * 0.05)), i = (y * S + x) * 4;
+    d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 255;
   }
   g.putImageData(d, 0, 0);
-  fabricTex = new THREE.CanvasTexture(c); fabricTex.wrapS = fabricTex.wrapT = THREE.RepeatWrapping; fabricTex.anisotropy = 4;
+  fabricTex = new THREE.CanvasTexture(c); fabricTex.wrapS = fabricTex.wrapT = THREE.RepeatWrapping; fabricTex.anisotropy = 4; fabricTex.colorSpace = THREE.SRGBColorSpace;
   return fabricTex;
 }
 
@@ -38,7 +36,7 @@ function fabricNormal() {
 export function buildRobe(B, spec = {}) {
   const { posed, pnorm, wid, W, wnb, TRI, region, bones, bw, bi, skinned, cx, neckY, hipY, hands } = B; // B.arms：沒有骨架時兩隻手的 [肩膀, 手肘, 手腕] // region：每個身體節點是 0 軀幹、1 手臂、2 手、3 腿
   const color = new THREE.Color(spec.color ?? '#2a2a33'), trim = new THREE.Color(spec.trim ?? '#b8902e');
-  const off = spec.off ?? (B.skinned ? 0.016 : 0.024), hemY = hipY * (spec.hem ?? 0.12), flare = spec.flare ?? 0.12, sleeveFlare = spec.sleeveFlare ?? 0;
+  const off = window.__robeOff ?? spec.off ?? (B.skinned ? 0.016 : 0.024), hemY = hipY * (spec.hem ?? 0.12), flare = spec.flare ?? 0.12, sleeveFlare = spec.sleeveFlare ?? 0;
   const openTop = spec.openTop ?? 0.07, openWaist = spec.openWaist ?? 0.035, openHem = spec.openHem ?? 0.35;
 
   // ---------- 身體節點：位置、方向、主要跟哪根骨頭 ----------
@@ -75,6 +73,10 @@ export function buildRobe(B, spec = {}) {
       if (!isArm(w) && y > shellTop - 0.05 && Math.hypot(PX(w) - nx, PZ(w) - nz) < holeR) continue;
       keep[w] = 1;
     }
+    // 沒有連在身體上的小塊（例如胸部另外做的小零件）不要：抹平碰不到它們，會在袍子上凸出來
+    { const comp = new Int32Array(W).fill(-1), sizes = []; for (let w0 = 0; w0 < W; w0++) { if (!keep[w0] || comp[w0] >= 0) continue; const id = sizes.length, st = [w0]; comp[w0] = id; let c = 0; while (st.length) { const w = st.pop(); c++; for (const o of wnb[w]) if (keep[o] && comp[o] < 0) { comp[o] = id; st.push(o); } } sizes.push(c); }
+      const big = Math.max(...sizes, 0); let dropped = 0; for (let w = 0; w < W; w++) if (keep[w] && sizes[comp[w]] < big * 0.05) { keep[w] = 0; dropped++; }
+      if (window.__outfitDebug) console.error('robe parts ' + JSON.stringify(sizes.filter((x) => x > 0).sort((a, b) => b - a).slice(0, 8)) + ' dropped ' + dropped); }
     // 先把身體本身抹平（去掉鎖骨、胸部、肋骨這些細節）當基準；再往外推 off（裡面有衣服就在衣服外面一點，但最多 3.5 公分，
     // 手臂不管裡面那件：袖子剪掉了），再抹一次。抹平用一推一拉的方法，不會越抹越瘦
     const inH = B.innerH ?? new Float32Array(W).fill(-Infinity);
@@ -86,14 +88,43 @@ export function buildRobe(B, spec = {}) {
         X.set(T);
       }
     };
-    const Pb = new Float32Array(W * 3); for (let w = 0; w < W; w++) if (keep[w]) for (let k = 0; k < 3; k++) Pb[w * 3 + k] = posed[rep[w] * 3 + k];
-    smoothField(Pb, 60); // 抹得多一點：胸部的細節（乳頭這種小凸起）才會完全消失
+    // 用真實距離抹平：每個點換成「3 公分內所有點的平均」（方向用 4 公分內的平均）。
+    // 身體網格有的地方很密（胸部），用「跟旁邊幾個點平均幾次」只抹得到幾公釐，乳頭這種細節會留在袍子上
+    const cell = 0.03, gmap = new Map(), gk = (x, y, z) => `${Math.floor(x / cell)},${Math.floor(y / cell)},${Math.floor(z / cell)}`;
+    for (let w = 0; w < W; w++) if (keep[w]) { const k = gk(PX(w), PY(w), PZ(w)); let a = gmap.get(k); if (!a) gmap.set(k, (a = [])); a.push(w); }
+    const around = (x, y, z, R, fn) => { const r = Math.ceil(R / cell), x0 = Math.floor(x / cell), y0 = Math.floor(y / cell), z0 = Math.floor(z / cell);
+      for (let i = -r; i <= r; i++) for (let j = -r; j <= r; j++) for (let k = -r; k <= r; k++) { const a = gmap.get(`${x0 + i},${y0 + j},${z0 + k}`); if (!a) continue; for (const o of a) { const d = Math.hypot(PX(o) - x, PY(o) - y, PZ(o) - z); if (d < R) fn(o, d); } } };
+    const Pb = new Float32Array(W * 3), Nn = new Float32Array(W * 3);
+    for (let w = 0; w < W; w++) {
+      if (!keep[w]) continue;
+      const x = PX(w), y = PY(w), z = PZ(w), arm = isArm(w); let sw = 0; const sp = [0, 0, 0], sn = [0, 0, 0];
+      around(x, y, z, 0.04, (o, d) => {
+        if (isArm(o) !== arm) return; // 手臂跟身體分開抹（手臂垂在身體旁邊，混在一起會黏起來）
+        const wt = 1 - d / 0.04, r = rep[o] * 3;
+        for (let k = 0; k < 3; k++) sn[k] += pnorm[r + k] * wt;
+        if (d < 0.03) { const wp = 1 - d / 0.03; for (let k = 0; k < 3; k++) sp[k] += posed[r + k] * wp; sw += wp; }
+      });
+      for (let k = 0; k < 3; k++) Pb[w * 3 + k] = sw ? sp[k] / sw : posed[rep[w] * 3 + k];
+      const l = Math.hypot(sn[0], sn[1], sn[2]) || 1; for (let k = 0; k < 3; k++) Nn[w * 3 + k] = sn[k] / l;
+    }
     const S = new Float32Array(W * 3);
-    for (let w = 0; w < W; w++) if (keep[w]) { const r = rep[w] * 3, d = want(w); for (let k = 0; k < 3; k++) S[w * 3 + k] = Pb[w * 3 + k] + pnorm[r + k] * d; }
+    for (let w = 0; w < W; w++) if (keep[w]) { const d = want(w); for (let k = 0; k < 3; k++) S[w * 3 + k] = Pb[w * 3 + k] + Nn[w * 3 + k] * d; }
     smoothField(S, 6);
-    const outside = (w, base, h0) => { const r = rep[w] * 3; const h = (S[w * 3] - base[w * 3]) * pnorm[r] + (S[w * 3 + 1] - base[w * 3 + 1]) * pnorm[r + 1] + (S[w * 3 + 2] - base[w * 3 + 2]) * pnorm[r + 2]; if (h < h0) for (let k = 0; k < 3; k++) S[w * 3 + k] += pnorm[r + k] * (h0 - h); };
+    const outside = (w, base, h0, N = Nn) => { const h = (S[w * 3] - base[w * 3]) * N[w * 3] + (S[w * 3 + 1] - base[w * 3 + 1]) * N[w * 3 + 1] + (S[w * 3 + 2] - base[w * 3 + 2]) * N[w * 3 + 2]; if (h < h0) for (let k = 0; k < 3; k++) S[w * 3 + k] += N[w * 3 + k] * (h0 - h); };
     const skin = new Float32Array(W * 3); for (let w = 0; w < W; w++) for (let k = 0; k < 3; k++) skin[w * 3 + k] = posed[rep[w] * 3 + k];
-    for (let w = 0; w < W; w++) if (keep[w]) { outside(w, Pb, want(w) * 0.85); outside(w, skin, Math.max(0.004, isArm(w) ? 0 : Math.min(0.03, inH[w] + 0.004))); } // 最後保險：一定在皮膚、裡面衣服外面
+    // 一定要在皮膚、裡面衣服外面：先算每個點還差多少，把「差多少」往旁邊擴開、抹平，再整片推出去（只推那幾個點會在袍子上推出小凸起）
+    const lift = new Float32Array(W);
+    for (let w = 0; w < W; w++) if (keep[w]) {
+      const r = rep[w] * 3, h = (S[w * 3] - posed[r]) * pnorm[r] + (S[w * 3 + 1] - posed[r + 1]) * pnorm[r + 1] + (S[w * 3 + 2] - posed[r + 2]) * pnorm[r + 2];
+      lift[w] = Math.max(0, Math.max(0.002, isArm(w) ? 0 : Math.min(0.03, inH[w] + 0.004)) - h);
+    }
+    // 用真實距離（10 公分內）往旁邊擴；身體網格有的地方很密，用「幾圈點」來算範圍會太小
+    { const src = []; for (let w = 0; w < W; w++) if (keep[w] && lift[w] > 0.0005) src.push(w);
+      const out = new Float32Array(W), R = 0.1;
+      for (let w = 0; w < W; w++) { if (!keep[w]) continue; let m = 0; for (const j of src) { const d = Math.hypot(S[w * 3] - S[j * 3], S[w * 3 + 1] - S[j * 3 + 1], S[w * 3 + 2] - S[j * 3 + 2]); if (d < R) m = Math.max(m, lift[j] * sm(R, R * 0.4, d)); } out[w] = m; } // 4 公分內推一樣多（平的），再慢慢收
+      lift.set(out); }
+    for (let w = 0; w < W; w++) if (keep[w] && lift[w] > 0) for (let k = 0; k < 3; k++) S[w * 3 + k] += Nn[w * 3 + k] * lift[w];
+    if (!window.__noSkin) for (let w = 0; w < W; w++) if (keep[w]) outside(w, skin, 0.002, pnorm.length === W * 3 ? pnorm : Nn); // 最後保險（幾乎不會動到）
     // 喇叭袖：手腕附近往外放
     if (sleeveFlare > 0) for (let w = 0; w < W; w++) if (keep[w] && isArm(w)) { const f = sleeveFlare * sm(0.22, 0.02, handDist(w)), r = rep[w] * 3; for (let k = 0; k < 3; k++) S[w * 3 + k] += pnorm[r + k] * f; }
     // 開襟：沿著「離中線 openW」那條線把三角形切開（邊是直的，也不用移動點，不會陷進身體）
@@ -211,13 +242,13 @@ export function buildRobe(B, spec = {}) {
 
   // ---------- 腰以下 ----------
   const notArm = (w) => region[w] === 0 || region[w] === 3;
-  const topY = hipY + 0.03, step = 0.02, rings = [];
+  const topY = hipY + 0.08, step = 0.02, rings = []; // 從腰帶下面開始：接縫藏在腰帶後面
   let last = null, i = 0;
   for (let y = topY; y >= hemY - 1e-6; y -= step, i++) {
     const body = profile(y - 0.02, y + 0.02, notArm);
     const r = new Float32Array(K);
     for (let k = 0; k < K; k++) {
-      let v = body[k] > 0 ? body[k] + off * Math.min(1, 0.5 + i * 0.17) + 0.006 * Math.min(1, i / 3) : (last ? last[k] : 0.15); // 最上面幾圈收在上半身裡面，慢慢放出來
+      let v = body[k] > 0 ? body[k] + off * Math.min(1, 0.5 + i * 0.25) + 0.006 * Math.min(1, i / 2) : (last ? last[k] : 0.15); // 最上面兩圈收在上半身裡面（腰帶後面），再放出來
       if (last) v = Math.max(v, last[k] + flare * step); // 往下只會變寬
       r[k] = v;
     }
@@ -252,6 +283,7 @@ export function buildRobe(B, spec = {}) {
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   if (skinned) { g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(skI, 4)); g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(skW, 4)); }
   g.setIndex(idx); g.computeVertexNormals();
-  const mat = new THREE.MeshStandardMaterial({ name: 'robe', vertexColors: true, roughness: 0.88, side: THREE.DoubleSide, normalMap: fabricNormal(), normalScale: new THREE.Vector2(0.35, 0.35) });
+  if (window.__robeDump) (window.__robes ||= []).push({ pos: Array.from(pos), idx: Array.from(idx), nor: Array.from(g.attributes.normal.array), spec });
+  const mat = new THREE.MeshStandardMaterial({ name: 'robe', vertexColors: true, roughness: 0.88, side: THREE.DoubleSide, map: fabricColor(), shadowSide: THREE.BackSide }); // 用背面算影子，袍子自己身上才不會有條紋
   return { geometry: g, material: mat };
 }

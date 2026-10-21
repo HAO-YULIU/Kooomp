@@ -206,6 +206,7 @@ export function loadCC(scene, { body = 'male', house = { main: '#121214', trim: 
         const ctx = { holder, body: bodyMesh, bone }; // 同一個 ctx：外層會避開內層
         try { for (const spec of outfit) await wearOutfit(ctx, spec); } catch (e) { console.warn('穿衣服失敗', e); }
       }
+      if (window.__hideBody) o.getObjectByName(P + 'Body').visible = false; // 除錯用
       scene.add(holder);
 
       const head = bone('Head'), spine = chest, neck = bone('NeckTwist01'), neckPos = new THREE.Vector3();
