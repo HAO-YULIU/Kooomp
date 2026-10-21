@@ -6,6 +6,8 @@
 ## 進行中
 開始做一件事前在這裡登記；做完就移除。格式：`- 分支名稱：在做什麼（會動到的檔案或資料夾）`
 
+- `claude/loving-brahmagupta-mhxt6t`：遊戲系統第 3 批（第二幕：異常長廊 P09、創辦人畫像 P10）——`server/`、`data/`、`game/src/data/`、`game/src/world/corridor.mjs`、`game/src/world/sound.mjs`、`game/src/logic/`、`game/src/ui/`、`assets/audio/ch1/`、`tools/test/`。
+
 - `claude/sweet-goldberg-nklgb6`： 角色模型壓到每個 5MB 以下、放進 `game/models/`，並在 `game/src/art/` 提供載入角色的程式，給遊戲換掉隊友的簡單人形。不會動 `game/src/` 其他資料夾。
 
 
