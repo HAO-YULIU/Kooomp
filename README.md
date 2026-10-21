@@ -13,3 +13,4 @@
 - [階段三：第一章地圖](docs/04-map-ch1.md)
 - [階段四：第一章謎題（含答案）](docs/05-puzzles-ch1.md)
 - [第一章：錄音稿與童謠](docs/06-audio-ch1.md)
+- [階段五：遊戲系統規劃](docs/07-system.md)
