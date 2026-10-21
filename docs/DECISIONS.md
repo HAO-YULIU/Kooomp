@@ -101,6 +101,7 @@
 - **跟夜語工作室同一個 Supabase 專案**（escape-room 那個）。這個遊戲的資料表、函式都要加自己的前綴，不能動到其他遊戲的資料。
 - 遊戲代號（slug）`milner`，資料表與函式前綴 `ml_`（2026-10-21，製作人沒有反對）。
 - 發佈網址（2026-10-21）：Cloudflare Worker **`kooomp`**，https://kooomp.noron.workers.dev/ 。
+- 上架前的試玩（2026-10-21）：**製作人測試用登入**，密碼存在 Cloudflare 祕密 `TEST_PASS`，網址 `?test=密碼&name=名字`。
 - **上架大廳等第一章做得差不多再一起處理**（2026-10-21）：到時候在 Supabase `games` 新增一筆、escape-room 的 `HIDDEN` 先加 `milner`（未公開測試），都要先給製作人確認。
 
 ## 長度（2026-10-21）

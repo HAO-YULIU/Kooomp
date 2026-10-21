@@ -18,7 +18,7 @@ before(async () => {
   mkdirSync(join(ROOT, '.wrangler'), { recursive: true });
   const cfgPath = join(ROOT, '.wrangler/test.wrangler.json'); writeFileSync(cfgPath, JSON.stringify(cfg));
   worker = await unstable_dev(join(ROOT, 'server/worker.mjs'), {
-    config: cfgPath, vars: { DEV_AUTH: '1' }, experimental: { disableExperimentalWarning: true },
+    config: cfgPath, vars: { DEV_AUTH: '1', TEST_PASS: 'moon.light' }, experimental: { disableExperimentalWarning: true },
     logLevel: 'warn', persist: false, ip: '127.0.0.1',
   });
   base = `http://${worker.address}:${worker.port}`;
@@ -183,4 +183,20 @@ test('等待室裡離開的人會被移出，房主換人', async () => {
   const s = await b.wait((m) => m.t === 'state' && m.members.length === 1);
   assert.equal(s.host, b.uid);
   b.close();
+});
+
+test('製作人的測試登入：密碼對才能用，可以跳段', async () => {
+  const enc = (x) => encodeURIComponent(x).replace(/\./g, '%2E');
+  const post = (token) => fetch(`${base}/api/rooms`, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: '{"mode":"solo"}' });
+  assert.equal((await post(`test.${enc('wrong')}.${enc('製作人')}`)).status, 401);
+  const r = await post(`test.${enc('moon.light')}.${enc('製作人')}`);
+  assert.equal(r.status, 200);
+  const { code } = await r.json();
+  const ws = await new Promise((res, rej) => { const w = new WebSocket(`${base.replace('http', 'ws')}/api/rooms/${code}/ws`, ['milner', `test.${enc('moon.light')}.${enc('製作人')}`]); w.onopen = () => res(w); w.onerror = rej; });
+  const got = []; ws.onmessage = (e) => got.push(JSON.parse(e.data));
+  const ask = async (m) => { ws.send(JSON.stringify({ ...m, id: m.t })); for (let i = 0; i < 50; i++) { const x = got.find((g) => g.id === m.t); if (x) return x; await sleep(40); } };
+  await ask({ t: 'char', char: 'cyril' }); await ask({ t: 'ready', ready: true }); await ask({ t: 'start' });
+  assert.equal((await ask({ t: 'dev', segment: 'act1' })).t, 'ok');
+  assert.equal(got.find((g) => g.t === 'hello').you, 'test-製作人');
+  ws.close();
 });

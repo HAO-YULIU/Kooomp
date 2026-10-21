@@ -1,13 +1,13 @@
 // 《魔蝕milner》主程式（第 1 批）：18+ 提示 → 登入 → 選單 → 等待室 → 測試場景（隊友同步、聊天、標記、測試作答）。
 import { t, errText, getLang, setLang } from './logic/i18n.mjs';
 import { HOUSES, CHARS, charOfHouse } from './logic/chars.mjs';
-import { signIn, lobbyGate } from './net/platform.mjs';
+import { signIn, lobbyGate, testPanel, isTest } from './net/platform.mjs';
 import { createRoom, roomInfo, connectRoom } from './net/room.mjs';
 import { openSorting } from './ui/sorting.mjs';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
-const DEV = params.has('dev');
+const DEV = params.has('dev') || testPanel; // ?dev（本機）或測試登入加 &panel：顯示測試作答面板
 document.body.classList.toggle('touch', matchMedia('(pointer: coarse)').matches);
 
 // ---------- 畫面切換與文字 ----------
@@ -48,7 +48,7 @@ async function boot() {
 }
 
 // ---------- 選單 ----------
-const menuErr = (e) => { $('menu-err').textContent = e ? errText(e) : ''; };
+const menuErr = (e) => { $('menu-err').textContent = e ? errText(isTest && e === 'need_login' ? 'test_pass' : e) : ''; };
 async function create(mode) {
   menuErr();
   for (const b of ['btn-solo', 'btn-create', 'btn-join']) $(b).disabled = true;
@@ -158,7 +158,7 @@ function renderWait() {
   $('btn-start').hidden = state.host !== myUid;
   $('btn-start').onclick = async () => { const r = await conn.request({ t: 'start' }); $('wait-err').textContent = r.t === 'error' ? errText(r.error) : ''; };
 }
-$('btn-leave').onclick = () => { conn?.close(); conn = null; state = null; history.replaceState(null, '', location.pathname + (DEV ? `?dev=${params.get('dev')}` : '')); show('s-menu'); };
+$('btn-leave').onclick = () => { conn?.close(); conn = null; state = null; history.replaceState(null, '', location.pathname + (params.has('dev') ? `?dev=${params.get('dev')}` : '')); show('s-menu'); };
 
 // ---------- 遊戲 ----------
 let game = null, starting = false, pendingNotes = null;

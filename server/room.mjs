@@ -231,8 +231,8 @@ export class Room extends DurableObject {
         return reply({ t: 'hint', pid, n, text, by: uid });
       }
       case 'ping': return reply({ t: 'pong' });
-      case 'dev': { // 本機測試用：直接跳到某一段（正式環境沒有 DEV_AUTH，不能用）
-        if (this.env.DEV_AUTH !== '1' || !SEGMENTS.includes(msg.segment)) return err('bad_args');
+      case 'dev': { // 測試用：直接跳到某一段（本機，或製作人的測試登入）
+        if ((this.env.DEV_AUTH !== '1' && !uid.startsWith('test-')) || !SEGMENTS.includes(msg.segment)) return err('bad_args'); // 製作人的測試帳號也可以跳段
         r.segment = msg.segment; r.segAt = Date.now();
         await this.save(); this.broadcastState(); return reply({ t: 'ok' });
       }

@@ -183,3 +183,14 @@ cd .. && npx --prefix tools wrangler dev   # 打開 http://localhost:8787/?dev=�
 - 麥克風屏息、揮動手機施咒、手機掃 QR code 當魔杖：之後接上（帳號二的魔杖）。
 - P05 推標記目前只有文字描述，實際推動的動作等美術做好再接。
 - 第二幕起（異常長廊、圖書館、追逐）在第 3～5 批。
+
+## 16. 製作人測試用登入（2026-10-21）
+上架大廳之前，用這個方式在手機或電腦上試玩。
+1. Cloudflare 後台 → Workers & Pages → **kooomp** → **Settings（設定）** → **Variables and Secrets** → **Add**。
+2. Type 選 **Secret**，Variable name 填 **`TEST_PASS`**，Value 填你自己想的密碼（只有你知道），按 **Deploy／Save**。
+3. 試玩網址：`https://kooomp.noron.workers.dev/?test=你的密碼&name=你的名字`
+   - 多人：每個人用不同的 `name`，一個人建房間、其他人輸入房號加入。
+   - 想要測試作答面板（可以直接作答、看提示、跳段）：網址最後再加 `&panel`。跳段：題號填 `SEG`、值填 `act1`。
+4. 密碼讀完會立刻從網址拿掉，分享畫面時不會被看到；同一個分頁重新整理不用再輸入。
+- 沒有設定 `TEST_PASS` 時，這個登入方式完全不能用。上架後可以把 `TEST_PASS` 刪掉。
+- 測試帳號的代號是 `test-名字`，不會寫進大廳的帳號或紀錄。
