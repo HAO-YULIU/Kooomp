@@ -1,0 +1,22 @@
+<!doctype html><meta charset="utf-8"><title>場景美術測試</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}</style>
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js" } }</script>
+<!-- 帳號二的測試頁：用帳號一的灰盒（greybox.mjs）＋場景配置＋美術掛鉤蓋出第一章，從幾個位置看。從儲存庫根目錄開伺服器。
+     window.view(房間代號, x, z, yaw, pitch) 換位置。 -->
+<script type="module">
+import * as THREE from 'three';
+import '../game/src/art/index.mjs';
+import { buildWorld } from '../game/src/world/greybox.mjs';
+import { ROOMS, DOORS, THINGS } from '../game/src/data/world-ch1.mjs';
+const renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(innerWidth, innerHeight); document.body.appendChild(renderer.domElement);
+renderer.shadowMap.enabled = true; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = window.EXPO ?? 1.2;
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, 120); scene.add(camera);
+const world = buildWorld(scene, { rooms: ROOMS, doors: DOORS, things: THINGS });
+const lamp = new THREE.PointLight('#ffd9a0', 2.2, 7, 1.8); lamp.position.set(0.3, -0.2, -0.3); camera.add(lamp);
+window.view = (room, x, z, yaw = 0, pitch = 0) => {
+  world.lightRoom(room); camera.position.set(x, 1.6, z); camera.rotation.set(pitch, yaw, 0, 'YXZ'); renderer.render(scene, camera);
+  return { calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, texs: renderer.info.memory.textures };
+};
+window.ready = true;
+</script>
