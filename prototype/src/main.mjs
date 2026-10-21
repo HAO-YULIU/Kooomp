@@ -8,6 +8,8 @@ import { isTouch, initOrientation, requireOrientation, enterFullscreen, onOrient
 import { joinWandLink, makeCode } from './link.mjs';
 import * as sfx from './audio.mjs';
 import { loadFemaleModel } from './model.mjs';
+import { loadCC } from './cc.mjs';
+import { GLTFLoader } from '../vendor/addons/loaders/GLTFLoader.js';
 
 const $ = (id) => document.getElementById(id);
 document.body.classList.toggle('touch', isTouch);
@@ -32,14 +34,39 @@ loadFemaleModel(scene, { accentHue: 212, accentSat: 0.75, accentLight: 1.5, iris
   targets.push({ object: m, label: '和艾洛拉說話', kind: 'elora' });
   $('btn-style').hidden = false; applyStyle();
 }).catch((e) => console.warn('寫實模型載入失敗', e));
-// 月晞：同一個模型，黑髮、格里莫瓦的深紅領帶、深棕眼睛、矮一點。站在書架旁邊
-const YUEXI_SPOT = { pos: new THREE.Vector3(5.2, 0, 0.2), rotY: -1.75 };
-let yuexi = null;
-loadFemaleModel(scene, { hair: '#15100e', accentHue: 352, accentSat: 1.0, accentLight: 0.75, height: 0.96 }).then((m) => {
-  yuexi = m; m.position.copy(YUEXI_SPOT.pos); m.rotation.y = YUEXI_SPOT.rotY;
-  room.colliders.push({ minX: 4.8, maxX: 5.6, minZ: -0.2, maxZ: 0.6 });
-  targets.push({ object: m, label: '和月晞說話', kind: 'yuexi' });
-}).catch((e) => console.warn('月晞模型載入失敗', e));
+// 月晞、沃恩：Character Creator 的基本模型（有骨架、有表情），補上皮膚、頭髮、學院斗篷
+const npcs = {}; // 名字 → { root, update, setMood, talk }
+function placeCC(name, opts, pos, rotY, label) {
+  loadCC(scene, opts).then((c) => {
+    c.root.position.copy(pos); c.root.rotation.y = rotY; npcs[name] = c;
+    room.colliders.push({ minX: pos.x - 0.4, maxX: pos.x + 0.4, minZ: pos.z - 0.4, maxZ: pos.z + 0.4 });
+    targets.push({ object: c.root, label, kind: name });
+  }).catch((e) => console.warn(name + '模型載入失敗', e));
+}
+// 月晞：格里莫瓦（深紅＋羊皮紙色），黑髮丸子頭，站在書架旁
+placeCC('月晞', { body: 'female', house: { main: '#2a0c10', trim: '#d8c49a' }, hair: '#0d0a0a', hairTip: '#2a2226', skin: '#efcdb4', cloakScale: 0.92 },
+  new THREE.Vector3(5.2, 0, 0.2), -1.75, '和月晞說話');
+// 沃恩：貝爾蒙特（黑＋金），站在老師桌子旁
+placeCC('沃恩', { body: 'male', house: { main: '#121214', trim: '#b8902e' }, hair: '#1e1510', hairTip: '#4a3426', skin: '#e8bfa2' },
+  new THREE.Vector3(4.4, 0, -5.4), -0.35, '和沃恩說話');
+
+// 第一人稱的法杖（艾爾德林的星月法杖；原始模型 150 萬個頂點，減到約 4 萬個三角形）
+const staff = new THREE.Group(); let staffGlow = [];
+scene.add(camera); camera.add(staff);
+staff.position.set(0.42, -0.5, -0.8); staff.rotation.set(0.3, 0.3, -0.22);
+new GLTFLoader().load('models/staff/staff.glb', (g) => {
+  g.scene.traverse((m) => {
+    if (!m.isMesh) return;
+    const wood = m.material.color.r < 0.1; // 深色的是木頭杖身，淺色的是月亮、環、星星
+    m.material = wood
+      ? new THREE.MeshStandardMaterial({ color: '#2a170e', roughness: 0.7 })
+      : new THREE.MeshStandardMaterial({ color: '#d8dbe6', roughness: 0.3, metalness: 0.45, emissive: '#9fc4ff', emissiveIntensity: 0.06 });
+    if (!wood) staffGlow.push(m.material);
+    m.frustumCulled = false;
+  });
+  g.scene.scale.setScalar(0.5); g.scene.position.y = -0.36; // 杖頭露在畫面右下角
+  staff.add(g.scene);
+}, undefined, (e) => console.warn('法杖載入失敗', e));
 function applyStyle() {
   elora.root.visible = !useModel; if (realModel) realModel.visible = useModel;
   $('btn-style').textContent = useModel ? '🎨 角色：寫實模型' : '🎨 角色：程式繪製';
@@ -59,7 +86,7 @@ function resize() {
 addEventListener('resize', resize); resize();
 
 // 魔杖光：施咒時從畫面下方亮一下
-const wandLight = new THREE.PointLight('#ffffff', 0, 8, 1.5); scene.add(wandLight);
+const wandLight = new THREE.PointLight('#9fc4ff', 0, 8, 1.5); scene.add(wandLight);
 let wandFlash = 0;
 
 // ---------- 調查 ----------
@@ -80,11 +107,17 @@ function pickFocus() {
 function interact() {
   if (!focus || mode !== 'walk') return;
   if (focus.kind === 'elora') talkToElora();
-  else if (focus.kind === 'yuexi') {
-    const Y = (text) => ({ who: '月晞', text });
+  else if (focus.kind === '月晞') {
+    const Y = (text, mood = 'calm') => ({ who: '月晞', text, mood });
     say(room.state.revealed
-      ? [Y('……黑板上的字，是用血寫的。'), Y('筆畫是從右往左寫的。寫字的人，可能不太習慣用右手。'), Y('我們不該待在這裡。')]
-      : [Y('噓。'), Y('……這排書，每一本都被翻到同一頁。'), Y('第十三頁。')]);
+      ? [Y('……黑板上的字，是用血寫的。', 'scared'), Y('筆畫是從右往左寫的。寫字的人，可能不太習慣用右手。'), Y('我們不該待在這裡。', 'scared')]
+      : [Y('噓。'), Y('……這排書，每一本都被翻到同一頁。'), Y('第十三頁。', 'smile')]);
+  }
+  else if (focus.kind === '沃恩') {
+    const V = (text, mood = 'calm') => ({ who: '沃恩', text, mood });
+    say(room.state.revealed
+      ? [V('剛剛那個黑影……你也看到了吧？', 'scared'), V('……沒事。要是它再出現，我會擋在前面。', 'smile')]
+      : [V('你也偷溜出來了？哈，我就知道。', 'smile'), V('這間教室晚上比白天有趣多了。'), V('要不要試試黑板上的咒語？我剛剛畫了十次都沒成功。', 'smile')]);
   }
   else if (focus.kind === 'board') say([{ text: room.state.revealed ? '黑板下方浮出了血紅色的字：「午夜之前離開」。角落還寫著「十三」。' : '黑板上寫著三種咒語的畫法。最下面一行：「隱藏的字，只有顯影才看得見。」' }]);
   else if (focus.kind === 'portrait') say([{ text: room.state.distorted ? '肖像畫的臉像蠟一樣融化了，嘴巴一直往下拉長。' : '米爾納學校第一任院長的肖像。不管你走到哪裡，他的眼睛都跟著你。' }]);
@@ -104,12 +137,14 @@ function showLine() {
   const el = $('dlg-text'); el.textContent = '';
   clearInterval(typing); let i = 0;
   if (L.who === '艾洛拉') elora.talk(L.text.length * 0.045);
+  const npc = npcs[L.who]; if (npc) { npc.talk(L.text.length * 0.045); if (L.mood) npc.setMood(L.mood); }
   typing = setInterval(() => { el.textContent = L.text.slice(0, ++i); if (i % 2) sfx.blip(); if (i >= L.text.length) { clearInterval(typing); typing = null; } }, 40);
 }
 function advance() {
   if (typing) { clearInterval(typing); typing = null; $('dlg-text').textContent = lines[lineI].text; elora.talk(0); return; }
   if (++lineI < lines.length) return showLine();
   $('dialog').hidden = true; mode = 'walk'; controls.setEnabled(true); elora.setMood(room.state.revealed ? 'scared' : 'calm');
+  for (const c of Object.values(npcs)) c.setMood(room.state.revealed ? 'scared' : 'calm');
   lines.onDone?.();
 }
 $('dialog').addEventListener('click', (e) => { e.stopPropagation(); advance(); });
@@ -238,12 +273,7 @@ function frame() {
   controls.update(dt);
   room.update(t, dt, camera.position);
   elora.update(t, dt, camera.position);
-  if (yuexi) { // 月晞也會呼吸、玩家靠近時轉過來
-    yuexi.scale.y = 1 + Math.sin(t * 1.5 + 1) * 0.004;
-    const dx = camera.position.x - YUEXI_SPOT.pos.x, dz = camera.position.z - YUEXI_SPOT.pos.z;
-    const want = Math.hypot(dx, dz) < 4 ? Math.atan2(dx, dz) : YUEXI_SPOT.rotY;
-    yuexi.rotation.y += Math.atan2(Math.sin(want - yuexi.rotation.y), Math.cos(want - yuexi.rotation.y)) * Math.min(1, dt * 1.2);
-  }
+  for (const c of Object.values(npcs)) c.update(t, dt, camera.position);
   if (realModel?.visible) {
     realModel.scale.y = 1 + Math.sin(t * 1.6) * 0.004;
     const dx = camera.position.x - ELORA_SPOT.pos.x, dz = camera.position.z - ELORA_SPOT.pos.z;
@@ -255,6 +285,11 @@ function frame() {
   wandFlash = Math.max(0, wandFlash - dt * 1.2);
   wandLight.intensity = wandFlash * 6;
   wandLight.position.copy(camera.position).add(new THREE.Vector3(0.3, -0.3, -0.6).applyEuler(camera.rotation));
+  // 法杖：走路時跟著晃，施咒時往上舉、發出咒語的顏色
+  staff.position.y = -0.5 + Math.sin(controls.state.bob) * 0.012 + wandFlash * 0.12;
+  staff.rotation.x = 0.35 - wandFlash * 0.35;
+  for (const m of staffGlow) { m.emissive.copy(wandLight.color); m.emissiveIntensity = 0.06 + wandFlash * 2.5; }
+  staff.visible = mode !== 'start';
   if (mode === 'walk') {
     const f = pickFocus();
     if (f !== focus) { focus = f; $('prompt').textContent = f ? (isTouch ? f.label : `[E] ${f.label}`) : ''; $('btn-act').hidden = !f || !isTouch; $('cross').classList.toggle('on', !!f); }
