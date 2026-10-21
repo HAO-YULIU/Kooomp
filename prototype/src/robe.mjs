@@ -38,7 +38,7 @@ function fabricNormal() {
 export function buildRobe(B, spec = {}) {
   const { posed, pnorm, wid, W, wnb, TRI, region, bones, bw, bi, skinned, cx, neckY, hipY, hands } = B; // B.arms：沒有骨架時兩隻手的 [肩膀, 手肘, 手腕] // region：每個身體節點是 0 軀幹、1 手臂、2 手、3 腿
   const color = new THREE.Color(spec.color ?? '#2a2a33'), trim = new THREE.Color(spec.trim ?? '#b8902e');
-  const off = spec.off ?? 0.016, hemY = hipY * (spec.hem ?? 0.12), flare = spec.flare ?? 0.12, sleeveFlare = spec.sleeveFlare ?? 0;
+  const off = spec.off ?? (B.skinned ? 0.016 : 0.024), hemY = hipY * (spec.hem ?? 0.12), flare = spec.flare ?? 0.12, sleeveFlare = spec.sleeveFlare ?? 0;
   const openTop = spec.openTop ?? 0.07, openWaist = spec.openWaist ?? 0.035, openHem = spec.openHem ?? 0.35;
 
   // ---------- 身體節點：位置、方向、主要跟哪根骨頭 ----------
@@ -159,11 +159,11 @@ export function buildRobe(B, spec = {}) {
         for (let w = 0; w < W; w++) {
           if (region[w] !== 1) continue;
           const q = new THREE.Vector3(PX(w), PY(w), PZ(w)).sub(c), along = q.dot(d); if (Math.abs(along) > 0.03) continue;
-          const x = q.dot(u), y = q.dot(vv), rad = Math.hypot(x, y); if (rad > 0.12) continue;
+          const x = q.dot(u), y = q.dot(vv), rad = Math.hypot(x, y); if (rad > 0.09) continue;
           const k = ((Math.round((Math.atan2(y, x) / (Math.PI * 2)) * segsA) % segsA) + segsA) % segsA; if (rad > r[k]) r[k] = rad;
         }
         let mx = 0; for (const v of r) mx = Math.max(mx, v); for (let k = 0; k < segsA; k++) if (r[k] < 0) r[k] = mx > 0 ? mx : 0.045;
-        const mean = r.reduce((a, b) => a + b, 0) / segsA; for (let k = 0; k < segsA; k++) r[k] = Math.max(r[k] * 0.4 + mean * 0.6, mean * 0.9);
+        const mean = Math.min(0.055, r.reduce((a, b) => a + b, 0) / segsA); for (let k = 0; k < segsA; k++) r[k] = Math.min(0.065, Math.max(r[k] * 0.4 + mean * 0.6, mean * 0.9)); // 手臂最粗 6.5 公分（半徑）
         return { c, u, vv, r };
       });
       for (let it = 0; it < 4; it++) for (let j = 1; j < frames.length - 1; j++) for (let k = 0; k < segsA; k++) frames[j].r[k] = (frames[j - 1].r[k] + frames[j].r[k] * 2 + frames[j + 1].r[k]) / 4;
