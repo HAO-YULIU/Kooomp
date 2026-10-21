@@ -123,8 +123,9 @@ export function makeCloak(house) {
 const FILES = { male: 'models/male/Male_Base.fbx', female: 'models/girl/Female_Base.fbx', elora: 'models/elora/Elora.fbx' };
 const HAIR_MESH = /Slicked_Back_Side|Space_bun|Air_bangs|Double_high|^Scalp$/;
 
-/** opts：{ body: 'male' | 'female' | 'elora', house: { main, trim }, hair, hairTip, skin, cloakScale, height（整體縮放）, glasses（艾洛拉的模型附眼鏡，預設不戴） } */
-export function loadCC(scene, { body = 'male', house = { main: '#121214', trim: '#b8902e' }, hair = '#1e1510', hairTip = '#4a3426', skin = '#e8bfa2', cloakScale = 1, height = 1, glasses = false } = {}) {
+/** opts：{ body: 'male' | 'female' | 'elora', house: { main, trim }, hair, hairTip, skin, cloakScale, height（整體縮放）, glasses（艾洛拉的模型附眼鏡，預設不戴）,
+ *         hideHair（拿掉原本的頭髮）, headGear（戴在頭上的零件，例如 extras.mjs 的髮髻、帽子；原點是頭的中心、臉朝 +z） } */
+export function loadCC(scene, { body = 'male', house = { main: '#121214', trim: '#b8902e' }, hair = '#1e1510', hairTip = '#4a3426', skin = '#e8bfa2', cloakScale = 1, height = 1, glasses = false, hideHair = false, headGear = null } = {}) {
   return new Promise((resolve, reject) => {
     new FBXLoader().load(FILES[body], (o) => {
       o.scale.setScalar(0.01 * height);
@@ -136,7 +137,7 @@ export function loadCC(scene, { body = 'male', house = { main: '#121214', trim: 
       const dz = (eye.geometry.boundingBox.min.z + eye.geometry.boundingBox.max.z) / 2 - 169.3;
       o.traverse((c) => {
         if (!c.isMesh) return;
-        if (/Tongue|Boxers|Bra|Underwear/.test(c.name) || (/glasses/i.test(c.name) && !glasses)) { c.visible = false; return; } // 舌頭看不到、內衣被斗篷蓋住
+        if (/Tongue|Boxers|Bra|Underwear/.test(c.name) || (/glasses/i.test(c.name) && !glasses) || (hideHair && HAIR_MESH.test(c.name))) { c.visible = false; return; } // 舌頭看不到、內衣被斗篷蓋住
         pruneMorphs(c); meshes.push(c);
         c.castShadow = true; c.receiveShadow = true;
         c.frustumCulled = false; // 骨架會轉頭，三.js 算的範圍跟不上，頭髮會被誤判在畫面外而不畫
@@ -182,6 +183,16 @@ export function loadCC(scene, { body = 'male', house = { main: '#121214', trim: 
       const chest = bone('Spine02') || bone('Spine01');
       const cloak = makeCloak(house); cloak.scale.setScalar(cloakScale);
       holder.add(cloak);
+      // 頭飾：放在兩眼中間往後一點（頭的中心），之後每一格跟著頭骨轉
+      let gear = null; const restInv = new THREE.Quaternion(), gearOffset = new THREE.Vector3();
+      if (headGear) {
+        o.updateMatrixWorld(true);
+        eye.geometry.computeBoundingBox(); const ec = eye.geometry.boundingBox.getCenter(new THREE.Vector3());
+        const eyeW = eye.localToWorld(ec.clone()), hp = bone('Head').getWorldPosition(new THREE.Vector3());
+        gearOffset.set(0, eyeW.y - hp.y + 0.005 * height, eyeW.z - hp.z - 0.06 * height); // 頭骨在脖子上方，頭的中心在眼睛後面約 6 公分
+        restInv.copy(bone('Head').getWorldQuaternion(new THREE.Quaternion())).invert();
+        gear = headGear; gear.scale.multiplyScalar(height); holder.add(gear);
+      }
       scene.add(holder);
 
       const head = bone('Head'), spine = chest, neck = bone('NeckTwist01'), neckPos = new THREE.Vector3();
@@ -215,6 +226,12 @@ export function loadCC(scene, { body = 'male', house = { main: '#121214', trim: 
         set('Mouth_Smile', smile); set('Cheek_Raise_L', smile * 0.5); set('Cheek_Raise_R', smile * 0.5);
         set('A01_Brow_Inner_Up', scared); set('A18_Eye_Wide_Left', scared * 0.7); set('A19_Eye_Wide_Right', scared * 0.7); set('Mouth_Frown', scared * 0.4);
         // 斗篷跟著胸口
+        if (gear) { // 頭飾跟著頭：位置＝頭骨＋偏移（隨頭轉），方向＝頭骨相對於一開始轉了多少
+          head.updateMatrixWorld(true);
+          const hq = holder.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(head.getWorldQuaternion(new THREE.Quaternion())).multiply(restInv);
+          gear.quaternion.copy(hq);
+          gear.position.copy(holder.worldToLocal(head.getWorldPosition(new THREE.Vector3()))).add(gearOffset.clone().applyQuaternion(hq));
+        }
         // 斗篷的領口對齊脖子根部（男女身高、脖子長度不同）
         chest.getWorldPosition(chestPos); neck.getWorldPosition(neckPos);
         cloak.position.copy(holder.worldToLocal(chestPos)); cloak.position.y = holder.worldToLocal(neckPos).y - 0.2 * cloakScale; cloak.position.z -= 0.01;

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#05060a">
+  <title>魔蝕milner｜角色一覽</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js" } }</script>
+  <style>
+    body { touch-action: pan-y; }
+    #info { position: fixed; left: 0; right: 0; bottom: max(16px, env(safe-area-inset-bottom)); text-align: center; padding: 0 16px; pointer-events: none; }
+    #info h2 { margin: 0; letter-spacing: 0.25em; font-size: 1.5rem; text-shadow: 0 0 12px #000; }
+    #info .en { color: var(--dim); font-size: 0.85rem; letter-spacing: 0.1em; }
+    #info p { margin: 6px auto 10px; max-width: 560px; color: var(--ink); font-size: 0.92rem; line-height: 1.6; text-shadow: 0 0 6px #000, 0 0 2px #000; }
+    #nav { display: flex; gap: 8px; justify-content: center; pointer-events: auto; }
+    #nav button { min-width: 64px; }
+    #chips { z-index: 2; position: fixed; top: max(12px, env(safe-area-inset-top)); left: 0; right: 0; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; padding: 0 12px; }
+    #chips button { font-size: 0.8rem; padding: 0.35em 0.7em; }
+    #chips button.on { border-color: var(--gold); color: #fff; background: rgba(60, 40, 20, 0.8); }
+    #loading { position: fixed; inset: 0; display: grid; place-items: center; color: var(--dim); pointer-events: none; }
+  </style>
+</head>
+<body>
+  <canvas id="view"></canvas>
+  <div id="vignette"></div>
+  <div id="chips"></div>
+  <div id="loading">模型載入中……</div>
+  <div id="info"><h2 id="name"></h2><div class="en" id="en"></div><p id="desc"></p>
+    <div id="nav"><button id="prev">‹ 上一位</button><button id="zoom">近看臉</button><button id="next">下一位 ›</button></div></div>
+  <script type="module" src="src/cast.mjs"></script>
+</body>
+</html>
