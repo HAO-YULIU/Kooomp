@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#05060a">
+  <title>魔蝕milner｜魔杖</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="vendor/supabase.js" defer></script>
+</head>
+<body class="wand-page">
+  <section id="gate">
+    <div class="card">
+      <p class="studio">夜語工作室</p>
+      <h1>魔蝕<span>milner</span></h1>
+      <p class="sub">這支手機會變成你的魔杖</p>
+      <p class="keys">配對碼 <b id="code"></b></p>
+      <button id="go">拿起魔杖</button>
+      <p class="keys">請保持手機直向。可以揮動手機，也可以用手指畫符文。</p>
+    </div>
+  </section>
+
+  <section id="wand">
+    <canvas id="rune"></canvas>
+    <div class="wand-ui">
+      <h2>魔杖</h2>
+      <p id="wand-motion"></p>
+      <ul class="spells">
+        <li><b>○</b>光照咒<small>畫圓／揮一下</small></li>
+        <li><b>△</b>顯影咒<small>畫三角形／往前刺</small></li>
+        <li><b>ϟ</b>退散咒<small>畫閃電／往上舉</small></li>
+      </ul>
+    </div>
+    <p class="status" id="status">連線中……</p>
+    <button id="wand-close" hidden></button>
+  </section>
+  <div id="toast"></div>
+
+  <section id="rotate" hidden>
+    <div class="phone"></div>
+    <p data-text>請把手機轉成直向</p>
+    <button data-cancel hidden>取消</button>
+  </section>
+
+  <script type="module" src="src/wand-page.mjs"></script>
+</body>
+</html>

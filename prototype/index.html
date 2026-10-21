@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#05060a">
+  <title>魔蝕milner｜技術雛形</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js" } }</script>
+  <script src="vendor/supabase.js" defer></script>
+  <script src="vendor/qrcode.js" defer></script>
+</head>
+<body>
+  <canvas id="view"></canvas>
+  <div id="vignette"></div>
+  <div id="grain"></div>
+  <div id="flash"></div>
+
+  <!-- 開場：18+ 提示 -->
+  <section id="start">
+    <div class="card">
+      <p class="studio">夜語工作室</p>
+      <h1>魔蝕<span>milner</span></h1>
+      <p class="sub">技術雛形・樣品教室</p>
+      <div class="age"><b>18+</b><p>這是一款恐怖遊戲，含有血腥畫面與突然驚嚇的內容。<br>建議戴上耳機遊玩。</p></div>
+      <button id="start-btn">進入教室</button>
+      <p class="keys pc-only">WASD 移動・Shift 跑・滑鼠轉視角・E 調查／對話・F 拿出魔杖</p>
+      <p class="keys touch-only">橫向遊玩：左手搖桿移動・右手滑動轉視角・轉成直向拿出魔杖</p>
+    </div>
+  </section>
+
+  <!-- 遊戲中的介面 -->
+  <section id="hud" hidden>
+    <div id="cross"></div>
+    <div id="prompt"></div>
+    <button id="btn-act" hidden>調查</button>
+    <div class="top-right">
+      <button id="btn-wand">🪄 魔杖<span class="pc-only">（F）</span></button>
+      <button id="btn-style" hidden>🎨 角色</button>
+      <button id="btn-qr" class="pc-only">📱 用手機當魔杖</button>
+    </div>
+    <div class="top-left"><span id="fps"></span> <span id="last-via"></span></div>
+    <div id="stick"><i></i></div>
+  </section>
+
+  <div id="toast"></div>
+
+  <section id="dialog" hidden>
+    <div class="box"><b id="dlg-name"></b><p id="dlg-text"></p><small>點一下繼續</small></div>
+  </section>
+
+  <!-- 魔杖模式 -->
+  <section id="wand" hidden>
+    <canvas id="rune"></canvas>
+    <div class="wand-ui">
+      <h2>魔杖模式</h2>
+      <p id="wand-motion"></p>
+      <ul class="spells">
+        <li><b>○</b>光照咒<small>畫圓／揮一下</small></li>
+        <li><b>△</b>顯影咒<small>畫三角形／往前刺</small></li>
+        <li><b>ϟ</b>退散咒<small>畫閃電／往上舉</small></li>
+      </ul>
+    </div>
+    <button id="wand-close">收起魔杖</button>
+  </section>
+
+  <!-- QR code -->
+  <section id="qr" hidden>
+    <div class="card">
+      <h2>用手機當魔杖</h2>
+      <p>用手機相機掃描，手機就會變成你的魔杖。<br>這是加分玩法；不用手機也能用滑鼠施咒。</p>
+      <div id="qr-img"></div>
+      <p class="code">配對碼 <b id="qr-code"></b></p>
+      <p id="qr-status"></p>
+      <a id="qr-url" target="_blank" rel="noopener"></a>
+      <button id="qr-close">關閉</button>
+    </div>
+  </section>
+
+  <!-- 方向不對時的提示 -->
+  <section id="rotate" hidden>
+    <div class="phone"></div>
+    <p data-text>請把手機轉成橫向</p>
+    <button id="rotate-wand" hidden>還是要施咒？拿出魔杖</button>
+    <button data-cancel hidden>取消</button>
+  </section>
+
+  <noscript>需要開啟 JavaScript 才能遊玩。</noscript>
+  <script type="module" src="src/main.mjs"></script>
+</body>
+</html>

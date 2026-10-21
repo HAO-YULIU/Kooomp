@@ -2,7 +2,7 @@
 
 夜語工作室原創・以米爾納學校（西方魔法學院）為舞台的第一人稱恐怖解謎網頁遊戲，1～4 人。
 
-目前在規劃階段，還沒有可以玩的版本。
+目前在規劃階段。技術雛形（樣品教室）在 `prototype/`，說明見 [prototype/README.md](prototype/README.md)。
 
 - [製作人確認過的決定](docs/DECISIONS.md)
 - [做法與規劃](docs/PLAN.md)
