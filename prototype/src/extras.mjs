@@ -43,12 +43,12 @@ export function makeBun(color = '#9a958c', { cap = null } = {}) { // 盤起來�
   }
   return g;
 }
-export function makeHood(color = '#1a1a1e', { drape = true } = {}) { // 兜帽：前面開口，往後垂到肩膀（drape：垂到肩膀那段；穿巫師袍時不要，會擋到臉和領口）
+export function makeHood(color = '#1a1a1e', { drape: withDrape = true } = {}) { // 兜帽：前面開口，往後垂到肩膀（drape：垂到肩膀那段；穿巫師袍時不要，會擋到臉和領口）
   const g = new THREE.Group(), m = new THREE.MeshStandardMaterial({ color, roughness: 0.9, side: THREE.DoubleSide });
   const F = Math.PI / 2, open = 1.0;
   const shell = new THREE.Mesh(new THREE.SphereGeometry(0.14, 28, 18, F + open, Math.PI * 2 - open * 2, 0, Math.PI * 0.78), m); shell.scale.set(1, 1.08, 1.1); shell.position.z = -0.01;
   const drape = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.2, 0.22, 24, 1, true, F + open, Math.PI * 2 - open * 2), m); drape.position.set(0, -0.17, -0.02);
-  g.add(shell); if (drape) g.add(drape); return g;
+  g.add(shell); if (withDrape) g.add(drape); return g;
 }
 
 // 臉的上色：把頂點換算成 Character Creator 男生模型的比例，借用 cc.mjs 的 paintSkin
