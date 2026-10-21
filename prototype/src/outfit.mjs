@@ -83,14 +83,15 @@ function grid(points, cell) {
 const smooth = (a, b, x) => { const t = THREE.MathUtils.clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 
 /**
- * 把衣服穿上。ctx：loadCC 內部的資料 { holder, body（身體的 SkinnedMesh）, bone(name) }
+ * 把衣服穿上。ctx：{ holder, body（身體的 Mesh／SkinnedMesh）, bone(name)（有骨架時）或 landmarks（沒有骨架時：shL、shR、elL、hip、neck，holder 座標） }
+ * 沒有骨架的身體（西里爾）：衣服直接固定，不綁骨架。
  * spec：{ name: 'jk' | 'boy' | 'coat' | 'coatFull', hue（學院色的色相，度）, sat、light（彩度、亮度倍率）, tint（整件衣服再乘一個顏色）, puff（離皮膚、裡面那層衣服多遠，公尺） }
  * colorize：整件染成一個顏色（保留明暗）；noSleeves：剪掉袖子（外面要穿大衣時用）；hideInner：外層蓋住內層多近就把內層藏起來。
  * 同一個角色穿好幾層時，ctx.layers 會記住已經穿上的衣服，外層會被推到內層外面。
  * 回傳穿好的 SkinnedMesh 陣列。
  */
 export async function wearOutfit(ctx, spec) {
-  const { holder, body, bone } = ctx;
+  const { holder, body, bone } = ctx, skinned = !!body.isSkinnedMesh;
   const def = OUTFITS[spec.name];
   const { geos, all: allGeos } = await loadSource(spec.name);
   holder.updateMatrixWorld(true);
@@ -108,8 +109,9 @@ export async function wearOutfit(ctx, spec) {
 
   // ---------- 身上的參考點 ----------
   const wp = (name) => holder.worldToLocal(bone(name).getWorldPosition(new THREE.Vector3()));
-  const shL = wp('L_Upperarm'), shR = wp('R_Upperarm'), elL = wp('L_Forearm');
-  const hip = wp('Hip'), neck = wp('NeckTwist01');
+  const LM = ctx.landmarks;
+  const shL = LM ? LM.shL : wp('L_Upperarm'), shR = LM ? LM.shR : wp('R_Upperarm'), elL = LM ? LM.elL : wp('L_Forearm');
+  const hip = LM ? LM.hip : wp('Hip'), neck = LM ? LM.neck : wp('NeckTwist01');
   const bodySW = (shL.x - shR.x) / 2, bodyShY = (shL.y + shR.y) / 2, bodyHipY = hip.y;
   const bodyArm = Math.atan2(shL.y - elL.y, Math.abs(elL.x - shL.x)); // 手臂往下幾度（弧度）
 
@@ -156,7 +158,7 @@ export async function wearOutfit(ctx, spec) {
     // 3) 陷進身體的地方往外推；4) 抄最近那個身體點的骨架設定
     const puff = spec.puff ?? 0.006;
     const si = new Uint16Array(cnt * 4), sw = new Float32Array(cnt * 4);
-    const bi = body.geometry.attributes.skinIndex, bw = body.geometry.attributes.skinWeight;
+    const bi = body.geometry.attributes.skinIndex, bw = body.geometry.attributes.skinWeight; // 沒有骨架時是 undefined
     for (let i = 0; i < cnt; i++) {
       v.set(p.getX(i), p.getY(i), p.getZ(i));
       for (const L of layers) { // 先推到裡面那層衣服外面
@@ -170,17 +172,16 @@ export async function wearOutfit(ctx, spec) {
       const out = v.clone().sub(a).dot(b);
       if (out < puff) v.addScaledVector(b, puff - out);
       p.setXYZ(i, v.x, v.y, v.z);
-      for (let k = 0; k < 4; k++) { si[i * 4 + k] = bi.getComponent(q, k); sw[i * 4 + k] = bw.getComponent(q, k); }
+      if (skinned) for (let k = 0; k < 4; k++) { si[i * 4 + k] = bi.getComponent(q, k); sw[i * 4 + k] = bw.getComponent(q, k); }
       clothPts.push(v.x, v.y, v.z);
     }
-    g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4));
-    g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4));
+    if (skinned) { g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4)); g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4)); }
     g.computeVertexNormals();
     newLayer.pts.push(...p.array); newLayer.nor.push(...g.attributes.normal.array);
-    const m = new THREE.SkinnedMesh(g, mat); m.castShadow = m.receiveShadow = true; m.frustumCulled = false;
+    const m = skinned ? new THREE.SkinnedMesh(g, mat) : new THREE.Mesh(g, mat); m.castShadow = m.receiveShadow = true; m.frustumCulled = false;
     holder.add(m); m.updateMatrixWorld(true);
     // 用「現在的姿勢」當衣服的綁定姿勢：之後骨頭怎麼動，衣服就跟著動
-    m.bind(new THREE.Skeleton(body.skeleton.bones), m.matrixWorld);
+    if (skinned) m.bind(new THREE.Skeleton(body.skeleton.bones), m.matrixWorld);
     meshes.push(m);
   }
 
