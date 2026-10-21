@@ -137,10 +137,28 @@ function cladding(group, r, st) {
   kitW.build(group);
 }
 
+// ---------- 亮度（製作人：太暗）----------
+// 1. 整個場景加一層柔和的環境光（半球光：上面偏冷、下面偏暖），不會投影，手機也不吃力。
+// 2. 房間燈調亮、照得遠一點（光變暗得慢一點）。
+// 熄燈的劇情（world.setDark：房間燈關掉）時，環境光也跟著關，暗的地方還是暗。
+const BRIGHT = { ambient: 1.6, room: 2.2, decay: 1.1 };
+function brighten(group) {
+  const roomLight = group.children.find((o) => o.isPointLight); if (!roomLight) return;
+  roomLight.intensity *= BRIGHT.room; roomLight.decay = BRIGHT.decay;
+  const on = roomLight.intensity;
+  const hemi = new THREE.HemisphereLight('#9aa0b8', '#4a3a2c', BRIGHT.ambient); group.add(hemi);
+  // 每一格看房間燈有沒有被關掉（不加新的燈、不切換 visible，只改強度，畫面不會重新編譯而卡一下）
+  const tg = new THREE.BufferGeometry(); tg.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 0, 0, 0, 0, 0, 0], 3));
+  const tick = new THREE.Mesh(tg, new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false })); tick.frustumCulled = false;
+  tick.onBeforeRender = () => { hemi.intensity = roomLight.intensity > on * 0.05 ? BRIGHT.ambient : 0; };
+  group.add(tick);
+}
+
 // ---------- 灰盒本身的牆、地板、天花板換材質（全部蓋好之後做一次） ----------
 const retextured = new WeakSet();
 function retexture(group) {
   if (retextured.has(group)) return; retextured.add(group);
+  brighten(group);
   const wallTex = T.stoneWall('#57524c'), stoneFloor = T.flagstone('#56514b'), woodFloor = T.planks('#4a3020'), ceil = T.plaster('#1e1a16');
   group.traverse((o) => {
     if (!o.isMesh || !o.material?.color || o.userData.thing) return;
@@ -204,7 +222,7 @@ const ROOM_DECOR = {
   dock(r, group) {
     const k = new Kit();
     // 月光：很淡的藍光從高處照碼頭和城堡正面（不投影），一開場看得出身在哪裡
-    const moonFill = new THREE.PointLight('#8aa0d8', 30, 45, 1.2); moonFill.position.set(-8, 14, 152); group.add(moonFill);
+    const moonFill = new THREE.PointLight('#8aa0d8', 70, 50, 1.0); moonFill.position.set(-8, 14, 152); group.add(moonFill);
     // 碼頭四周的黑湖
     const lake = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), MAT.water()); lake.rotation.x = -Math.PI / 2; lake.position.set(0, -0.6, 150); group.add(lake);
     // 木樁、欄杆、燈籠
