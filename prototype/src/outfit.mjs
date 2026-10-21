@@ -315,6 +315,12 @@ export async function wearOutfit(ctx, spec) {
         }
       };
       press(gap); smoothPush(g, orig, 3); press(gap * 0.7); // 抹平後再確實壓一次
+      // 確定被外層蓋住的三角形（三個點往外看都碰得到外層）不用畫：粗的衣服模型三角形很大，壓進去了中間還是可能凸出來
+      if (g.index && spec.hideCovered !== false) {
+        const ix = g.index.array, keep = [], cov = (k) => !Number.isNaN(T[k]) && T[k] > -0.01;
+        for (let t = 0; t < ix.length; t += 3) if (!(cov(ix[t]) && cov(ix[t + 1]) && cov(ix[t + 2]))) keep.push(ix[t], ix[t + 1], ix[t + 2]);
+        g.setIndex(keep);
+      }
       p.needsUpdate = true; g.computeVertexNormals();
       if (window.__outfitDebug) { let c = 0; for (const t of T) if (!Number.isNaN(t)) c++; console.error('壓進去 ' + spec.name + ' 被蓋住 ' + c + '/' + cnt); }
     }
