@@ -137,8 +137,14 @@ export function createWorld(canvas, lang = 'zh') {
       helga.visible = !!state;
       if (state) { helga.position.set(state.x, 0, state.z); helga.rotation.y = state.yaw; }
     },
+    tired: false, // 第四幕：跑太久喘不過氣，只能用走的
     frame(dt, peers, myZone) {
+      const bx = controls.state.pos.x, bz = controls.state.pos.z;
       controls.update(dt);
+      if (this.tired) { // 跑步的速度壓回走路的速度
+        const dx = controls.state.pos.x - bx, dz = controls.state.pos.z - bz, d = Math.hypot(dx, dz), max = 2.0 * dt;
+        if (d > max) { controls.state.pos.x = bx + (dx / d) * max; controls.state.pos.z = bz + (dz / d) * max; }
+      }
       world.lightRoom(myZone);
       vel.copy(controls.state.pos).sub(lastPos).divideScalar(Math.max(dt, 1e-3)); vel.y = 0; lastPos.copy(controls.state.pos);
       for (const [uid, p] of peers) {

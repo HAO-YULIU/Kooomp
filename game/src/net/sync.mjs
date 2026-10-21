@@ -14,25 +14,27 @@ export function createSender(send) {
   let last = null; // 上次送出的 { z, p, v, y, s, t }
   return {
     // 每一幀呼叫：p＝[x, z]、v＝[vx, vz]（每秒公尺）、y＝面向、z＝區域
-    update({ z, p, v, y }, now = performance.now()) {
+    // h：第四幕的躲藏狀態（1＝躲著、2＝屏息，可以相加），改變時也要送（守夜人要知道）
+    update({ z, p, v, y, h = 0 }, now = performance.now()) {
       const speed = Math.hypot(v[0], v[1]);
       const moving = speed > 0.15;
       let why = null;
       if (!last) why = 'first';
       else if (z !== last.z) why = 'zone';
+      else if (h !== last.h) why = 'hide';
       else if (moving !== last.s) why = moving ? 'start' : 'stop';
       else if (moving && angDiff(Math.atan2(v[0], v[1]), Math.atan2(last.v[0], last.v[1])) > TURN) why = 'turn';
       else if (moving && Math.abs(speed - Math.hypot(...last.v)) > 0.6) why = 'speed';
       else if (!moving && angDiff(y, last.y) > FACE) why = 'face';
       else if (moving && now - last.t > REFRESH) why = 'refresh';
       if (!why) return null;
-      last = { z, p: [...p], v: moving ? [...v] : [0, 0], y, s: moving, t: now };
-      const msg = { t: 'pos', z, p: last.p.map((n) => +n.toFixed(2)), v: last.v.map((n) => +n.toFixed(2)), y: +y.toFixed(2), s: moving ? 1 : 0 };
+      last = { z, p: [...p], v: moving ? [...v] : [0, 0], y, s: moving, t: now, h };
+      const msg = { t: 'pos', z, p: last.p.map((n) => +n.toFixed(2)), v: last.v.map((n) => +n.toFixed(2)), y: +y.toFixed(2), s: moving ? 1 : 0, ...(h ? { h } : {}) };
       send(msg);
       return why;
     },
     // 有隊友進到同一區、或有新隊友加入時，主動送一次讓他看到你
-    resend() { if (last) { const l = last; last = null; this.update({ z: l.z, p: l.p, v: l.v, y: l.y }); } },
+    resend() { if (last) { const l = last; last = null; this.update({ z: l.z, p: l.p, v: l.v, y: l.y, h: l.h }); } },
   };
 }
 
@@ -42,7 +44,7 @@ export function createReceiver() {
     peers,
     onPos(msg, now = performance.now()) {
       const old = peers.get(msg.uid);
-      peers.set(msg.uid, { z: msg.z, p: msg.p, v: msg.v ?? [0, 0], y: msg.y ?? 0, at: now, shown: old?.shown ?? [...msg.p], yShown: old?.yShown ?? msg.y ?? 0 });
+      peers.set(msg.uid, { z: msg.z, p: msg.p, v: msg.v ?? [0, 0], y: msg.y ?? 0, h: msg.h ?? 0, at: now, shown: old?.shown ?? [...msg.p], yShown: old?.yShown ?? msg.y ?? 0 });
     },
     onZone(uid, z) { const p = peers.get(uid); if (p) p.z = z; },
     remove(uid) { peers.delete(uid); },

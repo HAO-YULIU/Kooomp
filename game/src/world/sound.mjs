@@ -88,3 +88,19 @@ export function chime(up = true) {
     o.connect(g).connect(master); o.start(t + d); o.stop(t + d + 0.7);
   });
 }
+
+// S2 聽音辨位：黑根「心臟」的跳動聲，從某個方向傳來（0＝正前方，順時針的角度）。
+// 左右用聲道，前後用音色（後面的比較悶）；沒戴耳機時只聽得出大小聲
+export function heartbeatFrom(deg, { beats = 4, volume = 0.7 } = {}) {
+  try { ac(); } catch { return; }
+  const rad = (deg * Math.PI) / 180, pan = ctx.createStereoPanner(), lp = ctx.createBiquadFilter();
+  pan.pan.value = Math.sin(rad); lp.type = 'lowpass'; lp.frequency.value = Math.cos(rad) > 0 ? 1800 : 450;
+  lp.connect(pan).connect(master);
+  let t = ctx.currentTime + 0.05;
+  for (let i = 0; i < beats; i++, t += 0.85) for (const [k, dt] of [[1, 0], [0.7, 0.22]]) { // 咚—咚
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(70, t + dt); o.frequency.exponentialRampToValueAtTime(38, t + dt + 0.18);
+    g.gain.setValueAtTime(0, t + dt); g.gain.linearRampToValueAtTime(volume * k, t + dt + 0.015); g.gain.exponentialRampToValueAtTime(0.001, t + dt + 0.25);
+    o.connect(g).connect(lp); o.start(t + dt); o.stop(t + dt + 0.3);
+  }
+}

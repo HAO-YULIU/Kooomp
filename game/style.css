@@ -192,3 +192,48 @@ body.modal #hud #dialog { visibility: visible; }
 .braille-door .braille i { width: 14px; height: 14px; background: transparent; }
 .braille-door .braille.felt i.on { background: #6a6a7a; }
 .rings { display: flex; gap: 16px; justify-content: center; margin: 10px 0; } .rings div { display: flex; flex-direction: column; align-items: center; gap: 4px; } .rings b { font-size: 24px; color: #f3d98e; }
+
+/* ---- 第四幕 ---- */
+#a4clock { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); padding: 6px 16px; border: 1px solid #5a3a30; border-radius: 20px;
+  background: rgba(10, 6, 8, 0.75); color: #e9d6b0; font-size: 18px; letter-spacing: 0.08em; z-index: 6; pointer-events: none; }
+#a4clock.urgent { color: #ff6a5a; border-color: var(--danger); animation: a4pulse 1s infinite; }
+@keyframes a4pulse { 50% { box-shadow: 0 0 18px rgba(196, 58, 47, 0.8); } }
+#a4veil { position: fixed; inset: 0; pointer-events: none; opacity: 0; transition: opacity .4s; z-index: 3; }
+#a4grab { position: fixed; inset: 0; display: grid; place-content: center; gap: 16px; background: rgba(60, 0, 0, 0.55); z-index: 45; text-align: center; padding: 16px; touch-action: manipulation; }
+#a4grab b { font-size: 24px; color: #fff; text-shadow: 0 0 12px #f00; }
+#a4grab .bar { width: min(360px, 80vw); height: 14px; border: 1px solid #fff; border-radius: 7px; overflow: hidden; margin: 0 auto; }
+#a4grab .bar i { display: block; height: 100%; width: 0; background: #ffcf70; }
+#a4bound { position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%); width: min(460px, calc(100% - 32px)); background: var(--card); border: 1px solid var(--danger);
+  border-radius: 10px; padding: 12px 16px; z-index: 8; text-align: center; }
+#a4lost { position: fixed; inset: 0; display: grid; place-content: center; gap: 10px; background: rgba(0, 0, 0, 0.88); z-index: 46; text-align: center; padding: 16px; }
+#a4lost h2 { color: var(--danger); font-size: 30px; margin: 0; } #a4lost p { max-width: 420px; line-height: 1.7; }
+body.modal #a4bound { display: none; }
+.bolts { display: flex; gap: 8px; justify-content: center; margin: 8px 0; }
+.bolts span { padding: 8px 10px; border-radius: 6px; border: 1px solid var(--line); } .bolts .locked { color: #ff8a7a; } .bolts .open { color: var(--ok); }
+.gears { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; margin: 8px 0; }
+.gear { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px; border: 1px solid var(--line); border-radius: 50%; width: 84px; height: 84px; justify-content: center; }
+.gear.driver b { font-size: 22px; color: #f3d98e; } .gear select { padding: 4px; }
+.gap { font-size: 12px; font-style: normal; min-width: 40px; text-align: center; color: var(--dim); } .gap.ok { color: var(--ok); } .gap.bad { color: #ff8a7a; }
+.rhythm { display: flex; gap: 8px; justify-content: center; margin: 8px 0; } .rhythm span { display: flex; flex-direction: column; align-items: center; }
+.rhythm small { color: #f3d98e; } .rhythm b { font-size: 20px; }
+.rhythm-in { text-align: center; font-size: 22px; letter-spacing: 0.2em; color: #f3d98e; min-height: 1.5em; }
+.knock { display: block; margin: 6px auto; width: 200px; height: 64px; border-radius: 32px; user-select: none; touch-action: manipulation; } .knock.on { background: #5a4422; }
+.roots { display: flex; gap: 10px; justify-content: center; margin: 6px 0; font-size: 18px; }
+.pipe-wrap { display: flex; align-items: center; justify-content: center; gap: 6px; } .pipe-wrap b { color: #9fc4ff; font-size: 22px; }
+.pipes { display: grid; grid-template-columns: repeat(5, 46px); gap: 3px; }
+.pipes button { width: 46px; height: 46px; padding: 0; font-size: 30px; line-height: 1; background: #101016; color: #9fc4ff; }
+.memory { display: grid; grid-template-columns: repeat(4, 56px); gap: 6px; justify-content: center; margin: 8px 0; }
+.memory button { width: 56px; height: 56px; font-size: 26px; padding: 0; background: #1a0c10; } .memory .up { background: #3a2a4a; } .memory .done { background: #1e3a2a; color: #a0f0c0; }
+.cipher { text-align: center; font-size: 22px; letter-spacing: 0.2em; color: #f3d98e; font-family: monospace; }
+.compass8 { display: grid; grid-template-columns: repeat(3, 96px); gap: 6px; justify-content: center; margin: 8px 0; } .compass8 button { padding: 8px 4px; font-size: 14px; }
+.compass8 .listen { background: #2a1a10; border-color: var(--accent); }
+.sudoku { display: grid; grid-template-columns: repeat(6, 42px); gap: 2px; justify-content: center; margin: 8px 0; }
+.sudoku button { width: 42px; height: 42px; padding: 0; font-size: 22px; background: #121218; } .sudoku .fixed { color: #f3d98e; background: #1e1a14; cursor: default; }
+.sudoku .bx { border-right: 3px solid var(--accent); } .sudoku .by { border-bottom: 3px solid var(--accent); }
+.heads { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 8px 0; } .heads div { border: 1px solid #4a1a1a; border-radius: 8px; padding: 6px; text-align: center; }
+.heads small { color: var(--dim); } .heads p { margin: 4px 0; font-size: 14px; }
+@media (max-height: 500px) {
+  .gear { width: 70px; height: 70px; } .pipes { grid-template-columns: repeat(5, 38px); } .pipes button { width: 38px; height: 38px; font-size: 24px; }
+  .memory { grid-template-columns: repeat(6, 48px); } .memory button { width: 48px; height: 48px; } .sudoku button { width: 34px; height: 34px; font-size: 18px; }
+  #a4bound { bottom: 70px; padding: 8px; } .knock { height: 48px; }
+}

@@ -157,7 +157,7 @@ export const CHAPTER1 = {
              ['You’ve heard this rhythm — the song the Night Warden hummed.', 'The surviving marks are syllables 1, 4 and 7: long, long, long.', 'The full rhythm: long, short, short, long, long, short, long.']),
   },
   P29: {
-    seg: 'act4', diff: 9, kind: 'seq', ans: 'm,i,l,n,e,r',
+    seg: 'act4', diff: 9, kind: 'roof', word: 'ᛗᛁᛚᚾᛖᚱ', // 一步一步踩，伺服器判斷：要依序（一直循環）拼出 MILNER，只能走上下左右相鄰的石板
     hints: H(['要拼的字就在入口那句話裡。', '你要回到「米爾納」，用符文拼出 MILNER。', '符文依序是 ᛗ ᛁ ᛚ ᚾ ᛖ ᚱ。'],
              ['The word is in the line carved at the entrance.', 'You’re going back to “Milner” — spell MILNER in runes.', 'The runes, in order: ᛗ ᛁ ᛚ ᚾ ᛖ ᚱ.']),
   },
@@ -176,6 +176,18 @@ export const SELF_RESCUE = {
   S3: { diff: 9, kind: 'event' },     // 符文數獨（畫面判斷）
   S4: { diff: 10, kind: 'liar' },
 };
+
+// P29 屋頂的石板（第 0 排在北邊＝終點，第 5 排在南邊＝起點）。畫面用同一份（game/src/data/act4-ch1.mjs 的 ROOF，測試會比對）
+export const ROOF = [
+  'ᚠᛖᛗᛞᛚᚱ',
+  'ᛟᚾᛚᛗᛁᛖ',
+  'ᛁᛏᛖᚱᚾᚲ',
+  'ᚱᛗᚾᛖᛚᚢ',
+  'ᚷᛁᛚᛊᛁᛉ',
+  'ᛁᛗᛒᚹᛗᚺ',
+];
+// 第四幕的倒數（docs/04-map-ch1.md）：35 分鐘；卡住齒輪（P27）多 90 秒，只有一次
+export const ACT4 = { duration: 35 * 60 * 1000, gearBonus: 90 * 1000, grab: 1500, repelCool: 60 * 1000, repelFor: 5000, selfSwap: 3 * 60 * 1000 };
 
 // 學院的時辰（P03～P08、R3 用）
 export const HOUSE_HOUR = { eldrin: 8, grimoire: 11, belmont: 9, ouroboros: 3 };

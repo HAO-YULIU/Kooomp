@@ -1,6 +1,6 @@
 # 場景配置格式（給帳號二：美術）
 
-遊戲的玩法（房間範圍、門、可以調查的東西、碰撞）由**帳號一**寫在場景配置裡；美術由**帳號二**依同樣的位置換上正式的模型與材質。目前第一章用到的配置在 `game/src/data/world-ch1.mjs`（序幕～第二幕）與 `game/src/data/library-ch1.mjs`（第三幕：沉眠圖書館，在地底，x 從 100 開始；書架迷宮、血跡、屍體、暗室石板由 `game/src/world/library.mjs` 畫）。
+遊戲的玩法（房間範圍、門、可以調查的東西、碰撞）由**帳號一**寫在場景配置裡；美術由**帳號二**依同樣的位置換上正式的模型與材質。目前第一章用到的配置在 `game/src/data/world-ch1.mjs`（序幕～第二幕）、`game/src/data/library-ch1.mjs`（第三幕：沉眠圖書館，在地底，x 從 100 開始；書架迷宮、血跡、屍體、暗室石板由 `game/src/world/library.mjs` 畫）與 `game/src/data/act4-ch1.mjs`（第四幕：通道、機械室、蝕巢、屋頂，x 從 115 開始；屋頂符文石板、齒輪、黑根、月亮由 `game/src/world/act4scene.mjs` 畫）。
 
 ## 座標
 - 單位：公尺。x 往東、z 往南（北邊是 -z），y 往上；地板高度 0，玩家眼睛高度 1.6。
@@ -32,7 +32,7 @@
 |---|---|
 | `id` | 代號（美術用它來對應模型） |
 | `room` | 在哪個房間 |
-| `kind` | `prop` 擺設、`rumor` 傳聞、`puzzle` 謎題、`hide` 躲藏點、`pillar` 柱子（擋赫爾嘉夫人的視線）、`loopdoor` 長廊盡頭的門、`snuff` 熄燈、`plaques` 校長銘牌牆、`note` 撿得起來的筆記、`letter` 月晞的家書、`overview` 從高處看迷宮的梯子 |
+| `kind` | `prop` 擺設、`rumor` 傳聞、`puzzle` 謎題、`hide` 躲藏點、`pillar` 柱子（擋赫爾嘉夫人的視線）、`loopdoor` 長廊盡頭的門、`snuff` 熄燈、`plaques` 校長銘牌牆、`note` 撿得起來的筆記、`letter` 月晞的家書、`overview` 從高處看迷宮的梯子、`nest` 蝕巢裡綁住同伴的黑根 |
 | `hidden` | `true`＝不畫灰盒方塊，外觀由別的程式畫（長廊、創辦人的房間在 `game/src/world/corridor.mjs`），美術換這些東西時改 corridor.mjs 或用掛鉤蓋掉 |
 | `x`、`z`、`y` | 位置（`y` 是底部離地多高，預設 0） |
 | `size` | `[寬, 高, 深]`，也是「調查」的範圍 |
@@ -63,4 +63,5 @@ decorators.door.push(({ door, mesh, group, THREE }) => { /* 換門的模型；�
 - 隊友、電腦控制的同伴、赫爾嘉夫人目前是簡單的人形（`game/src/world/world.mjs` 的 `makeAvatar`）。
 - 換成正式模型時：
   - 角色代號用 `yuexi`／`vaughn`／`elora`／`cyril`；配角用 `helga`、`aldric`、`moray`、`knox`。
+  - 守夜人（蝕化後）在 `game/src/world/warden.mjs`，用 `decorators.npc.push(({ key, group, THREE }) => { if (key !== 'warden') return; … })` 換模型；綠色提燈的光要留著（玩法用）。
   - 位置與面向由 `placeAvatar(key, x, z, yaw)` 決定，模型的正面要朝 -z。
