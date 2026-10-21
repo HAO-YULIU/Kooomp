@@ -8,6 +8,7 @@ import { isTouch, initOrientation, requireOrientation, enterFullscreen, onOrient
 import { joinWandLink, makeCode } from './link.mjs';
 import * as sfx from './audio.mjs';
 import { loadCC } from './cc.mjs';
+import { COSTUMES } from './costumes.mjs';
 import { loadCyril } from './cyril.mjs';
 import { loadWarden } from './warden.mjs';
 import { loadMoonStaff, loadDragonStaff } from './staffs.mjs';
@@ -38,13 +39,13 @@ function placeNPC(name, loader, pos, rotY, label, kind = name) {
   }).catch((e) => console.warn(name + '模型載入失敗', e));
 }
 // 艾洛拉：艾爾德林（銀白＋淡藍），站在窗邊。模型附的眼鏡先不戴
-placeNPC('艾洛拉', loadCC(scene, { body: 'elora', house: { main: '#cdd3df', trim: '#7fa7d6' }, hair: '#9a7444', hairTip: '#dcc08a', skin: '#f2d2bd', height: 0.9, cloakScale: 0.9 }),
+placeNPC('艾洛拉', loadCC(scene, { body: 'elora', house: { main: '#cdd3df', trim: '#7fa7d6' }, hair: '#9a7444', hairTip: '#dcc08a', skin: '#f2d2bd', height: 0.9, cloakScale: 0.9, ...COSTUMES.elora }),
   new THREE.Vector3(-5.4, 0, -1.0), 1.0, '和艾洛拉說話', 'elora').then((c) => { if (!c) return; realModel = c.root; $('btn-style').hidden = false; applyStyle(); });
 // 月晞：格里莫瓦（深紅＋羊皮紙色），黑髮丸子頭，站在書架旁
-placeNPC('月晞', loadCC(scene, { body: 'female', house: { main: '#2a0c10', trim: '#d8c49a' }, hair: '#0d0a0a', hairTip: '#2a2226', skin: '#efcdb4', cloakScale: 0.92 }),
+placeNPC('月晞', loadCC(scene, { body: 'female', house: { main: '#2a0c10', trim: '#d8c49a' }, hair: '#0d0a0a', hairTip: '#2a2226', skin: '#efcdb4', cloakScale: 0.92, ...COSTUMES.yuexi }),
   new THREE.Vector3(5.2, 0, 0.2), -1.75, '和月晞說話');
 // 沃恩：貝爾蒙特（黑＋金），站在老師桌子旁
-placeNPC('沃恩', loadCC(scene, { body: 'male', house: { main: '#121214', trim: '#b8902e' }, hair: '#1e1510', hairTip: '#4a3426', skin: '#e8bfa2' }),
+placeNPC('沃恩', loadCC(scene, { body: 'male', house: { main: '#121214', trim: '#b8902e' }, hair: '#1e1510', hairTip: '#4a3426', skin: '#e8bfa2', ...COSTUMES.vaughn }),
   new THREE.Vector3(4.4, 0, -5.4), -0.35, '和沃恩說話');
 // 西里爾：烏洛波斯（墨綠＋銀），站在後面的窗邊，離大家有點距離
 placeNPC('西里爾', loadCyril(scene), new THREE.Vector3(-5.2, 0, 5.2), 2.4, '和西里爾說話');
@@ -178,7 +179,7 @@ function castSpell(id, via) {
     if (room.reveal()) {
       text = '黑板上浮出血紅色的字……';
       elora.setMood('scared');
-      setTimeout(() => { room.scare(1.4, camera.position, camera.getWorldDirection(new THREE.Vector3())); sfx.scare(); navigator.vibrate?.([200, 60, 300]); $('flash').classList.add('on'); setTimeout(() => $('flash').classList.remove('on'), 120); }, 1600);
+      setTimeout(() => { room.scare(1.4, camera.position, camera.getWorldDirection(new THREE.Vector3())); warden?.play('attack', 0.05); setTimeout(() => warden?.play('idle'), 2600); /* 守夜人撲過來 */ sfx.scare(); navigator.vibrate?.([200, 60, 300]); $('flash').classList.add('on'); setTimeout(() => $('flash').classList.remove('on'), 120); }, 1600);
     } else text = '沒有其他隱藏的東西了';
   }
   if (id === 'expel') text = room.expel(camera.position) === 'portrait' ? '肖像畫的臉恢復原狀了' : '一陣風把漂浮的書吹開';
@@ -280,7 +281,7 @@ function frame() {
   room.update(t, dt, camera.position);
   elora.update(t, dt, camera.position);
   for (const c of Object.values(npcs)) if (c.root.visible) c.update(t, dt, camera.position);
-  warden?.update(t);
+  warden?.update(t, dt);
   // 魔杖光
   wandFlash = Math.max(0, wandFlash - dt * 1.2);
   wandLight.intensity = wandFlash * 6;
