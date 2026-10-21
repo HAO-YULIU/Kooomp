@@ -75,46 +75,61 @@ export function buildRobe(B, spec = {}) {
       if (!isArm(w) && y > shellTop - 0.05 && Math.hypot(PX(w) - nx, PZ(w) - nz) < holeR) continue;
       keep[w] = 1;
     }
-    // 往外推（皮膚外 off，裡面有衣服就在衣服外面一點），抹平（去掉鎖骨、胸部這些細節；用一推一拉的抹法，不會越抹越瘦），
-    // 最後確定每個點都在皮膚、裡面那層衣服的外面
+    // 先把身體本身抹平（去掉鎖骨、胸部、肋骨這些細節）當基準；再往外推 off（裡面有衣服就在衣服外面一點，但最多 3.5 公分，
+    // 手臂不管裡面那件：袖子剪掉了），再抹一次。抹平用一推一拉的方法，不會越抹越瘦
     const inH = B.innerH ?? new Float32Array(W).fill(-Infinity);
-    const want = (w) => Math.max(off, inH[w] + 0.008);
-    const S = new Float32Array(W * 3);
-    for (let w = 0; w < W; w++) if (keep[w]) { const r = rep[w] * 3, d = want(w); for (let k = 0; k < 3; k++) S[w * 3 + k] = posed[r + k] + pnorm[r + k] * d; }
-    const outside = (w, h0) => { const r = rep[w] * 3; const h = (S[w * 3] - posed[r]) * pnorm[r] + (S[w * 3 + 1] - posed[r + 1]) * pnorm[r + 1] + (S[w * 3 + 2] - posed[r + 2]) * pnorm[r + 2]; if (h < h0) for (let k = 0; k < 3; k++) S[w * 3 + k] += pnorm[r + k] * (h0 - h); };
-    const lap = (f) => {
-      const T = S.slice();
-      for (let w = 0; w < W; w++) { if (!keep[w]) continue; let c = 0; const s = [0, 0, 0]; for (const o of wnb[w]) if (keep[o]) { for (let k = 0; k < 3; k++) s[k] += S[o * 3 + k]; c++; } if (c) for (let k = 0; k < 3; k++) T[w * 3 + k] = S[w * 3 + k] + (s[k] / c - S[w * 3 + k]) * f; }
-      S.set(T);
+    const want = (w) => Math.max(off, isArm(w) ? 0 : Math.min(0.035, inH[w] + 0.008));
+    const smoothField = (X, iters) => {
+      for (let it = 0; it < iters; it++) for (const f of [0.5, -0.53]) {
+        const T = X.slice();
+        for (let w = 0; w < W; w++) { if (!keep[w]) continue; let c = 0; const s = [0, 0, 0]; for (const o of wnb[w]) if (keep[o]) { for (let k = 0; k < 3; k++) s[k] += X[o * 3 + k]; c++; } if (c) for (let k = 0; k < 3; k++) T[w * 3 + k] = X[w * 3 + k] + (s[k] / c - X[w * 3 + k]) * f; }
+        X.set(T);
+      }
     };
-    for (let it = 0; it < 12; it++) { lap(0.5); lap(-0.53); }
-    for (let w = 0; w < W; w++) if (keep[w]) outside(w, Math.max(0.006, inH[w] + 0.005));
-    lap(0.3); for (let w = 0; w < W; w++) if (keep[w]) outside(w, Math.max(0.005, inH[w] + 0.004));
+    const Pb = new Float32Array(W * 3); for (let w = 0; w < W; w++) if (keep[w]) for (let k = 0; k < 3; k++) Pb[w * 3 + k] = posed[rep[w] * 3 + k];
+    smoothField(Pb, 15);
+    const S = new Float32Array(W * 3);
+    for (let w = 0; w < W; w++) if (keep[w]) { const r = rep[w] * 3, d = want(w); for (let k = 0; k < 3; k++) S[w * 3 + k] = Pb[w * 3 + k] + pnorm[r + k] * d; }
+    smoothField(S, 6);
+    const outside = (w, base, h0) => { const r = rep[w] * 3; const h = (S[w * 3] - base[w * 3]) * pnorm[r] + (S[w * 3 + 1] - base[w * 3 + 1]) * pnorm[r + 1] + (S[w * 3 + 2] - base[w * 3 + 2]) * pnorm[r + 2]; if (h < h0) for (let k = 0; k < 3; k++) S[w * 3 + k] += pnorm[r + k] * (h0 - h); };
+    const skin = new Float32Array(W * 3); for (let w = 0; w < W; w++) for (let k = 0; k < 3; k++) skin[w * 3 + k] = posed[rep[w] * 3 + k];
+    for (let w = 0; w < W; w++) if (keep[w]) { outside(w, Pb, want(w) * 0.85); outside(w, skin, Math.max(0.004, isArm(w) ? 0 : Math.min(0.03, inH[w] + 0.004))); } // 最後保險：一定在皮膚、裡面衣服外面
     // 喇叭袖：手腕附近往外放
     if (sleeveFlare > 0) for (let w = 0; w < W; w++) if (keep[w] && isArm(w)) { const f = sleeveFlare * sm(0.22, 0.02, handDist(w)), r = rep[w] * 3; for (let k = 0; k < 3; k++) S[w * 3 + k] += pnorm[r + k] * f; }
     // 開襟：沿著「離中線 openW」那條線把三角形切開（邊是直的，也不用移動點，不會陷進身體）
     const tw = spec.trimWidth ?? 0.016;
     const F = new Float32Array(W).fill(1);
     for (let w = 0; w < W; w++) if (keep[w] && front(w) && !isArm(w) && openW(PY(w)) > 0.0005) F[w] = Math.abs(S[w * 3] - cx) - openW(PY(w));
-    const shellCol = (w) => ((F[w] < tw && F[w] !== 1) || (isArm(w) && handDist(w) < 0.05) ? trim : color);
-    const vid = new Int32Array(W).fill(-1), cut = new Map();
-    const sv = (w) => (vid[w] >= 0 ? vid[w] : (vid[w] = vert(S[w * 3], S[w * 3 + 1], S[w * 3 + 2], shellCol(w), nodeW(w))));
-    const cv = (A, Bn) => { // A、B 之間切開的點（共用，布才連在一起）
-      const key = A < Bn ? A + ',' + Bn : Bn + ',' + A; if (cut.has(key)) return cut.get(key);
-      const t = F[A] / (F[A] - F[Bn]), p = [0, 1, 2].map((k) => S[A * 3 + k] + (S[Bn * 3 + k] - S[A * 3 + k]) * t);
-      const id = vert(p[0], p[1], p[2], trim, nodeW(t < 0.5 ? A : Bn)); cut.set(key, id); return id;
+    // 每個三角形：先切掉開口（F < 0），再沿 F = tw 切成滾邊、袍身兩塊（顏色邊界才會是直的）
+    const cuffT = (w) => isArm(w) && handDist(w) < 0.05;
+    const vcache = new Map();
+    const pv = (pt, part) => { // pt：{ key, p, w }；part：0 袍身、1 滾邊
+      const key = pt.key + '|' + part; if (vcache.has(key)) return vcache.get(key);
+      const id = vert(pt.p[0], pt.p[1], pt.p[2], part ? trim : color, nodeW(pt.w)); vcache.set(key, id); return id;
     };
+    const node = (w) => ({ key: 'n' + w, p: [S[w * 3], S[w * 3 + 1], S[w * 3 + 2]], w, f: F[w], cuff: cuffT(w) });
+    const clip = (poly, thr, keepAbove) => { // 留下 f ≥ thr（keepAbove）或 f < thr 的部分
+      const out = [];
+      for (let k = 0; k < poly.length; k++) {
+        const P = poly[k], Q = poly[(k + 1) % poly.length], inP = (P.f >= thr) === keepAbove, inQ = (Q.f >= thr) === keepAbove;
+        if (inP) out.push(P);
+        if (inP !== inQ) {
+          const t = (P.f - thr) / (P.f - Q.f), ids = [P.key, Q.key].sort();
+          out.push({ key: 'c' + thr + ':' + ids.join(','), p: [0, 1, 2].map((i) => P.p[i] + (Q.p[i] - P.p[i]) * t), w: t < 0.5 ? P.w : Q.w, f: thr, cuff: P.cuff && Q.cuff });
+        }
+      }
+      return out;
+    };
+    const emit = (poly, part) => { if (poly.length < 3) return; const ids = poly.map((pt) => pv(pt, part)); for (let k = 1; k + 1 < ids.length; k++) idx.push(ids[0], ids[k], ids[k + 1]); };
     const seen = new Set();
     for (let t = 0; t < TRI.length; t += 3) {
       const A = wid[TRI[t]], Bn = wid[TRI[t + 1]], C = wid[TRI[t + 2]];
       if (A === Bn || Bn === C || A === C || !keep[A] || !keep[Bn] || !keep[C]) continue;
       const key = [A, Bn, C].sort((p, q) => p - q).join(); if (seen.has(key)) continue; seen.add(key);
-      const tri = [A, Bn, C];
-      if (tri.every((w) => F[w] >= 0)) { idx.push(sv(A), sv(Bn), sv(C)); continue; }
-      if (tri.every((w) => F[w] < 0)) continue;
-      const poly = []; // 留下 F ≥ 0 的部分
-      for (let k = 0; k < 3; k++) { const P = tri[k], Q = tri[(k + 1) % 3]; if (F[P] >= 0) poly.push(sv(P)); if ((F[P] >= 0) !== (F[Q] >= 0)) poly.push(cv(P, Q)); }
-      for (let k = 1; k + 1 < poly.length; k++) idx.push(poly[0], poly[k], poly[k + 1]);
+      let poly = [node(A), node(Bn), node(C)];
+      if (poly.every((pt) => pt.f === 1)) { emit(poly, poly.every((pt) => pt.cuff) ? 1 : 0); continue; } // 開口附近以外
+      poly = clip(poly, 0, true); if (poly.length < 3) continue;
+      emit(clip(poly, tw, false), 1); emit(clip(poly, tw, true), 0);
     }
   }
 
@@ -196,13 +211,13 @@ export function buildRobe(B, spec = {}) {
 
   // ---------- 腰以下 ----------
   const notArm = (w) => region[w] === 0 || region[w] === 3;
-  const topY = hipY - 0.03, step = 0.02, rings = [];
+  const topY = hipY + 0.03, step = 0.02, rings = [];
   let last = null, i = 0;
   for (let y = topY; y >= hemY - 1e-6; y -= step, i++) {
     const body = profile(y - 0.02, y + 0.02, notArm);
     const r = new Float32Array(K);
     for (let k = 0; k < K; k++) {
-      let v = body[k] > 0 ? body[k] + off + 0.006 : (last ? last[k] : 0.15);
+      let v = body[k] > 0 ? body[k] + off * (i < 2 ? 0.5 : 1) + (i < 2 ? 0 : 0.006) : (last ? last[k] : 0.15); // 最上面兩圈收在上半身裡面，看不到開口的邊
       if (last) v = Math.max(v, last[k] + flare * step); // 往下只會變寬
       r[k] = v;
     }
