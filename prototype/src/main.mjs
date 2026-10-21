@@ -26,11 +26,20 @@ room.colliders.push({ minX: -5.8, maxX: -5.0, minZ: -1.4, maxZ: -0.6 });
 // 製作人提供的寫實模型：放在同一個位置，用按鈕切換，比較兩種美術風格
 let realModel = null, useModel = new URLSearchParams(location.search).get('char') !== 'code'; // 預設用寫實模型；網址加 ?char=code 改成程式繪製
 const ELORA_SPOT = { pos: new THREE.Vector3(-5.4, 0, -1.0), rotY: 1.0 };
-loadFemaleModel(scene).then((m) => {
+// 艾洛拉：艾爾德林（原本的金髮、領帶改淡藍、眼睛改藍）
+loadFemaleModel(scene, { accentHue: 212, accentSat: 0.75, accentLight: 1.5, irisHue: 210 }).then((m) => {
   realModel = m; m.position.copy(ELORA_SPOT.pos); m.rotation.y = ELORA_SPOT.rotY;
   targets.push({ object: m, label: '和艾洛拉說話', kind: 'elora' });
   $('btn-style').hidden = false; applyStyle();
 }).catch((e) => console.warn('寫實模型載入失敗', e));
+// 月晞：同一個模型，黑髮、格里莫瓦的深紅領帶、深棕眼睛、矮一點。站在書架旁邊
+const YUEXI_SPOT = { pos: new THREE.Vector3(5.2, 0, 0.2), rotY: -1.75 };
+let yuexi = null;
+loadFemaleModel(scene, { hair: '#15100e', accentHue: 352, accentSat: 1.0, accentLight: 0.75, height: 0.96 }).then((m) => {
+  yuexi = m; m.position.copy(YUEXI_SPOT.pos); m.rotation.y = YUEXI_SPOT.rotY;
+  room.colliders.push({ minX: 4.8, maxX: 5.6, minZ: -0.2, maxZ: 0.6 });
+  targets.push({ object: m, label: '和月晞說話', kind: 'yuexi' });
+}).catch((e) => console.warn('月晞模型載入失敗', e));
 function applyStyle() {
   elora.root.visible = !useModel; if (realModel) realModel.visible = useModel;
   $('btn-style').textContent = useModel ? '🎨 角色：寫實模型' : '🎨 角色：程式繪製';
@@ -71,6 +80,12 @@ function pickFocus() {
 function interact() {
   if (!focus || mode !== 'walk') return;
   if (focus.kind === 'elora') talkToElora();
+  else if (focus.kind === 'yuexi') {
+    const Y = (text) => ({ who: '月晞', text });
+    say(room.state.revealed
+      ? [Y('……黑板上的字，是用血寫的。'), Y('筆畫是從右往左寫的。寫字的人，可能不太習慣用右手。'), Y('我們不該待在這裡。')]
+      : [Y('噓。'), Y('……這排書，每一本都被翻到同一頁。'), Y('第十三頁。')]);
+  }
   else if (focus.kind === 'board') say([{ text: room.state.revealed ? '黑板下方浮出了血紅色的字：「午夜之前離開」。角落還寫著「十三」。' : '黑板上寫著三種咒語的畫法。最下面一行：「隱藏的字，只有顯影才看得見。」' }]);
   else if (focus.kind === 'portrait') say([{ text: room.state.distorted ? '肖像畫的臉像蠟一樣融化了，嘴巴一直往下拉長。' : '米爾納學校第一任院長的肖像。不管你走到哪裡，他的眼睛都跟著你。' }]);
 }
@@ -223,6 +238,12 @@ function frame() {
   controls.update(dt);
   room.update(t, dt, camera.position);
   elora.update(t, dt, camera.position);
+  if (yuexi) { // 月晞也會呼吸、玩家靠近時轉過來
+    yuexi.scale.y = 1 + Math.sin(t * 1.5 + 1) * 0.004;
+    const dx = camera.position.x - YUEXI_SPOT.pos.x, dz = camera.position.z - YUEXI_SPOT.pos.z;
+    const want = Math.hypot(dx, dz) < 4 ? Math.atan2(dx, dz) : YUEXI_SPOT.rotY;
+    yuexi.rotation.y += Math.atan2(Math.sin(want - yuexi.rotation.y), Math.cos(want - yuexi.rotation.y)) * Math.min(1, dt * 1.2);
+  }
   if (realModel?.visible) {
     realModel.scale.y = 1 + Math.sin(t * 1.6) * 0.004;
     const dx = camera.position.x - ELORA_SPOT.pos.x, dz = camera.position.z - ELORA_SPOT.pos.z;
