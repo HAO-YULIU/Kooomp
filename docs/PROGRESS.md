@@ -6,6 +6,7 @@
 ## 進行中
 開始做一件事前在這裡登記；做完就移除。格式：`- 分支名稱：在做什麼（會動到的檔案或資料夾）`
 
+- `claude/loving-brahmagupta-mhxt6t`：遊戲系統第 5 批（第四幕：守夜人追逐、躲藏、被抓與救援／自救、倒數，P26～P29、R1～R4、S1～S4）——`server/`、`data/`、`game/src/data/`、`game/src/world/`（新增 act4 相關檔案）、`game/src/logic/`、`game/src/ui/`、`tools/test/`。
 
 - `claude/sweet-goldberg-nklgb6`： 角色模型壓到每個 5MB 以下、放進 `game/models/`，並在 `game/src/art/` 提供載入角色的程式，給遊戲換掉隊友的簡單人形。不會動 `game/src/` 其他資料夾。
 
