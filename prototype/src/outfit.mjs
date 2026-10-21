@@ -282,8 +282,15 @@ export async function wearOutfit(ctx, spec) {
 
   if (isRobe) {
     const wreg = new Uint8Array(W); for (let i = 0; i < n; i++) wreg[wid[i]] = vreg[i];
+    // 裡面那幾層在每個身體節點上有多高（取最高的、往旁邊擴一圈），袍子要蓋在它外面
+    const innerH = new Float32Array(W).fill(-Infinity);
+    for (const m of inner) {
+      const p = m.geometry.attributes.position, sl = m.geometry.userData.sleeve;
+      for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), q = attach(x, y, z, sl?.[i]); if (q >= 0) { const w = wid[q]; innerH[w] = Math.max(innerH[w], height(x, y, z, q)); } }
+    }
+    { const G = innerH.slice(); for (let w = 0; w < W; w++) for (const o of wnb[w]) if (innerH[o] > G[w]) G[w] = innerH[o]; innerH.set(G); }
     const { geometry: g, material } = buildRobe({ posed, pnorm, wid, W, wnb, n, TRI, region: wreg, skinned, bones: skinned ? body.skeleton.bones : [],
-      bw: body.geometry.attributes.skinWeight, bi: body.geometry.attributes.skinIndex, cx, neckY: neck.y, hipY: hip.y, hands: [wristL, wristR], arms: [[shL, elL, wristL], [shR, elR, wristR]] }, spec);
+      bw: body.geometry.attributes.skinWeight, bi: body.geometry.attributes.skinIndex, cx, neckY: neck.y, hipY: hip.y, hands: [wristL, wristR], arms: [[shL, elL, wristL], [shR, elR, wristR]], innerH }, spec);
     if (window.__outfitTint?.robe) { material.vertexColors = false; material.color.set(window.__outfitTint.robe); }
     const p = g.attributes.position; for (let i = 0; i < p.count; i++) clothPts.push(p.getX(i), p.getY(i), p.getZ(i));
     const m = skinned ? new THREE.SkinnedMesh(g, material) : new THREE.Mesh(g, material); m.castShadow = m.receiveShadow = true; m.frustumCulled = false;

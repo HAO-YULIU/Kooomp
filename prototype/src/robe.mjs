@@ -57,7 +57,7 @@ export function buildRobe(B, spec = {}) {
   const nodeW = (w) => (skinned ? [[0, 1, 2, 3].map((k) => bi.getComponent(rep[w], k)), [0, 1, 2, 3].map((k) => bw.getComponent(rep[w], k))] : rigid(0));
 
   // ---------- 上半身 ----------
-  const shellTop = neckY - 0.02, shellBot = hipY - 0.05;
+  const shellTop = neckY - 0.02, shellBot = hipY - 0.09; // 上半身做到屁股（最寬的地方），下半身從那裡開始，腰上才不會有一圈台階
   const openW = (y) => THREE.MathUtils.lerp(openWaist, openTop, sm(hipY, shellTop, y));
   const isArm = (w) => region[w] === 1;
   // 有骨架（Character Creator）：直接用身體表面做，最合身。沒有骨架的模型表面常常很亂（衣服和身體疊在一起），改用下面一圈一圈量的做法
@@ -75,15 +75,21 @@ export function buildRobe(B, spec = {}) {
       if (!isArm(w) && y > shellTop - 0.05 && Math.hypot(PX(w) - nx, PZ(w) - nz) < holeR) continue;
       keep[w] = 1;
     }
-    // 往外推、抹平（去掉鎖骨、肋骨這些細節），再確定每個點都在皮膚外面
+    // 往外推（皮膚外 off，裡面有衣服就在衣服外面一點），抹平（去掉鎖骨、胸部這些細節；用一推一拉的抹法，不會越抹越瘦），
+    // 最後確定每個點都在皮膚、裡面那層衣服的外面
+    const inH = B.innerH ?? new Float32Array(W).fill(-Infinity);
+    const want = (w) => Math.max(off, inH[w] + 0.008);
     const S = new Float32Array(W * 3);
-    for (let w = 0; w < W; w++) if (keep[w]) { const r = rep[w] * 3; for (let k = 0; k < 3; k++) S[w * 3 + k] = posed[r + k] + pnorm[r + k] * off; }
-    const outside = (w, want) => { const r = rep[w] * 3; const h = (S[w * 3] - posed[r]) * pnorm[r] + (S[w * 3 + 1] - posed[r + 1]) * pnorm[r + 1] + (S[w * 3 + 2] - posed[r + 2]) * pnorm[r + 2]; if (h < want) for (let k = 0; k < 3; k++) S[w * 3 + k] += pnorm[r + k] * (want - h); };
-    for (let it = 0; it < 6; it++) {
+    for (let w = 0; w < W; w++) if (keep[w]) { const r = rep[w] * 3, d = want(w); for (let k = 0; k < 3; k++) S[w * 3 + k] = posed[r + k] + pnorm[r + k] * d; }
+    const outside = (w, h0) => { const r = rep[w] * 3; const h = (S[w * 3] - posed[r]) * pnorm[r] + (S[w * 3 + 1] - posed[r + 1]) * pnorm[r + 1] + (S[w * 3 + 2] - posed[r + 2]) * pnorm[r + 2]; if (h < h0) for (let k = 0; k < 3; k++) S[w * 3 + k] += pnorm[r + k] * (h0 - h); };
+    const lap = (f) => {
       const T = S.slice();
-      for (let w = 0; w < W; w++) { if (!keep[w]) continue; let c = 0; const s = [0, 0, 0]; for (const o of wnb[w]) if (keep[o]) { for (let k = 0; k < 3; k++) s[k] += S[o * 3 + k]; c++; } if (c) for (let k = 0; k < 3; k++) T[w * 3 + k] = S[w * 3 + k] * 0.4 + (s[k] / c) * 0.6; }
-      S.set(T); for (let w = 0; w < W; w++) if (keep[w]) outside(w, off * (it < 5 ? 0.9 : 1));
-    }
+      for (let w = 0; w < W; w++) { if (!keep[w]) continue; let c = 0; const s = [0, 0, 0]; for (const o of wnb[w]) if (keep[o]) { for (let k = 0; k < 3; k++) s[k] += S[o * 3 + k]; c++; } if (c) for (let k = 0; k < 3; k++) T[w * 3 + k] = S[w * 3 + k] + (s[k] / c - S[w * 3 + k]) * f; }
+      S.set(T);
+    };
+    for (let it = 0; it < 12; it++) { lap(0.5); lap(-0.53); }
+    for (let w = 0; w < W; w++) if (keep[w]) outside(w, Math.max(0.006, inH[w] + 0.005));
+    lap(0.3); for (let w = 0; w < W; w++) if (keep[w]) outside(w, Math.max(0.005, inH[w] + 0.004));
     // 喇叭袖：手腕附近往外放
     if (sleeveFlare > 0) for (let w = 0; w < W; w++) if (keep[w] && isArm(w)) { const f = sleeveFlare * sm(0.22, 0.02, handDist(w)), r = rep[w] * 3; for (let k = 0; k < 3; k++) S[w * 3 + k] += pnorm[r + k] * f; }
     // 開襟：沿著「離中線 openW」那條線把三角形切開（邊是直的，也不用移動點，不會陷進身體）
@@ -128,7 +134,8 @@ export function buildRobe(B, spec = {}) {
   };
   const at = (r, a) => { const f = (((a / (Math.PI * 2)) * K) % K + K) % K, k0 = Math.floor(f), t = f - k0; return r[k0] * (1 - t) + r[(k0 + 1) % K] * t; };
   // 一圈圈接成布：rings＝[{ y, r（輪廓）, half（前面開口的半角）, c（顏色） }]
-  const tube = (rings, weights, segs = 40) => {
+  const tube = (rings, weights, segs = 40) => tubeAt(cx, cz, rings, weights, segs);
+  const tubeAt = (ox, oz, rings, weights, segs = 40) => {
     let prev = null;
     for (const ring of rings) {
       const row = [];
@@ -136,7 +143,7 @@ export function buildRobe(B, spec = {}) {
         const a = ring.half + (Math.PI * 2 - ring.half * 2) * (j / segs), rr = at(ring.r, a);
         const arc = Math.min(a - ring.half, Math.PI * 2 - ring.half - a) * rr; // 離開口邊多遠（公尺）
         const c = (ring.half > 0.01 && arc < (spec.trimWidth ?? 0.016) * 1.3) ? trim : ring.c;
-        row.push(vert(cx + Math.sin(a) * rr, ring.y, cz + Math.cos(a) * rr, c, weights));
+        row.push(vert(ox + Math.sin(a) * rr, ring.y, oz + Math.cos(a) * rr, c, weights));
       }
       if (prev) for (let j = 0; j < segs; j++) idx.push(prev[j], row[j], prev[j + 1], prev[j + 1], row[j], row[j + 1]);
       prev = row;
@@ -189,28 +196,39 @@ export function buildRobe(B, spec = {}) {
 
   // ---------- 腰以下 ----------
   const notArm = (w) => region[w] === 0 || region[w] === 3;
-  const topY = hipY + 0.06, step = 0.02, rings = [];
+  const topY = hipY - 0.03, step = 0.02, rings = [];
   let last = null, i = 0;
   for (let y = topY; y >= hemY - 1e-6; y -= step, i++) {
     const body = profile(y - 0.02, y + 0.02, notArm);
     const r = new Float32Array(K);
     for (let k = 0; k < K; k++) {
-      let v = body[k] > 0 ? body[k] + off + (i < 3 ? 0 : 0.008) : (last ? last[k] : 0.15); // 腰帶那幾圈貼身一點，不然腰上會凸一圈
+      let v = body[k] > 0 ? body[k] + off + 0.006 : (last ? last[k] : 0.15);
       if (last) v = Math.max(v, last[k] + flare * step); // 往下只會變寬
       r[k] = v;
     }
-    const belt = spec.belt !== false && i < 2, hem = y - step < hemY;
+    const belt = false, hem = y - step < hemY;
     const frontR = r[0] || 0.15, half = Math.max(Math.atan2(openWaist, frontR), openHem * sm(topY, hemY, y));
     rings.push({ y, r, half, c: belt || hem ? trim : color });
     last = r;
   }
   tube(rings, rigid(hipBone));
+  // 腰帶：腰上一條帶子（貼著上半身）
+  if (spec.belt !== false) {
+    const bw0 = profile(hipY + 0.05, hipY + 0.09, (w) => region[w] === 0).map((v) => v + off + 0.012);
+    const half = Math.atan2(openWaist, bw0[0] || 0.12);
+    tube([{ y: hipY + 0.095, r: bw0, half, c: trim }, { y: hipY + 0.06, r: bw0.map((v) => v + 0.002), half, c: trim }], rigid(hipBone), 40);
+  }
 
-  // ---------- 立領 ----------
+  // ---------- 立領：圍著脖子（不是肩膀）的一圈，往上微微張開 ----------
   if (spec.collar !== false) {
-    const neckR = profile(neckY - 0.04, neckY + 0.01, (w) => region[w] === 0);
-    const r = neckR.map((v) => v + 0.014), half = Math.atan2(openTop * 0.8, r[0] || 0.06);
-    tube([{ y: shellTop - 0.012, r, half, c: color }, { y: shellTop + 0.012, r: r.map((v) => v + 0.003), half, c: color }, { y: shellTop + 0.026, r: r.map((v) => v + 0.008), half, c: trim }], rigid(chestBone), 32);
+    let nx = 0, nz = 0, nn = 0; for (let w = 0; w < W; w++) if (region[w] === 0 && Math.abs(PY(w) - neckY) < 0.012) { nx += PX(w); nz += PZ(w); nn++; }
+    nx = nn ? nx / nn : cx; nz = nn ? nz / nn : cz;
+    const r0 = new Float32Array(K).fill(0);
+    for (let w = 0; w < W; w++) { if (region[w] !== 0 || Math.abs(PY(w) - neckY) > 0.015) continue; const a = Math.atan2(PX(w) - nx, PZ(w) - nz), k = ((Math.round((a / (Math.PI * 2)) * K) % K) + K) % K; r0[k] = Math.max(r0[k], Math.hypot(PX(w) - nx, PZ(w) - nz)); }
+    let mean = 0, c = 0; for (const v of r0) if (v > 0) { mean += v; c++; } mean = c ? mean / c : 0.055;
+    const r = Array.from(r0, (v) => (v > 0 ? v * 0.5 + mean * 0.5 : mean) + 0.026);
+    const half = Math.atan2(Math.max(openTop * 0.8, 0.012), r[0] || 0.08);
+    tubeAt(nx, nz, [{ y: neckY - 0.045, r: r.map((v) => v + 0.012), half, c: color }, { y: neckY - 0.01, r, half, c: color }, { y: neckY + 0.015, r: r.map((v) => v + 0.006), half, c: trim }], rigid(chestBone), 32);
   }
 
   const g = new THREE.BufferGeometry();
