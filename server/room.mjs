@@ -56,7 +56,8 @@ export class Room extends DurableObject {
     if (url.pathname === '/info') {
       const r = this.room;
       if (!r) return Response.json({ error: 'room_not_found' }, { status: 404 });
-      return Response.json({ mode: r.mode, phase: r.phase, lang: r.lang, count: r.order.length, max: MAX[r.mode] });
+      const uid = req.headers.get('x-uid'); // 有登入的話，告訴他是不是這個房間的成員（可以回來繼續玩）
+      return Response.json({ mode: r.mode, phase: r.phase, lang: r.lang, count: r.order.length, max: MAX[r.mode], segment: r.segment, member: !!(uid && r.members[uid]) });
     }
 
     if (url.pathname === '/join') {
@@ -79,6 +80,7 @@ export class Room extends DurableObject {
       pair[1].serializeAttachment({ uid, uiLang });
       if (!r.members[r.sim]?.online) r.sim = uid;
       await this.save();
+      if (r.phase === 'playing') this.syncProfiles([uid]);
       this.send(pair[1], { t: 'hello', you: uid });
       this.send(pair[1], { t: 'notes', notes: r.notes?.[uid] ?? {} });
       this.broadcastState();
@@ -106,6 +108,7 @@ export class Room extends DurableObject {
       hints: r.hints,
       chat: r.chat.slice(-20),
       // 第四幕：倒數的截止時間、判定輸的原因；蝕巢裡每個被抓的人要解哪一題
+      result: r.result ?? null,
       act4: r.act4 ? { deadline: r.act4.deadline, lost: r.act4.lost ?? null, bonus: !!r.act4.bonus } : null,
       nest: Object.fromEntries(Object.entries(r.captured).map(([u, c]) => [u, { r: c.r, s: c.s, at: c.at }])),
     };
@@ -115,6 +118,7 @@ export class Room extends DurableObject {
   enterSegment(seg) {
     const r = this.room; r.segment = seg; r.segAt = Date.now();
     if (seg === 'act4') this.startAct4();
+    if (seg === 'epilogue') this.finish(); else this.syncProfiles();
     if (seg === 'act3c' && !r.order.some((u) => r.members[u].char === 'cyril') && !r.solved.P22) { r.solved.P22 = { by: 'ai', at: Date.now() }; r.flags.P22 = 'hide'; }
   }
   // 第四幕開始（或判定輸之後重來）：倒數 35 分鐘、復活 3 次、清掉第四幕的進度
@@ -125,6 +129,32 @@ export class Room extends DurableObject {
     r.act4 = { deadline: Date.now() + ACT4.duration, lost: null, bonus: false, repelAt: 0, grab: {}, n: 0 };
     this.ctx.storage.setAlarm(r.act4.deadline);
   }
+  // ---------- 存檔（server/profile.mjs，每個玩家一個） ----------
+  profile(uid, path, body) {
+    if (!this.env.PROFILES) return Promise.resolve();
+    const stub = this.env.PROFILES.get(this.env.PROFILES.idFromName(uid));
+    const p = stub.fetch(`https://profile${path}`, { method: 'POST', body: JSON.stringify(body) }).catch(() => {});
+    this.ctx.waitUntil?.(p); return p;
+  }
+  // 記下「最近在玩的房間」（選單的「繼續上次的遊戲」）
+  syncProfiles(uids = this.room.order) {
+    const r = this.room;
+    return Promise.all(uids.map((u) => this.profile(u, '/last', { code: r.code, mode: r.mode, lang: r.lang, segment: r.segment, at: Date.now() })));
+  }
+  // 第一章通關：記下結果（第二章開頭會用到），也給結算畫面顯示
+  finish() {
+    const r = this.room; if (r.result) return;
+    const st = r.stats ?? {};
+    r.result = {
+      code: r.code, at: Date.now(), mode: r.mode, lang: r.lang, time: Date.now() - (r.started ?? Date.now()),
+      notes: ['note1', 'note2', 'note3', 'note4'].filter((n) => r.items?.[n]).length, // 莉安娜的筆記（第一章 7 頁中的 4 頁）
+      cyril: r.flags.P22 ?? null, caught: st.caught ?? 0, retries: st.retries ?? 0,
+      hints: Object.values(r.hints).reduce((n, list) => n + list.length, 0),
+      players: r.order.map((u) => ({ name: r.members[u].name, char: r.members[u].char })),
+    };
+    for (const u of r.order) this.profile(u, '/clear-ch1', { ...r.result, char: r.members[u].char });
+  }
+
   lose(reason) {
     const r = this.room; if (!r.act4 || r.act4.lost) return;
     r.act4.lost = reason; r.act4.grab = {};
@@ -140,6 +170,7 @@ export class Room extends DurableObject {
   // 被抓到（掙脫失敗）：單人用掉一次復活；多人被拖進蝕巢，抽一題救援題、一題自救題
   caught(uid) {
     const r = this.room;
+    (r.stats ??= {}).caught = (r.stats.caught ?? 0) + 1;
     if (r.mode === 'solo') {
       if (r.revives <= 0) return this.lose('revives');
       r.revives--; this.broadcast({ t: 'revived', uid, left: r.revives }); return;
@@ -233,7 +264,7 @@ export class Room extends DurableObject {
         for (const u of r.order) if (!r.members[u].online) delete r.members[u];
         r.order = r.order.filter((u) => r.members[u]);
         r.phase = 'playing'; r.started = Date.now(); r.segment = 'prologue'; r.segAt = Date.now();
-        await this.save(); this.broadcastState(); return reply({ t: 'ok' });
+        await this.save(); this.broadcastState(); this.syncProfiles(); return reply({ t: 'ok' });
       }
 
       // ----- 作答 -----
@@ -351,6 +382,7 @@ export class Room extends DurableObject {
       }
       case 'retry': { // 判定輸之後，從第四幕開頭重來
         if (!r.act4?.lost) return err('not_now');
+        (r.stats ??= {}).retries = (r.stats.retries ?? 0) + 1;
         this.startAct4(); await this.save(); this.broadcast({ t: 'retry' }); this.broadcastState(); return reply({ t: 'ok' });
       }
       case 'hint': {

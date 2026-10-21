@@ -15,6 +15,15 @@ import { CHARS } from './chars.mjs';
 const $ = (id) => document.getElementById(id);
 const fmt = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
 
+// 通關結算：用時、莉安娜的筆記、西里爾的抉擇、被抓幾次、提示、重來幾次
+function summary(r) {
+  if (!r) return [];
+  const min = Math.round(r.time / 60000), time = min >= 60 ? t('time_hm', { h: Math.floor(min / 60), m: min % 60 }) : t('time_m', { m: min });
+  const rows = [[t('res_time'), time], [t('res_notes'), `${r.notes} / 4`], [t('res_cyril'), t(r.cyril === 'show' ? 'res_cyril_show' : 'res_cyril_hide')],
+    [t('res_caught'), String(r.caught)], [t('res_hints'), String(r.hints)], [t('res_retries'), String(r.retries)]];
+  return [el('table', { class: 'result' }, ...rows.map(([k, v]) => el('tr', {}, el('th', { text: k }), el('td', { text: v }))))];
+}
+
 export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar, receiver, serverNow, holding, solvedByMe, playScript, dev }) {
   const warden = createWarden(world.scene, { view: WARDEN.view, fov: WARDEN.fov });
   const scenery = createAct4Scene(world.scene);
@@ -87,7 +96,8 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
           world.teleport(SPAWNS.act1?.[CHARS[myChar()]?.house] ?? A4_SPAWN); playScript('segment:epilogue');
         } else if (ending === 'epilogue' && !talking()) { // 尾聲講完：第一章結束
           ending = null;
-          openPanel(t('ch1_end'), (body) => body.append(el('p', { text: t('ch1_end_body') })));
+          openPanel(t('ch1_end'), (body) => body.append(...summary(S().result), el('p', { text: t('ch1_end_body') }),
+            el('button', { text: t('to_menu'), onclick: () => { const q = new URLSearchParams(location.search); q.delete('room'); location.href = location.pathname + (q.size ? `?${q}` : ''); } })));
         }
         return 0;
       }

@@ -149,6 +149,10 @@ const TEXT = {
     p10_intro: '創辦人畫像下方的鎖：把他的手臂轉向一個方向，再轉出四位數字。',
     p10_dir: '手臂指向：',
     p10_year: '四位數字：',
+    continue: '繼續上次的遊戲', cleared_ch1: '✔ 已通關第一章', to_menu: '回到選單',
+    time_hm: '{h} 小時 {m} 分', time_m: '{m} 分',
+    res_time: '用時', res_notes: '莉安娜的筆記', res_cyril: '西里爾的抉擇', res_cyril_show: '把徽章拿給大家看', res_cyril_hide: '悄悄收起徽章',
+    res_caught: '被守夜人抓到', res_hints: '看過的提示', res_retries: '第四幕重來',
     // ---- 第四幕 ----
     a4_clock: '第十三響的餘音',
     a4_grab: '被抓住了！快連點（空白鍵／點畫面）掙脫！',
@@ -379,6 +383,10 @@ const TEXT = {
     p10_intro: 'The lock beneath the founder’s portrait: turn his arm toward a direction, then dial four digits.',
     p10_dir: 'The arm points:',
     p10_year: 'Four digits:',
+    continue: 'Continue your last game', cleared_ch1: '✔ Chapter One cleared', to_menu: 'Back to menu',
+    time_hm: '{h}h {m}m', time_m: '{m} min',
+    res_time: 'Time', res_notes: 'Liana’s notes', res_cyril: 'Cyril’s choice', res_cyril_show: 'Showed everyone the badge', res_cyril_hide: 'Quietly pocketed the badge',
+    res_caught: 'Caught by the Warden', res_hints: 'Hints used', res_retries: 'Act Four restarts',
     // ---- Act 4 ----
     a4_clock: 'The thirteenth toll fades in',
     a4_grab: 'You’re caught! Mash Space / tap the screen to break free!',

@@ -1,10 +1,12 @@
 // Cloudflare Worker：網頁（dist/）＋遊戲 API。
 // - POST /api/rooms                建立房間（單人也是一個只有一人的房間），回傳房號
 // - GET  /api/rooms/:code          房間的公開資訊（存不存在、開始了沒、幾個人），加入前先檢查
+// - GET  /api/me                   自己的存檔（最近在玩的房間、第一章的通關紀錄）
 // - GET  /api/rooms/:code/ws        加入房間的即時連線（WebSocket）。登入 token 放在 Sec-WebSocket-Protocol：['milner', token]
 // 其他網址交給靜態檔案（dist/）。
 import { whoIs } from './auth.mjs';
 export { Room } from './room.mjs';
+export { Profile } from './profile.mjs';
 
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 拿掉 0/O、1/I
 const makeCode = () => Array.from(crypto.getRandomValues(new Uint8Array(4)), (b) => ALPHABET[b % ALPHABET.length]).join('');
@@ -34,10 +36,19 @@ export default {
       return fail('busy', 503);
     }
 
+    // 自己的存檔
+    if (url.pathname === '/api/me' && req.method === 'GET') {
+      const who = await whoIs(env, bearer(req));
+      if (!who) return fail('need_login', 401);
+      const r = await env.PROFILES.get(env.PROFILES.idFromName(who.uid)).fetch('https://profile/get');
+      return json(await r.json());
+    }
+
     const info = url.pathname.match(/^\/api\/rooms\/([A-Z0-9]{4})$/);
     if (info && req.method === 'GET') {
       const stub = env.ROOMS.get(env.ROOMS.idFromName(info[1]));
-      return stub.fetch('https://room/info');
+      const who = bearer(req) ? await whoIs(env, bearer(req)) : null; // 有登入：順便告訴他是不是成員
+      return stub.fetch('https://room/info', { headers: who ? { 'x-uid': who.uid } : {} });
     }
 
     // 加入房間（WebSocket）

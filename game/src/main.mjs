@@ -2,7 +2,7 @@
 import { t, errText, getLang, setLang } from './logic/i18n.mjs';
 import { HOUSES, CHARS, charOfHouse } from './logic/chars.mjs';
 import { signIn, lobbyGate, testPanel, isTest } from './net/platform.mjs';
-import { createRoom, roomInfo, connectRoom } from './net/room.mjs';
+import { createRoom, roomInfo, connectRoom, mySave } from './net/room.mjs';
 import { openSorting } from './ui/sorting.mjs';
 
 const $ = (id) => document.getElementById(id);
@@ -43,6 +43,7 @@ async function boot() {
   }
   $('hello').textContent = t('hello', { name: me.name });
   show('s-menu');
+  showSave();
   const code = (params.get('room') || '').toUpperCase();
   if (/^[A-Z0-9]{4}$/.test(code)) { $('join-code').value = code; join(code); }
 }
@@ -65,9 +66,20 @@ async function join(code) {
   if (!/^[A-Z0-9]{4}$/.test(code)) return menuErr('room_not_found');
   const info = await roomInfo(code);
   if (info.error) return menuErr(info.error);
+  if (info.member) return enter(code); // 已經是成員：回來繼續玩（從最近的段落開始）
   if (info.count >= info.max) return menuErr('room_full');
   if (info.phase !== 'lobby') return menuErr('room_started');
   enter(code);
+}
+// 選單：繼續上次的遊戲、第一章通關過
+async function showSave() {
+  const save = await mySave();
+  $('save-info').textContent = save.cleared?.includes(1) ? t('cleared_ch1') : '';
+  const last = save.last, btn = $('btn-continue');
+  btn.hidden = !last;
+  if (!last) return;
+  btn.querySelector('small').textContent = `${t(last.mode === 'solo' ? 'solo' : 'create')} · ${t(`seg_name.${last.segment}`)}${last.mode === 'solo' ? '' : ` · ${last.code}`}`;
+  btn.onclick = () => join(last.code);
 }
 
 // ---------- 房間 ----------
@@ -115,6 +127,9 @@ function onMessage(msg) {
     case 'error': if (!msg.id) toast(errText(msg.error)); break;
   }
 }
+// 括號、冒號：中文用全形，英文用半形
+const paren = (x) => (getLang() === 'en' ? ` (${x})` : `（${x}）`);
+const colon = () => (getLang() === 'en' ? ': ' : '：');
 const nameOf = (uid) => state?.members.find((m) => m.uid === uid)?.name ?? '?';
 
 function renderWait() {
@@ -134,7 +149,7 @@ function renderWait() {
   $('house-pick').innerHTML = '';
   const sb = document.createElement('button');
   sb.className = 'primary small';
-  sb.textContent = mine?.sorted ? `${t('sorting_done')}：${HOUSES[CHARS[mine.sorted].house][getLang()]}（↻）` : t('sorting_open');
+  sb.textContent = mine?.sorted ? `${t('sorting_done')}${colon()}${HOUSES[CHARS[mine.sorted].house][getLang()]}${paren('↻')}` : t('sorting_open');
   sb.onclick = () => openSorting(async (h) => {
     const r = await conn.request({ t: 'house', house: h });
     if (r.t === 'error') return ($('wait-err').textContent = errText(r.error));
@@ -152,7 +167,7 @@ function renderWait() {
     b.classList.toggle('on', mine?.char === c); b.disabled = !!takenBy || !!mine?.ready;
     b.innerHTML = '<b></b><small></small>';
     b.firstChild.textContent = info[getLang()];
-    b.lastChild.textContent = takenBy ? `${t('taken')}（${takenBy.name}）` : HOUSES[info.house][getLang()];
+    b.lastChild.textContent = takenBy ? `${t('taken')}${paren(takenBy.name)}` : HOUSES[info.house][getLang()];
     b.onclick = async () => { const r = await conn.request({ t: 'char', char: mine?.char === c ? null : c }); $('wait-err').textContent = r.t === 'error' ? errText(r.error) : ''; };
     $('char-pick').append(b);
   }
@@ -188,7 +203,7 @@ function renderTeam() {
   for (const m of state.members) {
     const d = document.createElement('div');
     const zone = m.uid === myUid ? game?.world.zone() : m.zone;
-    d.textContent = `${m.name}（${m.char ? CHARS[m.char][getLang()] : '—'}）${zone && game ? ' · ' + game.zoneName(zone) : ''}${m.online ? '' : ' · ' + t('offline')}`;
+    d.textContent = `${m.name}${paren(m.char ? CHARS[m.char][getLang()] : '—')}${zone && game ? ' · ' + game.zoneName(zone) : ''}${m.online ? '' : ' · ' + t('offline')}`;
     $('team').append(d);
   }
 }

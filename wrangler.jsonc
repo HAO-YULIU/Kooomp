@@ -15,9 +15,10 @@
     "run_worker_first": ["/api/*"]
   },
   "durable_objects": {
-    "bindings": [{ "name": "ROOMS", "class_name": "Room" }]
+    "bindings": [{ "name": "ROOMS", "class_name": "Room" }, { "name": "PROFILES", "class_name": "Profile" }]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }],
+  // 存檔（server/profile.mjs）是第 6 批加的，所以是 v2
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }, { "tag": "v2", "new_sqlite_classes": ["Profile"] }],
   "vars": {
     "SUPABASE_URL": "https://umlnwzpmjxktfzjvcbts.supabase.co",
     "SUPABASE_KEY": "sb_publishable_8J3VI8dijlCccHQbXPfCQQ_v_O0Au3w"

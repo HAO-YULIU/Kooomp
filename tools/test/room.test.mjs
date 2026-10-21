@@ -357,3 +357,57 @@ test('第四幕多人：被拖進蝕巢、同伴救援、自救、全員被抓�
   assert.equal((await a.wait((m) => m.t === 'lost')).reason, 'captured');
   a.close(); b.close();
 });
+
+test('整章：單人從序幕玩到尾聲，存檔記下結果，可以回來繼續', async () => {
+  const name = `整章${Date.now() % 100000}`; // 每次用新的玩家（存檔在測試之間會留著）
+  const auth = { authorization: `Bearer dev-${encodeURIComponent(name)}` };
+  const code = await create(name, 'solo');
+  const p = await player(code, name);
+  await p.request({ t: 'char', char: 'yuexi' }); await p.request({ t: 'ready', ready: true }); await p.request({ t: 'start' });
+  const ans = async (pid, value) => { const r = await p.request({ t: 'answer', pid, value }); assert.equal(r.solved, true, `${pid} ${JSON.stringify(r)}`); return r; };
+  const seg = (s) => p.wait((m) => m.t === 'state' && m.segment === s, 5000);
+  // 序幕、第一幕
+  await ans('P02', ['北翼', '綠燈', '十三']); await seg('act1');
+  await sleep(200);
+  const me = await (await fetch(`${base}/api/me`, { headers: auth })).json();
+  assert.equal(me.last.code, code, JSON.stringify(me)); assert.equal(me.last.segment, 'act1'); // 中途離開可以從這裡繼續
+  assert.equal((await (await fetch(`${base}/api/rooms/${code}`, { headers: auth })).json()).member, true);
+  assert.equal((await (await fetch(`${base}/api/rooms/${code}`)).json()).member, false);
+  for (const [pid, v] of [['P03', 'scorpio'], ['P04', '11'], ['P05', '9']]) await ans(pid, v);
+  await ans('P06', [{ t: 0, a: 'flip', g: [7, 11] }, { t: 7, a: 'flip', g: [7] }, { t: 11, a: 'flip', g: [7] }, { t: 15, a: 'knock' }]);
+  await ans('P07', { eldrin: 8, belmont: 9, ouroboros: 3 });
+  p.send({ t: 'pos', z: 'starhall', p: [0, 0], v: [0, 0], y: 0, s: 0 }); await sleep(100);
+  await ans('P08', 'grimoire:11,ouroboros:3,belmont:9,eldrin:8'); await seg('act2');
+  // 第二幕：長廊（有異常就回頭）
+  for (let i = 0; i < 40; i++) {
+    const pk = await p.request({ t: 'peek', pid: 'P09' });
+    const r = await p.request({ t: 'answer', pid: 'P09', value: { loop: pk.loop, choice: pk.next ? 'back' : 'forward' } });
+    if (r.solved) break;
+  }
+  await ans('P10', 'NW|1626'); await seg('act3a');
+  // 第三幕
+  await ans('P11', '257'); await p.request({ t: 'collect', item: 'note1' }); await p.request({ t: 'collect', item: 'note2' });
+  for (const [pid, v] of [['P12', 'wind,fire,earth,water'], ['P13', 'exit'], ['P14', '鐘在井底']]) await ans(pid, v);
+  await seg('act3b');
+  for (const [pid, v] of [['P15', '3141'], ['P16', 'XXXIII'], ['P17', '110111']]) await ans(pid, v);
+  await seg('act3c');
+  let w = (await p.request({ t: 'answer', pid: 'P21', value: { weigh: { left: [0, 1, 2], right: [3, 4, 5] } } })).reply.result;
+  const g = w === 'left' ? [0, 1, 2] : w === 'right' ? [3, 4, 5] : [6, 7, 8];
+  w = (await p.request({ t: 'answer', pid: 'P21', value: { weigh: { left: [g[0]], right: [g[1]] } } })).reply.result;
+  await ans('P21', { pick: w === 'left' ? g[0] : w === 'right' ? g[1] : g[2] });
+  for (const [pid, v] of [['P18', 'b,l,i,g,h,t'], ['P19', 'done'], ['P20', 'done'], ['P23', '1,6,11,16,15,14,13'], ['P24', 'WELL'], ['P25', '5,7,3']]) await ans(pid, v);
+  await p.request({ t: 'collect', item: 'note4' });
+  await seg('act4');
+  // 第四幕：被抓一次（復活），然後逃出去
+  await p.request({ t: 'catch', uid: p.uid }); await p.request({ t: 'caught' });
+  await ans('P26', ['A', 'B']); await ans('P28', 'LSSLLSL');
+  for (const cell of [[1, 5], [1, 4], [2, 4], [2, 3], [3, 3], [3, 2], [3, 1], [4, 1], [4, 0]]) await p.request({ t: 'answer', pid: 'P29', value: { cell } });
+  const end = await seg('epilogue');
+  assert.equal(end.result.notes, 4); assert.equal(end.result.cyril, 'hide'); assert.equal(end.result.caught, 1); assert.ok(end.result.time > 0);
+  await sleep(200);
+  const save = await (await fetch(`${base}/api/me`, { headers: auth })).json();
+  assert.deepEqual(save.cleared, [1]); assert.equal(save.ch1.notes, 4); assert.equal(save.ch1.char, 'yuexi'); assert.equal(save.ch1First.code, code);
+  assert.equal(save.last, undefined); // 通關了，選單不再顯示「繼續」
+  assert.equal((await fetch(`${base}/api/me`)).status, 401);
+  p.close();
+});
