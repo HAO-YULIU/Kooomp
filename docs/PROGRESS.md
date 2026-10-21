@@ -6,9 +6,10 @@
 ## 進行中
 開始做一件事前在這裡登記；做完就移除。格式：`- 分支名稱：在做什麼（會動到的檔案或資料夾）`
 
+- `claude/loving-brahmagupta-mhxt6t`：遊戲系統第 2 批（序幕＋第一幕）——`server/`、`data/`、`game/`（新增 `game/src/data/` 場景配置格式、`game/src/world/greybox.mjs` 灰盒場景、`game/src/ui/` 謎題畫面、`game/src/logic/` 劇情）、`tools/test/`、`docs/08-world-format.md`。美術之後由帳號二照 `docs/08-world-format.md` 的格式換上。
+
 
 ## 等製作人回答
-- 要不要開始第 2 批（序幕＋第一幕）。
 - 技術雛形（`prototype/`）試玩後：
   1. ~~角色美術走哪個方向？~~ 已決定：**寫實模型**（2026-10-21）。
   1-1. 第一章的角色都做好了，看 `prototype/cast.html`（角色一覽）。要確認：撞臉可不可以接受（校長＝男學生、赫爾嘉＝月晞、薇拉＝艾洛拉）；西里爾沒有表情可不可以；守夜人的上色。
