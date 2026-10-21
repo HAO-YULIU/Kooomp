@@ -64,7 +64,6 @@
       <h3 data-t="members"></h3>
       <ul id="member-list"></ul>
       <h3 data-t="sorting"></h3>
-      <p class="sub" data-t="sorting_wip"></p>
       <div class="houses" id="house-pick"></div>
       <p class="sub" id="sorted-hint"></p>
       <h3 data-t="choose_char"></h3>
@@ -93,6 +92,14 @@
       <input id="chat-input" maxlength="200" autocomplete="off">
     </div>
     <div id="toast"></div>
+    <div id="prompt" hidden></div>
+    <div id="actions">
+      <button id="btn-inspect" data-t="inspect"></button>
+      <button id="btn-wand" data-t="wand"></button>
+      <button id="btn-breath" data-t="breath"></button>
+      <button id="btn-notebook" data-t="notebook"></button>
+      <small class="keys">E　F　Q　N</small>
+    </div>
     <div id="dev" hidden>
       <b data-t="dev_panel"></b>
       <div class="row"><input id="dev-pid" value="P02" size="4"><input id="dev-val" placeholder='值（陣列／物件請寫 JSON）'></div>
@@ -100,5 +107,12 @@
       <pre id="dev-out"></pre>
     </div>
   </section>
+
+  <!-- 劇情對話、謎題視窗（等待室的分院鏡也會用到，所以放在 hud 外面） -->
+  <div id="dialog" hidden><b id="dialog-who"></b><p id="dialog-text"></p><small class="more">▼</small></div>
+  <div id="panel" hidden>
+    <div class="panel-head"><b id="panel-title"></b><button id="panel-close">✕</button></div>
+    <div id="panel-body"></div>
+  </div>
 </body>
 </html>

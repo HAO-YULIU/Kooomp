@@ -3,7 +3,7 @@ import { t, errText, getLang, setLang } from './logic/i18n.mjs';
 import { HOUSES, CHARS, charOfHouse } from './logic/chars.mjs';
 import { signIn, lobbyGate } from './net/platform.mjs';
 import { createRoom, roomInfo, connectRoom } from './net/room.mjs';
-import { createSender, createReceiver } from './net/sync.mjs';
+import { openSorting } from './ui/sorting.mjs';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -88,28 +88,27 @@ function enter(code) {
 function onMessage(msg) {
   switch (msg.t) {
     case 'hello': myUid = msg.you; break;
+    case 'notes': pendingNotes = msg.notes; game?.setNotes(msg.notes); break;
     case 'state': {
       const before = state;
       state = msg;
       if (state.phase === 'lobby') { show('s-wait'); renderWait(); }
-      else { startPlay(); renderTeam(); world?.syncAvatars(state.members, myUid); }
-      // 有新隊友加入：送一次自己的位置，讓他看得到你
-      if (before && before.members.length < state.members.length) sender?.resend();
+      else { startGame(); game?.onState(state, before); renderTeam(); }
       for (const line of (!before ? state.chat : [])) addChat(line);
       break;
     }
-    case 'pos': receiver.onPos(msg); break;
+    case 'pos': game?.receiver.onPos(msg); break;
     case 'zone': {
       const m = state?.members.find((x) => x.uid === msg.uid); if (m) m.zone = msg.z;
-      receiver.onZone(msg.uid, msg.z);
-      if (world && msg.z === world.me().z) sender?.resend(); // 隊友走進你的區域
+      game?.receiver.onZone(msg.uid, msg.z);
+      if (game && msg.z === game.world.zone()) game.sender.resend(); // 隊友走進你的區域
       renderTeam();
       break;
     }
     case 'chat': addChat(msg); break;
-    case 'mark': world?.addMark(msg.kind, msg.p); if (msg.uid !== myUid) toast(`${nameOf(msg.uid)}：${t(`mark_${msg.kind}`)}`); break;
-    case 'solved': toast(t('solved', { pid: msg.pid })); devOut(msg); break;
-    case 'hint': devOut(msg); break;
+    case 'mark': game?.world.addMark(msg.kind, msg.p); if (msg.uid !== myUid) toast(`${nameOf(msg.uid)}：${t(`mark_${msg.kind}`)}`); break;
+    case 'solved': game?.onSolved(msg.pid, msg.by); toast(`${nameOf(msg.by)}：${t('solved', { pid: msg.pid })}`); devOut(msg); break;
+    case 'hint': if (state) (state.hints[msg.pid] ??= []).push(msg.text); toast(`${nameOf(msg.by)}：${t('hint')}`); break;
     case 'error': if (!msg.id) toast(errText(msg.error)); break;
   }
 }
@@ -128,20 +127,18 @@ function renderWait() {
     li.lastChild.textContent = [m.uid === state.host ? t('host') : '', m.ready ? '✔' : '', m.online ? '' : t('offline')].filter(Boolean).join(' · ');
     $('member-list').append(li);
   }
-  // 分學院（第 2 批換成分院鏡的問答）
+  // 分院鏡的問答（P01）：結果把對應學院的角色設成預設，可以改選
   $('house-pick').innerHTML = '';
-  for (const [h, info] of Object.entries(HOUSES)) {
-    const b = document.createElement('button');
-    b.style.setProperty('--hc', info.color);
-    b.classList.toggle('on', mine?.sorted === charOfHouse(h));
-    b.innerHTML = '<b></b>'; b.firstChild.textContent = info[getLang()];
-    b.onclick = async () => {
-      const r = await conn.request({ t: 'house', house: h });
-      if (r.t === 'error') return ($('wait-err').textContent = errText(r.error));
-      if (!mine?.char && !state.members.some((m) => m.char === charOfHouse(h))) conn.send({ t: 'char', char: charOfHouse(h) });
-    };
-    $('house-pick').append(b);
-  }
+  const sb = document.createElement('button');
+  sb.className = 'primary small';
+  sb.textContent = mine?.sorted ? `${t('sorting_done')}：${HOUSES[CHARS[mine.sorted].house][getLang()]}（↻）` : t('sorting_open');
+  sb.onclick = () => openSorting(async (h) => {
+    const r = await conn.request({ t: 'house', house: h });
+    if (r.t === 'error') return ($('wait-err').textContent = errText(r.error));
+    const me = state.members.find((m) => m.uid === myUid);
+    if (!me?.char && !state.members.some((m) => m.char === charOfHouse(h))) conn.send({ t: 'char', char: charOfHouse(h) });
+  });
+  $('house-pick').append(sb);
   $('sorted-hint').textContent = mine?.sorted ? t('sorted_hint', { house: HOUSES[CHARS[mine.sorted].house][getLang()] }) : '';
   // 角色
   $('char-pick').innerHTML = '';
@@ -163,41 +160,32 @@ function renderWait() {
 }
 $('btn-leave').onclick = () => { conn?.close(); conn = null; state = null; history.replaceState(null, '', location.pathname + (DEV ? `?dev=${params.get('dev')}` : '')); show('s-menu'); };
 
-// ---------- 遊戲（第 1 批：測試場景） ----------
-let world = null, sender = null;
-const receiver = createReceiver();
-async function startPlay() {
-  if (world) return;
+// ---------- 遊戲 ----------
+let game = null, starting = false, pendingNotes = null;
+async function startGame() {
+  if (game || starting) return;
+  starting = true;
   for (const s of screens) $(s).hidden = true;
   $('view').hidden = false; $('hud').hidden = false; $('dev').hidden = !DEV;
-  const { createWorld } = await import('./world/world.mjs');
-  world = createWorld($('view'));
-  // 每個人站的位置錯開一點，不會疊在一起
-  const idx = Math.max(0, state.members.findIndex((m) => m.uid === myUid));
-  world.controls.state.pos.x += (idx - 1.5) * 1.4;
-  world.syncAvatars(state.members, myUid);
-  sender = createSender((m) => { conn?.send(m); if (window.__ml) window.__ml.sent++; });
-  if (DEV) window.__ml = { receiver, world, sent: 0 }; // 測試用
-  let last = performance.now();
-  const loop = (now) => {
-    const dt = Math.min(0.05, (now - last) / 1000); last = now;
-    const mine = world.me();
-    sender.update(mine, now);
-    world.frame(dt, receiver.update(dt, now), mine.z);
-    requestAnimationFrame(loop);
-  };
-  requestAnimationFrame(loop);
+  const { startPlay } = await import('./logic/play.mjs');
+  game = startPlay({ conn, getState: () => state, myUid, toast, dev: DEV });
+  if (pendingNotes) game.setNotes(pendingNotes);
+  game.onState(state, null);
+  renderTeam();
 }
 function renderTeam() {
   if (!state) return;
   $('team').innerHTML = '';
+  const seg = t(`seg_name.${state.segment}`);
+  if (seg && !seg.startsWith('seg_name')) $('team').append(Object.assign(document.createElement('div'), { className: 'seg', textContent: seg }));
   for (const m of state.members) {
     const d = document.createElement('div');
-    const zone = m.uid === myUid ? world?.me().z : m.zone;
-    d.textContent = `${m.name}（${m.char ? CHARS[m.char][getLang()] : '—'}）${zone ? ' · ' + zone : ''}${m.online ? '' : ' · ' + t('offline')}`;
+    const zone = m.uid === myUid ? game?.world.zone() : m.zone;
+    d.textContent = `${m.name}（${m.char ? CHARS[m.char][getLang()] : '—'}）${zone && game ? ' · ' + game.zoneName(zone) : ''}${m.online ? '' : ' · ' + t('offline')}`;
     $('team').append(d);
   }
 }
+setInterval(() => { if (game) renderTeam(); }, 1500);
 
 // 聊天與標記
 function addChat(line) {
@@ -209,24 +197,30 @@ function addChat(line) {
 $('chat-input').onkeydown = async (e) => {
   e.stopPropagation();
   if (e.key !== 'Enter') return;
-  const text = e.target.value.trim(); if (!text) return;
+  const text = e.target.value.trim(); if (!text) { e.target.blur(); return; }
   e.target.value = '';
   const r = await conn.request({ t: 'chat', text });
   if (r.t === 'error') toast(errText(r.error));
 };
 addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !$('hud').hidden && document.activeElement !== $('chat-input')) { document.exitPointerLock?.(); $('chat-input').focus(); }
+  if (e.key === 'Enter' && !$('hud').hidden && document.activeElement?.tagName !== 'INPUT' && $('panel').hidden && $('dialog').hidden) { document.exitPointerLock?.(); $('chat-input').focus(); }
 });
-const placeMark = (kind) => { if (world) conn.send({ t: 'mark', kind, z: world.me().z, p: world.lookPoint() }); };
+const placeMark = (kind) => { if (game) conn.send({ t: 'mark', kind, z: game.world.zone(), p: game.world.lookPoint() }); };
 for (const b of document.querySelectorAll('[data-mark]')) b.onclick = () => placeMark(b.dataset.mark);
 // 電腦：滑鼠鎖定時點不到按鈕，用 1／2／3 放標記
 const MARK_KEYS = { Digit1: 'here', Digit2: 'danger', Digit3: 'help' };
 addEventListener('keydown', (e) => { if (MARK_KEYS[e.code] && !$('hud').hidden && document.activeElement?.tagName !== 'INPUT') placeMark(MARK_KEYS[e.code]); });
 
-// 測試作答（網址加 ?dev）
+// 測試作答（網址加 ?dev）。題號填 SEG、值填段落名稱（例如 act1）可以直接跳段（只有本機）
 function devOut(m) { if (DEV) $('dev-out').textContent = JSON.stringify(m, null, 1) + '\n' + $('dev-out').textContent.slice(0, 2000); }
 const devValue = () => { const v = $('dev-val').value.trim(); try { return JSON.parse(v); } catch { return v; } };
-$('dev-answer').onclick = async () => { const r = await conn.request({ t: 'answer', pid: $('dev-pid').value.trim().toUpperCase(), value: devValue() }); devOut(r); if (r.solved) toast(t('solved', { pid: r.pid })); else if (r.t === 'result') toast(t('wrong')); else if (r.t === 'error') toast(errText(r.error, { s: Math.ceil((r.wait ?? 0) / 1000) })); };
+$('dev-answer').onclick = async () => {
+  const pid = $('dev-pid').value.trim().toUpperCase();
+  if (pid === 'SEG') return devOut(await conn.request({ t: 'dev', segment: $('dev-val').value.trim() }));
+  const r = await conn.request({ t: 'answer', pid, value: devValue() }); devOut(r);
+  if (r.solved) { game?.onSolved(pid, myUid, r.reveal); toast(t('solved', { pid: r.pid })); }
+  else if (r.t === 'result') toast(t('wrong')); else if (r.t === 'error') toast(errText(r.error, { s: Math.ceil((r.wait ?? 0) / 1000) }));
+};
 $('dev-hint').onclick = async () => devOut(await conn.request({ t: 'hint', pid: $('dev-pid').value.trim().toUpperCase() }));
 $('dev-peek').onclick = async () => devOut(await conn.request({ t: 'peek', pid: $('dev-pid').value.trim().toUpperCase() }));
 for (const id of ['dev-pid', 'dev-val']) $(id).onkeydown = (e) => e.stopPropagation();

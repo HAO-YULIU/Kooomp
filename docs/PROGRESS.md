@@ -1,16 +1,16 @@
 # 進度
 
 ## 目前階段
-**階段一：角色與故事大綱，製作人已確認（2026-10-21）。** 見 `docs/01-characters.md`、`docs/02-story.md`。**階段二：第一章完整劇情，製作人已確認**（`docs/03-chapter1.md`）。**階段三：第一章地圖，製作人已確認**（`docs/04-map-ch1.md`）。**階段四：第一章謎題，製作人已確認**（`docs/05-puzzles-ch1.md`，含答案，不可發佈）。**階段五技術雛形：完成，美術確定用寫實模型；另一個帳號正在做人物。** **階段五遊戲系統規劃：製作人已確認**（`docs/07-system.md`），省額度做法確定 A＋B＋D。**第 1 批（架構）完成**，見 `docs/07-system.md` 第 14 節；已部署到 https://kooomp.noron.workers.dev/（Worker `kooomp`）。（`prototype/`，說明見 `prototype/README.md`）。
+**階段一：角色與故事大綱，製作人已確認（2026-10-21）。** 見 `docs/01-characters.md`、`docs/02-story.md`。**階段二：第一章完整劇情，製作人已確認**（`docs/03-chapter1.md`）。**階段三：第一章地圖，製作人已確認**（`docs/04-map-ch1.md`）。**階段四：第一章謎題，製作人已確認**（`docs/05-puzzles-ch1.md`，含答案，不可發佈）。**階段五技術雛形：完成，美術確定用寫實模型；另一個帳號正在做人物。** **階段五遊戲系統規劃：製作人已確認**（`docs/07-system.md`），省額度做法確定 A＋B＋D。**第 1 批（架構）、第 2 批（序幕＋第一幕）完成**，等製作人試玩第 2 批，見 `docs/07-system.md` 第 14 節；已部署到 https://kooomp.noron.workers.dev/（Worker `kooomp`）。（`prototype/`，說明見 `prototype/README.md`）。
 
 ## 進行中
 開始做一件事前在這裡登記；做完就移除。格式：`- 分支名稱：在做什麼（會動到的檔案或資料夾）`
 
-- `claude/loving-brahmagupta-mhxt6t`：遊戲系統第 2 批（序幕＋第一幕）——`server/`、`data/`、`game/`（新增 `game/src/data/` 場景配置格式、`game/src/world/greybox.mjs` 灰盒場景、`game/src/ui/` 謎題畫面、`game/src/logic/` 劇情）、`tools/test/`、`docs/08-world-format.md`。美術之後由帳號二照 `docs/08-world-format.md` 的格式換上。
 - `claude/sweet-goldberg-nklgb6`： 角色模型壓到每個 5MB 以下、放進 `game/models/`，並在 `game/src/art/` 提供載入角色的程式，給遊戲換掉隊友的簡單人形。不會動 `game/src/` 其他資料夾。
 
 
 ## 等製作人回答
+- 第 2 批（序幕＋第一幕）試玩：線上版要登入大廳才能玩；本機可以用 `?dev=名字`。或請開發方加「測試用登入密碼」讓手機也能測。
 - 技術雛形（`prototype/`）試玩後：
   1. ~~角色美術走哪個方向？~~ 已決定：**寫實模型**（2026-10-21）。
   1-1. 第一章的角色都做好了，看 `prototype/cast.html`（角色一覽）。撞臉已用換髮型處理（赫爾嘉戴艾洛拉的短捲髮＋眼鏡、薇拉戴月晞的頭髮、男學生戴沃恩的油頭）；西里爾沒有表情可不可以；守夜人的上色。
@@ -21,7 +21,8 @@
 - 製作人試聽 `assets-src/voice/p15_zh_preview.mp3`、`p15_en_preview.mp3`，確認莉安娜的錄音切得對（中文段是 0～16.6 秒）。
 
 ## 下一步
-- 第 2 批：序幕＋第一幕（碼頭、主樓、分院鏡問答、四座宿舍的門鎖、星盤廳）。
+- 第 3 批：第二幕（異常長廊 P09、創辦人畫像 P10）。
+- 帳號二：照 `docs/08-world-format.md` 把序幕、第一幕的場景與角色換成正式美術。
 - 第一章做得差不多時，上架大廳（未公開測試），要先給製作人確認。
 - 之後發佈時，`docs/` 一定要列進 `.assetsignore`（裡面有答案）。
 - 技術雛形：製作人選定美術風格、實機測過魔杖與 QR code 後，再跟階段五遊戲系統合併（多人房間、接大廳登入、角色骨架與動畫）。
@@ -52,3 +53,4 @@
 - 2026-10-21：製作人在 Cloudflare 建立 Worker `kooomp`（https://kooomp.noron.workers.dev/）；wrangler.jsonc 名稱改成 kooomp。
 - 2026-10-21：上架大廳延後到第一章做得差不多時。
 - 2026-10-21：換髮型區分撞臉的配角（`prototype/src/hairbank.mjs`）。
+- 2026-10-21：遊戲系統第 2 批完成：序幕＋第一幕（場景配置格式、灰盒場景、劇情對話、分院鏡問答、P02～P08 謎題畫面、魔杖光照咒、赫爾嘉夫人巡邏、電腦控制的同伴、段落推進、時辰只給作答者）。13 項自動測試＋單人與兩人瀏覽器實測通過。

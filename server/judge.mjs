@@ -125,8 +125,12 @@ function rescueAnswer(pid, seed, key) {
   }
 }
 
+// P07 的燭光（摩斯密碼）：只送電腦控制的同伴那幾座塔
+const MORSE = ['-----', '.----', '..---', '...--', '....-', '.....', '-....', '--...', '---..', '----.'];
+export const morseHours = (aiHouses) => Object.fromEntries(aiHouses.map((h) => [h, String(HOUSE_HOUR[h]).split('').map((d) => MORSE[+d])]));
+
 // ---------- 主判斷 ----------
-// ctx：{ seed, lang（謎題語言）, house（作答者的學院）, solo, state（這題的伺服器狀態，可修改）, key（救援題的抽題鍵） }
+// ctx：{ seed, lang（謎題語言）, house（作答者的學院）, solo, aiHouses（電腦控制的同伴的學院）, state（這題的伺服器狀態，可修改）, key（救援題的抽題鍵） }
 // 回傳：{ ok, solved?, reveal?, reply? }。solved＝這題解開了；reply＝給作答者的額外資訊
 export function judge(pid, value, ctx) {
   const def = PUZZLES[pid];
@@ -154,8 +158,9 @@ export function judge(pid, value, ctx) {
       const ok = given.every((v) => { const i = groups.findIndex((g, k) => !used.has(k) && g.includes(v)); if (i < 0) return false; used.add(i); return true; });
       return { ok: true, solved: ok };
     }
-    case 'hours': { // P07：另外三座塔的時辰
-      const want = Object.entries(HOUSE_HOUR).filter(([h]) => h !== ctx.house);
+    case 'hours': { // P07：電腦控制的同伴所在的塔傳來的時辰
+      if (!ctx.aiHouses?.length) return { ok: false, error: 'not_needed' };
+      const want = Object.entries(HOUSE_HOUR).filter(([h]) => ctx.aiHouses.includes(h));
       const ok = value && typeof value === 'object' && want.every(([h, n]) => +value[h] === n);
       return { ok: true, solved: !!ok };
     }

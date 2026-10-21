@@ -6,12 +6,15 @@
 //   A. 玩家只在開始走、轉彎、停下時送位置，其他人的畫面自己推算中間的位置（game/src/net/sync.mjs）
 //   B. 詳細位置只轉送給「同一個區域」的人；換區域時才通知所有人
 import { DurableObject } from 'cloudflare:workers';
-import { PUZZLES, judge, hint, rescueContent, corridorLoop, corridorFocus } from './judge.mjs';
+import { PUZZLES, HOUSES, judge, hint, rescueContent, corridorLoop, corridorFocus, morseHours } from './judge.mjs';
 
 export const CHARS = { yuexi: 'grimoire', vaughn: 'belmont', elora: 'eldrin', cyril: 'ouroboros' };
 const MARKS = ['here', 'danger', 'help'];
 const MAX = { solo: 1, multi: 4 };
 const WRONG_COOLDOWN = 3000; // 答錯後同一題要等多久（毫秒）
+// 第一章的段落（docs/07-system.md 第 5 節）。解開「結尾題」就進到下一段
+export const SEGMENTS = ['prologue', 'act1', 'act2', 'act3a', 'act3b', 'act3c', 'act4', 'epilogue'];
+const SEG_END = { P02: 'act1', P08: 'act2' };
 
 export class Room extends DurableObject {
   constructor(ctx, env) {
@@ -33,7 +36,7 @@ export class Room extends DurableObject {
         seed: crypto.getRandomValues(new Uint32Array(2)).join('-'),
         members: {}, order: [],
         segment: 'prologue', solved: {}, flags: {}, hints: {}, puz: {}, cool: {}, // hints：題號 → 已經給出的提示文字
-        revives: 3, captured: {}, chat: [],
+        revives: 3, captured: {}, chat: [], notes: {}, segAt: 0, // notes：每個人自己知道的資訊（例如宿舍門鎖的時辰）
       };
       await this.save();
       return new Response('ok', { status: 201 });
@@ -66,6 +69,7 @@ export class Room extends DurableObject {
       if (!r.members[r.sim]?.online) r.sim = uid;
       await this.save();
       this.send(pair[1], { t: 'hello', you: uid });
+      this.send(pair[1], { t: 'notes', notes: r.notes?.[uid] ?? {} });
       this.broadcastState();
       return new Response(null, { status: 101, webSocket: pair[0], headers: { 'sec-websocket-protocol': 'milner' } });
     }
@@ -85,7 +89,7 @@ export class Room extends DurableObject {
   snapshot() {
     const r = this.room;
     return {
-      t: 'state', code: r.code, mode: r.mode, lang: r.lang, host: r.host, sim: r.sim, phase: r.phase, segment: r.segment,
+      t: 'state', code: r.code, mode: r.mode, lang: r.lang, host: r.host, sim: r.sim, phase: r.phase, segment: r.segment, segAt: r.segAt, now: Date.now(), ai: this.aiHouses(),
       members: r.order.map((uid) => ({ uid, ...r.members[uid] })),
       solved: Object.keys(r.solved), flags: r.flags, revives: r.revives, captured: Object.keys(r.captured),
       hints: r.hints,
@@ -93,6 +97,12 @@ export class Room extends DurableObject {
     };
   }
   broadcastState() { this.broadcast(this.snapshot()); }
+  // 沒有玩家選的角色由電腦控制；回傳他們的學院
+  aiHouses() {
+    const r = this.room; if (r.phase === 'lobby') return [];
+    const taken = new Set(r.order.map((u) => CHARS[r.members[u]?.char]).filter(Boolean));
+    return HOUSES.filter((h) => !taken.has(h));
+  }
 
   // ---------- 收到訊息 ----------
   async webSocketMessage(ws, raw) {
@@ -164,7 +174,7 @@ export class Room extends DurableObject {
         // 離線的人移出房間
         for (const u of r.order) if (!r.members[u].online) delete r.members[u];
         r.order = r.order.filter((u) => r.members[u]);
-        r.phase = 'playing'; r.started = Date.now();
+        r.phase = 'playing'; r.started = Date.now(); r.segment = 'prologue'; r.segAt = Date.now();
         await this.save(); this.broadcastState(); return reply({ t: 'ok' });
       }
 
@@ -174,18 +184,24 @@ export class Room extends DurableObject {
         const pid = String(msg.pid ?? ''); const def = PUZZLES[pid];
         if (!def) return err('bad_puzzle');
         if (r.solved[pid]) return err('already_solved');
+        if (def.seg && SEGMENTS.indexOf(def.seg) > SEGMENTS.indexOf(r.segment)) return err('not_yet');
+        if (def.gather && r.order.some((u) => r.members[u].online && r.members[u].zone !== def.gather)) return err('gather_first');
         const coolKey = `${pid}:${uid}`;
         if ((r.cool[coolKey] ?? 0) > Date.now()) return reply({ t: 'error', error: 'cooldown', wait: r.cool[coolKey] - Date.now() });
         const state = (r.puz[pid] ??= {});
         const res = judge(pid, msg.value, {
-          seed: r.seed, lang: r.lang, house: CHARS[me.char], solo: r.mode === 'solo', state, key: state.key ?? pid,
+          seed: r.seed, lang: r.lang, house: CHARS[me.char], solo: r.mode === 'solo', aiHouses: this.aiHouses(), state, key: state.key ?? pid,
         });
         if (res.error) { await this.save(); return reply({ t: 'error', error: res.error, ...(res.reply ? { reply: res.reply } : {}) }); }
         if (res.solved) {
           r.solved[pid] = { by: uid, at: Date.now() };
           if (res.flag) r.flags[pid] = res.flag;
+          if (res.reveal) ((r.notes ??= {})[uid] ??= {})[pid] = res.reveal; // 只有作答者知道
+          const next = SEG_END[pid];
+          if (next && SEGMENTS.indexOf(next) > SEGMENTS.indexOf(r.segment)) { r.segment = next; r.segAt = Date.now(); }
           await this.save();
-          this.broadcast({ t: 'solved', pid, by: uid, reveal: res.reveal ?? null }, (u) => u !== uid);
+          this.broadcast({ t: 'solved', pid, by: uid }, (u) => u !== uid);
+          if (next) this.broadcastState();
           return reply({ t: 'result', pid, solved: true, reveal: res.reveal ?? null, reply: res.reply ?? null });
         }
         const sim = ['corridor', 'balance'].includes(def.kind);
@@ -197,6 +213,7 @@ export class Room extends DurableObject {
         const pid = String(msg.pid ?? ''); const def = PUZZLES[pid];
         if (!def) return err('bad_puzzle');
         const st = (r.puz[pid] ??= {});
+        if (def.kind === 'hours') return reply({ t: 'peek', pid, content: { morse: morseHours(this.aiHouses()) } });
         if (def.kind === 'corridor') return reply({ t: 'peek', pid, loop: st.n ?? 0, streak: st.streak ?? 0, next: corridorLoop(r.seed, st.attempt ?? 0, st.n ?? 0, { rate: def.rate }) });
         return reply({ t: 'peek', pid, content: rescueContent(pid, r.seed, st.key ?? pid, { house: CHARS[me.char] }) });
       }
@@ -214,6 +231,11 @@ export class Room extends DurableObject {
         return reply({ t: 'hint', pid, n, text, by: uid });
       }
       case 'ping': return reply({ t: 'pong' });
+      case 'dev': { // 本機測試用：直接跳到某一段（正式環境沒有 DEV_AUTH，不能用）
+        if (this.env.DEV_AUTH !== '1' || !SEGMENTS.includes(msg.segment)) return err('bad_args');
+        r.segment = msg.segment; r.segAt = Date.now();
+        await this.save(); this.broadcastState(); return reply({ t: 'ok' });
+      }
       default: return err('bad_args');
     }
   }

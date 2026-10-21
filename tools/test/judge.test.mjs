@@ -13,6 +13,7 @@ test('文字、順序、集合題', () => {
   assert.equal(ok('P02', ['南翼', '綠燈', '十三']), false);
   assert.equal(ok('P02', ['north wing', 'green lamp', '13'], { lang: 'en' }), true);
   assert.equal(ok('P03', 'scorpio'), true);
+  assert.equal(judge('P03', 'scorpio', ctx()).reveal, '8'); // 解開後只告訴作答者的時辰
   assert.equal(ok('P04', '１１'), true); // 全形數字也算
   assert.equal(ok('P05', '9'), true); assert.equal(ok('P05', '6'), false);
   assert.equal(ok('P08', 'grimoire:11, ouroboros:3, belmont:9, eldrin:8'), true);
@@ -39,9 +40,11 @@ test('學院限定：多人時別的學院不能作答，單人可以', () => {
   assert.equal(judge('P03', 'scorpio', ctx({ solo: false, house: 'belmont' })).error, 'not_your_house');
   assert.equal(judge('P03', 'scorpio', ctx({ solo: false, house: 'eldrin' })).solved, true);
   assert.equal(judge('P03', 'scorpio', ctx({ solo: true, house: 'belmont' })).solved, true);
-  assert.equal(judge('P07', { eldrin: 8, belmont: 9, ouroboros: 3 }, ctx({ solo: false, house: 'grimoire' })).error, 'bad_puzzle'); // 只有單人
-  assert.equal(judge('P07', { eldrin: 8, belmont: 9, ouroboros: 3 }, ctx({ house: 'grimoire' })).solved, true);
-  assert.equal(judge('P07', { eldrin: 8, belmont: 9, ouroboros: 4 }, ctx({ house: 'grimoire' })).solved, false);
+  // P07：只問電腦控制的同伴的時辰；全員都是玩家時不需要
+  assert.equal(judge('P07', {}, ctx({ solo: false, house: 'grimoire', aiHouses: [] })).error, 'not_needed');
+  assert.equal(judge('P07', { eldrin: 8, belmont: 9, ouroboros: 3 }, ctx({ house: 'grimoire', aiHouses: ['eldrin', 'belmont', 'ouroboros'] })).solved, true);
+  assert.equal(judge('P07', { eldrin: 8, belmont: 9, ouroboros: 4 }, ctx({ house: 'grimoire', aiHouses: ['eldrin', 'belmont', 'ouroboros'] })).solved, false);
+  assert.equal(judge('P07', { ouroboros: 3 }, ctx({ solo: false, house: 'grimoire', aiHouses: ['ouroboros'] })).solved, true);
 });
 
 test('沙漏：要剛好在沙漏漏完的那一刻敲第 15 分', () => {

@@ -7,6 +7,8 @@
 //   hourglass / balance / levers / corridor  需要伺服器模擬的題目（見 server/judge.mjs）
 // house：多人時只有這個學院的玩家能作答（單人不限）
 // solo / multi：只在單人或多人時出現
+// reveal：解開後只告訴作答者的資訊（例如宿舍門鎖的「時辰」，要自己轉告隊友）
+// gather：要全隊都站在這個區域才能作答
 // diff：難度（6～10）；score:false 表示不計入難度比例
 // 數字題的 ans 一律寫成字串（作答時會先正規化）
 
@@ -24,17 +26,17 @@ export const CHAPTER1 = {
   },
 
   P03: {
-    seg: 'act1', diff: 6, kind: 'text', house: 'eldrin', ans: 'scorpio',
+    seg: 'act1', diff: 6, kind: 'text', house: 'eldrin', ans: 'scorpio', reveal: '8',
     hints: H(['門上好像寫了什麼，但看不見。試試用光照咒。', '天花板的星座像時鐘一樣排，每個星座在一個點鐘的位置。', '獅子在 5 點，往後數三位是 8 點；金牛在 2 點，正對面也是 8 點。8 點是天蠍。'],
              ['Something is written on the door, but you can’t see it. Try the light spell.', 'The constellations on the ceiling are arranged like a clock face.', 'Leo is at 5; three after it is 8. Taurus is at 2; directly opposite is also 8. 8 is Scorpio.']),
   },
   P04: {
-    seg: 'act1', diff: 7, kind: 'text', house: 'grimoire', ans: '11',
+    seg: 'act1', diff: 7, kind: 'text', house: 'grimoire', ans: '11', reveal: '11',
     hints: H(['符文表每排 8 個，一共 3 排。', '第二族的第一個是冰雹 ᚺ。從它開始往後數。', '第二族：ᚺ（第 9）、ᚾ（第 10）、ᛁ（第 11）。'],
              ['The rune table has 3 rows of 8.', 'The second aett begins with Hagalaz ᚺ. Count from there.', 'Second aett: ᚺ (9th), ᚾ (10th), ᛁ (11th).']),
   },
   P05: {
-    seg: 'act1', diff: 7, kind: 'text', house: 'belmont', ans: '9',
+    seg: 'act1', diff: 7, kind: 'text', house: 'belmont', ans: '9', reveal: '9',
     hints: H(['先設野豬牙的重量，其他三件都可以用它表示。', '鹿角＝野豬牙－1，熊掌＝野豬牙×2，狼頭＝熊掌－鹿角。', '野豬牙是 3 斤。四件裡最重的是熊掌 6 斤，15－6＝9。'],
              ['Call the boar tusk’s weight x. The other three can be written using x.', 'Antler = tusk − 1, bear paw = tusk × 2, wolf head = paw − antler.', 'The tusk weighs 3. The heaviest is the paw (6). 15 − 6 = 9.']),
   },
@@ -44,12 +46,12 @@ export const CHAPTER1 = {
              ['15 = 11 + 4. Find a way to measure 4 minutes.', 'When the 11-minute glass runs out, the 7-minute glass has been running again for 4 minutes.', 'Start both → flip the 7 when it empties → when the 11 empties, flip the 7 again → when it empties, it’s minute 15.']),
   },
   P07: {
-    seg: 'act1', diff: 7, kind: 'hours', solo: true,
+    seg: 'act1', diff: 7, kind: 'hours', // 由電腦控制的同伴（沒有玩家選的角色）用燭光傳來他們的時辰；全員都是玩家時不需要
     hints: H(['長的光是「－」，短的光是「・」。', '每個數字是 5 個符號。11 會分成兩次。', '對照書桌上的表，例如 －－－・・ 是 8。'],
              ['A long flash is “–”, a short flash is “·”.', 'Each digit is 5 symbols. 11 comes as two digits.', 'Check the table on the desk: – – – · · is 8.']),
   },
   P08: {
-    seg: 'act1', diff: 8, kind: 'seq', ans: 'grimoire:11,ouroboros:3,belmont:9,eldrin:8',
+    seg: 'act1', diff: 8, kind: 'seq', gather: 'starhall', ans: 'grimoire:11,ouroboros:3,belmont:9,eldrin:8',
     hints: H(['先決定四個環的順序，再轉時辰。星辰＝艾爾德林、書頁＝格里莫瓦、獵犬＝貝爾蒙特、銜尾＝烏洛波斯。', '艾爾德林在最外圈。剩下三圈裡，烏洛波斯要比貝爾蒙特更內側。', '由內到外：格里莫瓦、烏洛波斯、貝爾蒙特、艾爾德林。'],
              ['Order the rings first, then set the hours. Stars = Eldrin, pages = Grimoire, hound = Belmont, serpent = Ouroboros.', 'Eldrin is outermost. Of the rest, Ouroboros must be inside Belmont.', 'Inner to outer: Grimoire, Ouroboros, Belmont, Eldrin.']),
   },

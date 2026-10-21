@@ -57,7 +57,7 @@ body.touch #marks .keys { display: none; }
 #chat-input { width: 100%; background: rgba(10,10,12,0.7); }
 #toast { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); padding: 10px 16px; background: rgba(0,0,0,0.75); border: 1px solid var(--line); border-radius: 8px; opacity: 0; transition: opacity .3s; pointer-events: none; }
 #toast.on { opacity: 1; }
-#dev { position: absolute; right: 10px; bottom: 10px; width: min(360px, 60vw); background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px; font-size: 12px; display: grid; gap: 6px; }
+#dev { position: absolute; right: 10px; top: 80px; width: min(360px, 60vw); background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px; font-size: 12px; display: grid; gap: 6px; }
 #dev input { flex: 1; min-width: 0; padding: 5px 7px; } #dev button { padding: 5px 10px; }
 #dev-out { margin: 0; max-height: 26vh; overflow: auto; white-space: pre-wrap; color: var(--dim); }
 
@@ -65,3 +65,56 @@ body.touch #marks .keys { display: none; }
 #stick { position: fixed; width: 110px; height: 110px; margin: -55px 0 0 -55px; border-radius: 50%; border: 2px solid rgba(255,255,255,.15); display: none; pointer-events: none; }
 #stick.on { display: block; } #stick i { position: absolute; left: 35px; top: 35px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,.25); }
 body.touch #chat { width: 40vw; } body.touch #chat-log { max-height: 18vh; }
+
+/* 第 2 批：調查、對話、謎題視窗 */
+#team .seg { color: #f3d98e; font-weight: 700; margin-bottom: 4px; }
+#prompt { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); padding: 6px 12px; background: rgba(0,0,0,0.6); border: 1px solid var(--line); border-radius: 6px; font-size: 14px; pointer-events: none; }
+#actions { position: absolute; right: 10px; bottom: 10px; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; max-width: 50vw; }
+#actions button { background: rgba(20,18,20,0.8); padding: 10px 14px; }
+#actions button.ready { border-color: var(--accent); color: #f3d98e; }
+#actions .keys { width: 100%; text-align: right; font-size: 11px; color: var(--dim); text-shadow: 0 0 4px #000; }
+body.touch #actions .keys { display: none; }
+#dialog { position: fixed; z-index: 20; left: 50%; bottom: 14%; transform: translateX(-50%); width: min(720px, 92vw); padding: 14px 18px 18px; background: rgba(8,7,10,0.9); border: 1px solid var(--line); border-radius: 10px; cursor: pointer; }
+#dialog-who { display: block; margin-bottom: 6px; font-size: 15px; }
+#dialog-text { margin: 0; line-height: 1.7; font-size: 16px; }
+#dialog-text.narration { color: #cfc6b8; font-style: italic; }
+#dialog .more { position: absolute; right: 12px; bottom: 6px; color: var(--dim); animation: bob 1s infinite; }
+@keyframes bob { 50% { transform: translateY(3px); } }
+#panel { position: fixed; z-index: 30; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(560px, 94vw); max-height: 86vh; overflow-y: auto; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px 16px; box-shadow: 0 0 60px rgba(0,0,0,0.8); }
+.panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.panel-head b { font-size: 17px; color: #f3d98e; }
+#panel-close { padding: 4px 10px; }
+#panel-body p { line-height: 1.7; margin: 6px 0; }
+#panel-body .dim, .dim { color: var(--dim); }
+#panel-body blockquote { margin: 8px 0; padding: 8px 12px; border-left: 3px solid var(--accent); background: rgba(255,255,255,0.03); font-style: italic; }
+#panel-body .row { margin: 8px 0; }
+#panel-body input { min-width: 0; }
+#panel-body .num { width: 90px; text-align: center; letter-spacing: 0.1em; }
+.p-status { min-height: 1.4em; color: #f3d98e; }
+.p-done { color: var(--ok); }
+.hint-box { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 8px; }
+.hint-box ol { margin: 6px 0 0; padding-left: 20px; color: #d8cfae; font-size: 14px; line-height: 1.6; }
+button.small { padding: 5px 10px; font-size: 13px; }
+.rumors { padding-left: 18px; line-height: 1.8; }
+.zodiac { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+@media (max-width: 520px) { .zodiac { grid-template-columns: repeat(4, 1fr); } }
+.zodiac button { display: flex; flex-direction: column; align-items: center; padding: 6px 2px; } .zodiac b { font-size: 22px; } .zodiac small { font-size: 11px; color: var(--dim); }
+.rune-big { font-size: 48px; text-align: center; color: #f3d98e; text-shadow: 0 0 12px rgba(243,217,142,0.5); }
+.runes { display: grid; grid-template-columns: auto repeat(8, 1fr); gap: 4px; align-items: center; margin: 8px 0; }
+.runes .aett { font-size: 12px; color: var(--dim); padding-right: 6px; }
+.runes .rune { text-align: center; font-size: 22px; padding: 4px 0; background: rgba(255,255,255,0.04); border-radius: 4px; }
+.runes .burnt { color: #3a2e26; background: #1a120e; }
+.hourglasses { display: flex; gap: 30px; justify-content: center; margin: 10px 0; }
+.glass { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.glass .sand-top, .glass .sand-bot { width: 40px; background: #c9a35a; border-radius: 4px; transition: height .1s linear; }
+.glass .sand-top { border-radius: 4px 4px 0 0; } .glass .neck { width: 4px; height: 10px; background: #c9a35a; }
+.p06-clock { text-align: center; color: var(--dim); font-size: 13px; }
+.tower { align-items: center; } .tower b { min-width: 6em; }
+.candle { display: inline-block; width: 18px; height: 18px; border-radius: 50%; background: #2a2018; box-shadow: none; transition: all .05s; }
+.candle.lit { background: #ffd27a; box-shadow: 0 0 18px 6px rgba(255,210,122,0.7); }
+.morse { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; font-family: monospace; font-size: 13px; color: var(--dim); margin-bottom: 8px; }
+.ring { min-width: 5em; color: var(--dim); }
+.rune-canvas { width: 100%; height: min(50vh, 340px); background: radial-gradient(circle, #141c2a, #07080d); border-radius: 8px; touch-action: none; display: block; }
+.mirror-q { font-size: 18px; }
+.choice { display: block; width: 100%; text-align: left; margin: 6px 0; padding: 10px 12px; }
+.mirror-result { font-size: 30px; text-align: center; color: #f3d98e; margin: 30px 0; }
