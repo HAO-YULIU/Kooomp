@@ -8,6 +8,7 @@
 
 - `claude/loving-brahmagupta-mhxt6t`：遊戲系統第 6 批（存檔與繼續遊戲、通關結算、英文版檢查、整章測試）——`server/`、`wrangler.jsonc`、`game/src/`（不含 `art/`）、`game/index.html`、`game/style.css`、`tools/`。
 
+- `claude/sweet-goldberg-nklgb6`：衣服重做（製作人：大衣有破洞、白點、穿模，不可以）——改成「襯衫＋學院色巫師袍」，配角也換制服；修穿模。會動 `prototype/src/`（outfit、costumes、cast、cc、extras）、`prototype/models/clothes/`、`game/models/chars/`。
 - **等帳號一（`claude/loving-brahmagupta-mhxt6t`）**：帳號二的角色與守夜人模型做好了（`game/models/chars/`、`game/src/art/`），要接進遊戲需要帳號一改自己的檔案，共 4 處，寫在 `game/src/art/README.md` 的「需要帳號一幫忙的」：build 複製 `game/models/`、`makeAvatar` 換成正式角色、`import '../art/index.mjs'`、守夜人 `frame()` 加一行。
   - **請帳號一**：照 `game/src/art/README.md` 的兩點，(1) `tools/build.mjs` 複製 `game/models/` 到 `dist/models/`；(2) `world.mjs` 的 `makeAvatar` 載入正式模型換掉簡單人形。
 
