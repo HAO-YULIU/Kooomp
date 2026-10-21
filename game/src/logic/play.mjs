@@ -8,6 +8,8 @@ import { t, getLang } from './i18n.mjs';
 import { CHARS, HOUSES } from './chars.mjs';
 import { SCRIPT } from '../data/story-ch1.mjs';
 import { SPAWNS, DOORS, ROOMS, RUMORS } from '../data/world-ch1.mjs';
+import { HEADMASTERS } from '../data/story-ch1.mjs';
+import { createAct2 } from './act2.mjs';
 
 const $ = (id) => document.getElementById(id);
 const HOUR_PID = { P03: 'eldrin', P04: 'grimoire', P05: 'belmont', P06: 'ouroboros' };
@@ -33,7 +35,9 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
   let segment = null;
 
   setPauseHandler((p) => { world.controls.setEnabled(!p); });
-  if (dev) window.__ml = { receiver, world, sent: 0, notes, heard };
+  const act2 = createAct2({ world, conn, toast, play, S, house: myHouse(), solo: S().mode === 'solo', lang: getLang() });
+  $('btn-familiar').hidden = S().mode !== 'solo';
+  if (dev) window.__ml = { receiver, world, sent: 0, notes, heard, act2 };
 
   // ---- 段落開始：移到出發點、播劇情 ----
   function enterSegment(seg, first) {
@@ -42,7 +46,8 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
       const i = Math.max(0, S().members.findIndex((m) => m.uid === myUid));
       world.teleport({ ...SPAWNS.prologue, x: SPAWNS.prologue.x + (i - 1.5) * 1.4 });
     } else if (seg === 'act1') world.teleport(SPAWNS.act1[myHouse()] ?? SPAWNS.act1.eldrin);
-    else if (seg === 'act2') { world.teleport(SPAWNS.act2); toast(t('act_end')); }
+    else if (seg === 'act2') { world.teleport(SPAWNS.act2); act2.enter(); }
+    else if (seg === 'act3a') { act2.leave(); world.teleport(SPAWNS.act3a); toast(t('act_end')); }
     play(`segment:${seg}`);
     sender.resend();
   }
@@ -74,7 +79,8 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
     if (!st.solved.includes(pid)) st.solved.push(pid);
     if (reveal) notes[pid] = reveal;
     updateDoors();
-    if (by === myUid || pid === 'P08') play(`solved:${pid}`);
+    act2.onSolved(pid);
+    if (by === myUid || ['P08', 'P09', 'P10'].includes(pid)) play(`solved:${pid}`);
   }
 
   // ---- 調查 ----
@@ -83,6 +89,8 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
     if (panelOpen()) return;
     const tg = world.target();
     if (!tg) return;
+    if (act2.interact(tg)) return;
+    if (tg.kind === 'plaques') return openPanel(L(tg.label), (body) => body.append(el('ul', { class: 'plaques' }, ...HEADMASTERS.map((h) => el('li', { text: L(h) })))));
     if (tg.kind === 'prop' && tg.text) return say([[null, tg.text.zh, tg.text.en]]);
     if (tg.kind === 'rumor') {
       heard.add(tg.rumor);
@@ -131,12 +139,14 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
     if (e.code === 'KeyF') castWand();
     if (e.code === 'KeyN') notebook();
     if (e.code === 'KeyQ') holding = true;
+    if (e.code === 'KeyV') act2.toggleFamiliar();
     if (e.code === 'Escape' && panelOpen()) closePanel();
   });
   addEventListener('keyup', (e) => { if (e.code === 'KeyQ') holding = false; });
   $('btn-inspect').onclick = interact;
   $('btn-wand').onclick = castWand;
   $('btn-notebook').onclick = notebook;
+  $('btn-familiar').onclick = () => act2.toggleFamiliar();
   const hb = $('btn-breath');
   hb.onpointerdown = () => { holding = true; }; hb.onpointerup = hb.onpointerleave = () => { holding = false; };
 
@@ -165,7 +175,7 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
     const ai = aiChars();
     ai.forEach((c, i) => {
       const key = `ai:${c}`;
-      if (segment === 'prologue') {
+      if (segment === 'prologue' || segment === 'act2') {
         const s = world.controls.state, off = (i - (ai.length - 1) / 2) * 0.7; // 站在玩家身後，左右散開
         world.placeAvatar(key, s.pos.x + Math.sin(s.yaw + off) * 1.8, s.pos.z + Math.cos(s.yaw + off) * 1.8, s.yaw);
       } else if (segment === 'act1') {
@@ -173,6 +183,7 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
         world.placeAvatar(key, spot[0], spot[1], Math.PI, st.solved.includes('P07'));
       } else world.placeAvatar(key, 0, 0, 0, false);
     });
+    if (segment === 'act2') act2.frame(dt, mine);
     // 「調查」提示
     const tg = !panelOpen() && !talking() ? world.target() : null;
     $('prompt').hidden = !tg; if (tg) $('prompt').textContent = `${matchMedia('(pointer: coarse)').matches ? '' : 'E　'}${L(tg.label)}`;
@@ -186,6 +197,7 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
 
   return {
     world, sender, receiver, onState, onSolved,
+    onCorridor: (msg) => act2.onCorridor(msg),
     zoneName: (z) => L(ROOMS.find((r) => r.id === z)?.name) || z,
     setNotes(n) { Object.assign(notes, n); },
   };

@@ -105,6 +105,7 @@ function onMessage(msg) {
       renderTeam();
       break;
     }
+    case 'corridor': game?.onCorridor(msg); break;
     case 'chat': addChat(msg); break;
     case 'mark': game?.world.addMark(msg.kind, msg.p); if (msg.uid !== myUid) toast(`${nameOf(msg.uid)}：${t(`mark_${msg.kind}`)}`); break;
     case 'solved': game?.onSolved(msg.pid, msg.by); toast(`${nameOf(msg.by)}：${t('solved', { pid: msg.pid })}`); devOut(msg); break;

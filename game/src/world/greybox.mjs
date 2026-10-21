@@ -109,6 +109,7 @@ export function buildWorld(scene, { rooms, doors, things }, { lowQuality = false
     const mesh = box(w, h, d, mat);
     mesh.position.set(t.x, (t.y ?? 0) + h / 2, t.z);
     mesh.userData.thing = t;
+    mesh.visible = !t.hidden; // hidden：外觀由別的程式畫（例如長廊、創辦人的房間），這裡只留調查範圍
     group.add(mesh); thingMeshes.set(t.id, mesh);
     if (t.solid) colliders.push({ minX: t.x - w / 2, maxX: t.x + w / 2, minZ: t.z - d / 2, maxZ: t.z + d / 2 });
     for (const f of decorators.thing) f({ thing: t, mesh, group, THREE });
@@ -119,5 +120,5 @@ export function buildWorld(scene, { rooms, doors, things }, { lowQuality = false
     minX: Math.min(...rooms.map((r) => r.x[0])), maxX: Math.max(...rooms.map((r) => r.x[1])),
     minZ: Math.min(...rooms.map((r) => r.z[0])), maxZ: Math.max(...rooms.map((r) => r.z[1])),
   };
-  return { group, colliders, bounds, roomAt, setDoor, doorState, thingMeshes, lightRoom };
+  return { group, colliders, bounds, roomAt, setDoor, doorState, thingMeshes, lightRoom, roomLight };
 }

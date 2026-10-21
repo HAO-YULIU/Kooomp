@@ -64,6 +64,31 @@ export const SCRIPT = {
     ['vaughn', '這把鑰匙哪來的？', 'Where did you get that key?'],
     ['elora', '……祕密。走吧。', '…That’s a secret. Come on.'],
   ],
+  // ---- 第二幕：肖像畫長廊 ----
+  'segment:act2': [
+    [null, '北翼的門後是一條長長的走廊，牆上掛滿了畫像。', 'Beyond the North Wing door stretches a long corridor hung with portraits.'],
+    ['yuexi', '這些是……歷代的學生？每一幅下面都有名字。', 'These are… students from every year? Each one has a name beneath it.'],
+    ['cyril', '畫得真差。走吧，盡頭有門。', 'Badly painted. Come on — there’s a door at the end.'],
+  ],
+  'enter:corridor': [
+    [null, '燭火輕輕搖晃。你有種奇怪的感覺：這條走廊，好像走不完。', 'The candles flicker. You have the strangest feeling that this corridor never ends.'],
+    [null, '（找異常：每一趟走廊，有東西不一樣就回頭，沒有就推開盡頭的門。連續判斷正確 8 次才能走出去，錯一次就從頭來。）', '(Spot the anomaly: if anything on this walk is different, turn back; if not, push open the door at the end. Get it right 8 times in a row to escape — one mistake and you start over.)'],
+  ],
+  'corridor:liana': [['elora', '……姊姊？', '…Sister?'], ['cyril', '（看了艾洛拉一眼，什麼都沒說）', '(glances at Elora and says nothing)']],
+  'solved:P09': [
+    [null, '這一次，門後不再是長廊的起點。', 'This time, the door does not lead back to the start.'],
+    [null, '一個圓形的房間。正前方掛著一幅巨大的畫像：創辦人艾德蒙・米爾納，他的手指向某個方向。', 'A round chamber. Before you hangs a vast portrait: the founder, Edmund Milner, his finger pointing somewhere.'],
+  ],
+  'enter:founder': [
+    [null, '兩側牆上是歷任校長的畫像。創辦人畫像下的銘牌被刮花了，看不出他在位幾年。', 'The headmasters line both walls. The plaque beneath the founder has been scratched; you can’t read how long he served.'],
+    [null, '畫像下方有一道鎖：一個可以轉動的手臂，和四格數字。', 'Below the portrait is a lock: an arm that can be turned, and four number wheels.'],
+  ],
+  'snuff': [[null, '燭火熄滅了。黑暗裡，所有畫像的眼睛都亮了起來——全都看著同一個方向。', 'The candles die. In the dark, every portrait’s eyes begin to glow — all of them looking the same way.']],
+  'solved:P10': [
+    [null, '創辦人的手臂停在那個方向，喀的一聲，畫像後面的門打開了。冷風從底下吹上來。', 'The founder’s arm settles into place with a click, and a door opens behind the portrait. Cold air rises from below.'],
+    ['elora', '……就是這裡。往下。', '…This is it. Down.'],
+  ],
+
 };
 
 // 分院鏡的問答（P01）：每題四個選項，依序對應 艾爾德林、格里莫瓦、貝爾蒙特、烏洛波斯
@@ -96,3 +121,24 @@ export const RUNE_ROWS = [
   [null, 'ᚾ', 'ᛁ', null, 'ᛇ', 'ᛈ', null, 'ᛋ'],
   ['ᛏ', null, 'ᛖ', 'ᛗ', null, 'ᛜ', 'ᛞ', null],
 ];
+
+// 歷任校長（P10）。創辦人的在位年數被刮掉了；第二任的銘牌寫著答案的線索
+export const HEADMASTERS = [
+  { zh: '艾德蒙・米爾納　創辦人　在位 ▒▒ 年（被刮花了）', en: 'Edmund Milner — Founder — served ▒▒ years (scratched)' },
+  { zh: '第二任　歐文・米爾納　1659－1701　「繼創辦人三十三年之治」', en: '2nd — Owen Milner — 1659–1701 — “Successor to the founder’s thirty-three years”' },
+  { zh: '第三任　碧翠絲・海爾　1701－1733', en: '3rd — Beatrix Hale — 1701–1733' },
+  { zh: '第四任　柯尼留斯・艾許比　1733－1768', en: '4th — Cornelius Ashby — 1733–1768' },
+  { zh: '第五任　瑪蒂德・凡斯　1768－1801', en: '5th — Mathilde Vance — 1768–1801' },
+  { zh: '第六任　伊格納修・米爾納　1801－1826', en: '6th — Ignatius Milner — 1801–1826' },
+  { zh: '第七任　羅莎琳・克蘭　1826－1860', en: '7th — Rosalind Crane — 1826–1860' },
+  { zh: '第八任　巴塞羅謬・里夫　1860－1894', en: '8th — Bartholomew Reeve — 1860–1894' },
+  { zh: '第九任　希奧朵拉・米爾納　1894－1926', en: '9th — Theodora Milner — 1894–1926' },
+  { zh: '第十任　安布羅斯・奎爾　1926－1951', en: '10th — Ambrose Quill — 1926–1951' },
+  { zh: '第十一任　海倫娜・馬許　1951－1980', en: '11th — Helena Marsh — 1951–1980' },
+  { zh: '第十二任　珀西瓦・米爾納　1980－2001', en: '12th — Percival Milner — 1980–2001' },
+  { zh: '第十三任　奧德里克・米爾納　2001－', en: '13th — Aldric Milner — 2001–' },
+];
+
+// 肖像畫長廊的學生畫像（名字只有格里莫瓦的人看得懂；其他人看到的是古文字）
+export const GALLERY_NAMES = ['Ada', 'Bram', 'Cora', 'Dell', 'Edda', 'Finn', 'Gwen', 'Hal', 'Iris', 'Jory', 'Kit', 'Lark',
+  'Mabel', 'Ned', 'Opal', 'Pell', 'Quinn', 'Rue', 'Sable', 'Tam', 'Una', 'Vale', 'Wren', 'Yara'];
