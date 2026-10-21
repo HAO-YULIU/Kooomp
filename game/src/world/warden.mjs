@@ -50,6 +50,7 @@ export function createWarden(scene, { view = 12, fov = 60 } = {}) {
       g.children[0].rotation.z = Math.sin(t) * 0.04;
       ribs.scale.x = 1 + Math.sin(t * 0.7) * 0.08;
       head.rotation.z = mode === 'chase' ? Math.sin(t * 3.1) * 0.25 : 0.15;
+      g.userData.update?.(dt, mode); // 正式模型（帳號二）：照 AI 狀態播待機／走路／跑步／撲抓
     },
   };
 }

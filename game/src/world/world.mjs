@@ -1,6 +1,8 @@
 // 第一章的 3D 世界：灰盒場景（greybox.mjs）＋第一人稱操作＋隊友、電腦同伴、赫爾嘉夫人、標記、可以調查的東西。
 // 隊友和同伴目前是簡單的人形，正式的角色模型由帳號二做好後換上。
 import * as THREE from 'three';
+import '../art/index.mjs'; // 帳號二的美術掛鉤（守夜人的正式模型），要在蓋場景之前註冊
+import { loadCharacter } from '../art/characters.mjs';
 import { createControls } from '../../../prototype/src/controls.mjs';
 import { buildWorld } from './greybox.mjs';
 import { ROOMS, DOORS, THINGS, PATROL } from '../data/world-ch1.mjs';
@@ -19,7 +21,7 @@ function nameTag(text, color) {
   s.scale.set(1.2, 0.3, 1); s.renderOrder = 10;
   return s;
 }
-function makeAvatar(label, charKey, { robe = '#141418' } = {}) {
+function makeAvatar(label, charKey, { robe = '#141418', model = charKey } = {}) {
   const house = CHARS[charKey]?.house; const color = HOUSES[house]?.color ?? '#cccccc';
   const g = new THREE.Group();
   const body = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.34, 1.3, 12), new THREE.MeshStandardMaterial({ color: robe, roughness: 0.8 }));
@@ -31,6 +33,8 @@ function makeAvatar(label, charKey, { robe = '#141418' } = {}) {
   const nose = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.1), head.material); nose.position.set(0, 1.5, -0.16);
   const tag = nameTag(label, color); tag.position.y = 1.95;
   g.add(body, head, scarf, nose, tag);
+  // 先用簡單人形，正式模型（帳號二）載好就換掉身體，名牌留著
+  if (model) loadCharacter(model).then((c) => { for (const m of [body, head, scarf, nose]) m.visible = false; g.add(c.root); g.userData.char = c; }).catch(() => {});
   return g;
 }
 
@@ -68,7 +72,7 @@ export function createWorld(canvas, lang = 'zh') {
   const lamp = new THREE.PointLight('#ffd9a0', 2.2, 7, 1.8); lamp.position.set(0.3, -0.2, -0.3); camera.add(lamp);
 
   // 赫爾嘉夫人
-  const helga = makeAvatar(lang === 'en' ? 'Madam Helga' : '赫爾嘉夫人', null, { robe: '#3b2a3d' });
+  const helga = makeAvatar(lang === 'en' ? 'Madam Helga' : '赫爾嘉夫人', null, { robe: '#3b2a3d', model: 'helga' });
   const cone = new THREE.SpotLight('#ffcf70', 40, PATROL.view, THREE.MathUtils.degToRad(PATROL.fov / 2), 0.4, 1.4);
   cone.position.set(0, 1.3, -0.3); cone.target.position.set(0, 0, -4); helga.add(cone, cone.target);
   helga.visible = false; scene.add(helga);
@@ -151,7 +155,10 @@ export function createWorld(canvas, lang = 'zh') {
         const a = avatars.get(uid); if (!a) continue;
         a.visible = p.z === myZone; // 別的區域的隊友不畫（他們的詳細位置也不會傳過來）
         a.position.set(p.shown[0], 0, p.shown[1]); a.rotation.y = p.yShown;
+        a.userData.char?.setMoving(Math.hypot(p.v[0], p.v[1]));
       }
+      // 正式模型：眨眼、呼吸、轉頭看玩家（只更新看得到的）
+      for (const a of [...avatars.values(), helga]) if (a.visible) a.userData.char?.update(dt, camera.position);
       const now = performance.now();
       for (let i = marks.length - 1; i >= 0; i--) {
         const m = marks[i]; const left = (m.until - now) / 6000;

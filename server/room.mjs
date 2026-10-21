@@ -179,8 +179,7 @@ export class Room extends DurableObject {
     const pick = (list, k) => list[Math.floor(rng(r.seed, `nest:${uid}:${n}:${k}`)() * list.length)];
     r.captured[uid] = { at: Date.now(), n, r: pick(RESCUE_IDS, 'r'), s: pick(SELF_IDS, 's'), sAt: Date.now(), sn: 0 };
     this.broadcast({ t: 'captured', uid });
-    const online = r.order.filter((u) => r.members[u].online);
-    if (online.every((u) => r.captured[u])) this.lose('captured');
+    if (r.order.every((u) => r.captured[u])) this.lose('captured'); // 全員都被抓才算輸（暫時斷線的人不算被抓：被抓的人還可以自救）
   }
   free(uid, by) { delete this.room.captured[uid]; this.broadcast({ t: 'freed', uid, by }); }
 
@@ -426,7 +425,6 @@ export class Room extends DurableObject {
     const online = r.order.filter((u) => r.members[u]?.online);
     if (a.uid === r.host && online.length) r.host = r.phase === 'lobby' ? online[0] : r.host;
     if (!r.members[r.sim]?.online && online.length) r.sim = online[0]; // 負責算守夜人的人換手
-    if (r.segment === 'act4' && r.mode === 'multi' && online.length && online.every((u) => r.captured[u])) this.lose('captured');
     await this.save();
     this.broadcastState();
   }
