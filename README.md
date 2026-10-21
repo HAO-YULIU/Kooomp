@@ -7,3 +7,5 @@
 - [製作人確認過的決定](docs/DECISIONS.md)
 - [做法與規劃](docs/PLAN.md)
 - [進度](docs/PROGRESS.md)
+- [階段一：角色與學院](docs/01-characters.md)
+- [階段一：世界觀與三章故事大綱](docs/02-story.md)
