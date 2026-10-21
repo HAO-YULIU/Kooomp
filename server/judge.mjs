@@ -44,13 +44,14 @@ export const ANOMALIES = {
   house: { eldrin: 'glowing_steps', grimoire: 'plaque_changed', belmont: 'armor_breath', ouroboros: 'clock_slow' },
 };
 // 第 attempt 次挑戰的第 n 趟長廊
-export function corridorLoop(seed, attempt, n, { rate = 0.6 } = {}) {
+// skip：沒有人看得到的學院（多人時電腦控制的學院），那個學院的專屬異常換成一般的
+export function corridorLoop(seed, attempt, n, { rate = 0.6, skip = [] } = {}) {
   if (n === 0) return null; // 每次挑戰的第一趟一定正常
   const r = rng(seed, `P09:${attempt}:${n}`);
   if (r() >= rate) return null;
   const pool = n <= 2 ? ANOMALIES.mild : n <= 5 ? [...ANOMALIES.mild, ...ANOMALIES.mid] : [...ANOMALIES.mid, ...ANOMALIES.severe];
   const withHouse = r() < 0.15; // 學院專屬的異常（單人要切換使魔視角才看得到）
-  if (withHouse) { const h = pick(r, HOUSES); return { id: ANOMALIES.house[h], house: h }; }
+  if (withHouse) { const h = pick(r, HOUSES); if (!skip.includes(h)) return { id: ANOMALIES.house[h], house: h }; }
   return { id: pick(r, pool), house: null };
 }
 
@@ -149,7 +150,8 @@ export function judge(pid, value, ctx) {
   const def = PUZZLES[pid];
   if (!def) return { ok: false, error: 'bad_puzzle' };
   if (def.solo && !ctx.solo) return { ok: false, error: 'bad_puzzle' };
-  if (def.house && !ctx.solo && ctx.house !== def.house) return { ok: false, error: 'not_your_house' };
+  // 學院專屬的題目：多人時那個學院由電腦控制（沒人扮演），就誰都可以做（不然會卡關）
+  if (def.house && !ctx.solo && ctx.house !== def.house && !(ctx.aiHouses ?? []).includes(def.house)) return { ok: false, error: 'not_your_house' };
   const lang = ctx.lang === 'en' ? 'en' : 'zh';
 
   switch (def.kind) {
@@ -164,7 +166,9 @@ export function judge(pid, value, ctx) {
       return { ok: true, solved: ok };
     }
     case 'set': {
-      const groups = byLang(def.ans, lang).map((g) => g.map(norm));
+      // P02 的傳聞：另一種語言的說法也算對（隊友的介面語言不同時不會卡住）
+      const other = def.ans?.zh && def.ans?.en ? byLang(def.ans, lang === 'en' ? 'zh' : 'en') : [];
+      const groups = byLang(def.ans, lang).map((g, k) => [...g, ...(other[k] ?? [])].map(norm));
       const given = asList(value).map(norm).filter(Boolean);
       if (given.length !== groups.length) return { ok: true, solved: false };
       const used = new Set();
@@ -187,11 +191,12 @@ export function judge(pid, value, ctx) {
       const st = ctx.state;
       st.attempt ??= 0; st.n ??= 0; st.streak ??= 0;
       if (+value?.loop !== st.n) return { ok: false, error: 'bad_value', reply: { loop: st.n } };
-      const anomaly = corridorLoop(ctx.seed, st.attempt, st.n, { rate: def.rate });
+      const skip = ctx.solo ? [] : ctx.aiHouses ?? [];
+      const anomaly = corridorLoop(ctx.seed, st.attempt, st.n, { rate: def.rate, skip });
       const right = (value.choice === 'back') === !!anomaly;
       if (right) { st.streak++; st.n++; } else { st.attempt++; st.n = 0; st.streak = 0; }
       const done = st.streak >= def.streak;
-      return { ok: true, solved: done, reply: { right, streak: st.streak, loop: st.n, next: done ? null : corridorLoop(ctx.seed, st.attempt, st.n, { rate: def.rate }) } };
+      return { ok: true, solved: done, reply: { right, streak: st.streak, loop: st.n, next: done ? null : corridorLoop(ctx.seed, st.attempt, st.n, { rate: def.rate, skip }) } };
     }
     case 'balance': { // value：{ weigh: { left: [..], right: [..] } } 或 { pick: 瓶子編號 }
       const st = ctx.state;

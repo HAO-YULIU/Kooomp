@@ -13,9 +13,16 @@ export async function createRoom(mode, lang) {
 }
 
 // 加入前先問房間的狀態，才能顯示「找不到房號」「已經滿了」這類訊息（WebSocket 連不上時瀏覽器看不到原因）
+// 有登入就帶 token：伺服器會說你是不是這個房間的成員（已經開始的房間，成員可以回來繼續玩）
 export async function roomInfo(code) {
-  const r = await fetch(`/api/rooms/${code}`);
+  const r = await fetch(`/api/rooms/${code}`, { headers: { authorization: `Bearer ${await token()}` } });
   return r.json().catch(() => ({ error: 'network' }));
+}
+
+// 自己的存檔：最近在玩的房間（last）、第一章的通關紀錄（ch1）
+export async function mySave() {
+  const r = await fetch('/api/me', { headers: { authorization: `Bearer ${await token()}` } }).catch(() => null);
+  return r?.ok ? r.json() : {};
 }
 
 export function connectRoom(code, { uiLang, onMessage, onStatus }) {

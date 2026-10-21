@@ -87,7 +87,7 @@ export const CHAPTER1 = {
     seg: 'act3a', diff: 9, kind: 'text',
     ans: { zh: '鐘在井底', en: 'THE BELL LIES IN THE WELL' },
     hints: H(['每組三個數字：書、頁、字。', '書的編號在書背上。書架移動時，要在燈亮的時候找。', '解出來是四個字：鐘、在、井、底。'],
-             ['Each group is: book, page, line, word.', 'Book numbers are on the spines. Read them while the lights are on.', 'It decodes to: THE BELL LIES IN THE WELL.']),
+             ['Each group of numbers is: book, page, word.', 'Book numbers are on the spines. Read them while the lights are on.', 'It decodes to: THE BELL LIES IN THE WELL.']),
   },
   P15: {
     seg: 'act3b', diff: 8, kind: 'text', ans: '3141', gives: 'note3',

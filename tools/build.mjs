@@ -37,6 +37,7 @@ for (const f of ['index.html', 'style.css']) cpSync(join(ROOT, 'game', f), join(
 cpSync(join(ROOT, 'prototype/vendor/supabase.js'), join(DIST, 'vendor/supabase.js'));
 cpSync(join(ROOT, 'prototype/vendor/three.module.min.js'), join(DIST, 'vendor/three.module.min.js'));
 if (existsSync(join(ROOT, 'assets'))) cpSync(join(ROOT, 'assets'), join(DIST, 'assets'), { recursive: true });
+if (existsSync(join(ROOT, 'game/models'))) cpSync(join(ROOT, 'game/models'), join(DIST, 'models'), { recursive: true }); // 角色模型（帳號二，game/src/art/）
 
 // 3. 檢查：發佈版裡不能有答案資料
 const leak = ['鐘在井底', 'THE BELL LIES IN THE WELL', 'SOLVE VINCULA', 'grimoire:11', '1,6,11,16,15,14,13'];

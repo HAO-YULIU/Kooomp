@@ -1,7 +1,7 @@
 // 遊戲進行中：場景、劇情、謎題、赫爾嘉夫人、電腦同伴、筆記本。由 main.mjs 在遊戲開始時呼叫 startPlay()。
 import { createWorld, patrolAt, helgaSees } from '../world/world.mjs';
 import { createSender, createReceiver } from '../net/sync.mjs';
-import { say, talking, advanceDialog, setPauseHandler, panelOpen, openPanel, closePanel, el, L } from '../ui/overlay.mjs';
+import { say, talking, advanceDialog, setPauseHandler, panelOpen, openPanel, closePanel, el, L, LP, setPuzzleLang } from '../ui/overlay.mjs';
 import { openPuzzle } from '../ui/puzzles.mjs';
 import { openWand } from '../ui/wand.mjs';
 import { t, getLang } from './i18n.mjs';
@@ -22,6 +22,7 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
   const sender = createSender((m) => { conn.send(m); if (window.__ml) window.__ml.sent++; });
   const receiver = createReceiver();
   const S = () => getState();
+  setPuzzleLang(S().lang); // 線索用房間的謎題語言
   const me = () => S().members.find((m) => m.uid === myUid);
   const myHouse = () => CHARS[me()?.char]?.house;
   const code = S().code;
@@ -104,14 +105,15 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
     if (tg.kind === 'prop' && tg.text) return say([[null, tg.text.zh, tg.text.en]]);
     if (tg.kind === 'rumor') {
       heard.add(tg.rumor);
-      return say([['student', RUMORS[tg.rumor].map((h) => h.zh).join(' '), RUMORS[tg.rumor].map((h) => h.en).join(' ')]]);
+      const text = RUMORS[tg.rumor].map(LP).join(' '); // 線索用房間的謎題語言（答案跟著它）
+      return say([['student', text, text]]);
     }
     if (tg.kind === 'puzzle') {
       if (tg.needsAi && !S().ai?.length) return toast(t('p07_none'));
-      if (tg.house && S().mode !== 'solo' && myHouse() !== tg.house) return toast(t('err.not_your_house'));
+      if (tg.house && S().mode !== 'solo' && myHouse() !== tg.house && !S().ai?.includes(tg.house)) return toast(t('err.not_your_house')); // 電腦控制的學院：誰都可以做
       return openPuzzle(tg.puzzle, tg, {
         conn, state: S(), notes, heard, revealed, toast, getLang, lib: act3.lib, solo: S().mode === 'solo',
-        items: () => S().items ?? [], myHouse, myChar: () => me()?.char, noise: () => conn.send({ t: 'noise', p: world.me().p }),
+        items: () => S().items ?? [], myHouse, aiHouse: (h) => S().mode !== 'solo' && !!S().ai?.includes(h), myChar: () => me()?.char, noise: () => conn.send({ t: 'noise', p: world.me().p }),
         near: (id, r) => { const th = THINGS_BY_ID[id]; const p = world.controls.state.pos; return !!th && Math.hypot(p.x - th.x, p.z - th.z) <= r; },
         onSolved: (pid, r) => onSolved(pid, myUid, r.reveal),
       });
@@ -137,11 +139,14 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
       for (const [pid, h] of Object.entries(HOUR_PID)) if (notes[pid]) items.push(t('note_hour', { house: HOUSES[h][getLang()], n: notes[pid] }));
       if (!items.length && !heard.size) body.append(el('p', { class: 'dim', text: t('notebook_empty') }));
       if (items.length) body.append(el('ul', {}, ...items.map((x) => el('li', { text: x }))));
+      // 符文大門（P18）的線索：P04 門上的 ᛁ，P19～P21 各一個符文
+      const runes = [['P04', 'ᛁ'], ['P19', 'ᛚ'], ['P20', 'ᚷ'], ['P21', 'ᛏ']].filter(([p]) => S().solved.includes(p) || (p === 'P04' && S().ai?.includes('grimoire')));
+      if (runes.length) body.append(el('h4', { text: t('note_runes') }), el('p', { class: 'cipher', text: runes.map(([, r]) => r).join('　') }));
       const libNotes = act3.notebook();
       if (libNotes.length) body.append(el('h4', { text: t('liana_notes') }), el('ul', {}, ...libNotes));
       if (heard.size) {
         body.append(el('h4', { text: t('note_rumor') }));
-        body.append(el('ul', {}, ...[...heard].sort().flatMap((i) => RUMORS[i].map((h) => el('li', { text: L(h) })))));
+        body.append(el('ul', {}, ...[...heard].sort().flatMap((i) => RUMORS[i].map((h) => el('li', { text: LP(h) })))));
       }
     });
   }

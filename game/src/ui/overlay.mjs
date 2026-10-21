@@ -64,4 +64,8 @@ export function el(tag, attrs = {}, ...kids) {
   return e;
 }
 export const L = (o) => (o ? o[getLang()] ?? o.zh : '');
+// 謎題的線索（傳聞、筆記、書的規則）用房間的謎題語言，答案才對得上（介面語言每個人可以不同）
+let puzzleLang = 'zh';
+export const setPuzzleLang = (l) => { puzzleLang = l === 'en' ? 'en' : 'zh'; };
+export const LP = (o) => (o ? o[puzzleLang] ?? o.zh : '');
 export { t };

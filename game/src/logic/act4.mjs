@@ -15,6 +15,15 @@ import { CHARS } from './chars.mjs';
 const $ = (id) => document.getElementById(id);
 const fmt = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
 
+// 通關結算：用時、莉安娜的筆記、西里爾的抉擇、被抓幾次、提示、重來幾次
+function summary(r) {
+  if (!r) return [];
+  const min = Math.round(r.time / 60000), time = min >= 60 ? t('time_hm', { h: Math.floor(min / 60), m: min % 60 }) : t('time_m', { m: min });
+  const rows = [[t('res_time'), time], [t('res_notes'), `${r.notes} / 4`], [t('res_cyril'), t(r.cyril === 'show' ? 'res_cyril_show' : 'res_cyril_hide')],
+    [t('res_caught'), String(r.caught)], [t('res_hints'), String(r.hints)], [t('res_retries'), String(r.retries)]];
+  return [el('table', { class: 'result' }, ...rows.map(([k, v]) => el('tr', {}, el('th', { text: k }), el('td', { text: v }))))];
+}
+
 export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar, receiver, serverNow, holding, solvedByMe, playScript, dev }) {
   const warden = createWarden(world.scene, { view: WARDEN.view, fov: WARDEN.fov });
   const scenery = createAct4Scene(world.scene);
@@ -64,8 +73,19 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
     return out;
   }
 
+  // 判定輸：「你們被同化了」＋重來的按鈕（收到訊息時，或重新整理後從房間狀態看到）
+  function showLost(reason) {
+    if (grabbed) { clearTimeout(grabbed); grabbed = null; fight.hidden = true; }
+    closePanel(); lost.hidden = false;
+    $('a4lost-title').textContent = t('a4_lost_title');
+    $('a4lost-text').textContent = t(`a4_lost_${reason}`);
+    ai.stun(9999, performance.now());
+  }
+
   function begin(retry) {
     active = true; introDone = false; ai = newAI(); roofAt = null;
+    if (boundOpen) { boundOpen = false; world.controls.setEnabled(true); } // 重來：被綁住的人也回到開頭
+    if (retry) { if (S().nest) S().nest = {}; if (S().act4) S().act4.lost = null; } // 新的房間狀態馬上會到，先清掉，免得又被拉回蝕巢、又顯示判定輸
     shown = { ...shown, x: WARDEN_START.x, z: WARDEN_START.z, mode: 'idle', zone: WARDEN_START.zone }; target = { ...shown };
     lost.hidden = true; bound.hidden = true; fight.hidden = true;
     world.teleport(A4_SPAWN);
@@ -87,12 +107,15 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
           world.teleport(SPAWNS.act1?.[CHARS[myChar()]?.house] ?? A4_SPAWN); playScript('segment:epilogue');
         } else if (ending === 'epilogue' && !talking()) { // 尾聲講完：第一章結束
           ending = null;
-          openPanel(t('ch1_end'), (body) => body.append(el('p', { text: t('ch1_end_body') })));
+          openPanel(t('ch1_end'), (body) => body.append(...summary(S().result), el('p', { text: t('ch1_end_body') }),
+            el('button', { text: t('to_menu'), onclick: () => { const q = new URLSearchParams(location.search); q.delete('room'); location.href = location.pathname + (q.size ? `?${q}` : ''); } })));
         }
         return 0;
       }
       scenery.frame(dt, mine.z);
       const now = serverNow(), st = S();
+      if (st.act4?.lost && lost.hidden) showLost(st.act4.lost); // 重新整理後也要看得到「重來」
+      else if (!st.act4?.lost && !lost.hidden) lost.hidden = true;
       // 倒數
       const left = (st.act4?.deadline ?? now) - now;
       hud.hidden = false; hud.textContent = `${t('a4_clock')} ${fmt(left)}`; hud.classList.toggle('urgent', left < 180000);
@@ -183,13 +206,7 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
         case 'freed': if (msg.uid !== myUid) toast(t('a4_freed_other', { name: S().members.find((m) => m.uid === msg.uid)?.name ?? '?' })); break;
         case 'repel': if (isSim()) ai.stun(WARDEN.repel, now); toast(t('a4_repelled')); $('flash')?.classList.add('on'); setTimeout(() => $('flash')?.classList.remove('on'), 300); break;
         case 'noise': if (isSim()) { const p = S().members.find((m) => m.uid === msg.uid); if (p && msg.p) ai.noise({ x: msg.p[0], z: msg.p[1], zone: msg.z }); } break;
-        case 'lost': {
-          if (grabbed) { clearTimeout(grabbed); grabbed = null; fight.hidden = true; }
-          closePanel(); lost.hidden = false;
-          $('a4lost-title').textContent = t('a4_lost_title');
-          $('a4lost-text').textContent = t(`a4_lost_${msg.reason}`);
-          ai.stun(9999, now); break;
-        }
+        case 'lost': showLost(msg.reason); break;
         case 'retry': begin(true); break;
       }
     },

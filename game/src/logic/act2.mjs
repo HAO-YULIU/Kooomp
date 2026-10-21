@@ -1,7 +1,7 @@
 // 第二幕的玩法：肖像畫長廊（P09）的「往前／回頭」判斷、同步隊友、異常的聲音；創辦人房間的熄燈（P10）。
 import { createGallery } from '../world/corridor.mjs';
 import { setRain, playLullaby, playFile, scream, chime } from '../world/sound.mjs';
-import { t } from './i18n.mjs';
+import { t, errText } from './i18n.mjs';
 
 const START = { x: 0, z: -21.6, yaw: 0 }; // 每一趟的起點（長廊南端，面向北）
 const DEEP_Z = -30; // 走過這裡才算「走進長廊」，之後退回北翼走廊＝回頭
@@ -28,7 +28,7 @@ export function createAct2({ world, conn, toast, play, S, house, solo, lang }) {
     if (busy || open) return; busy = true;
     const r = await conn.request({ t: 'answer', pid: 'P09', value: { loop, choice } });
     busy = false;
-    if (r.t === 'error') { if (r.reply) await sync(); else toast(t(`err.${r.error}`)); return; }
+    if (r.t === 'error') { deep = false; if (r.reply) await sync(); else toast(errText(r.error)); return; } // 出錯：要重新走進長廊才再送
     if (r.pending) { deep = false; return toast(voteText(r)); } // 多人：等隊友投票
     apply(r.reply ?? {}, r.solved, true);
   }

@@ -237,3 +237,9 @@ body.modal #a4bound { display: none; }
   .memory { grid-template-columns: repeat(6, 48px); } .memory button { width: 48px; height: 48px; } .sudoku button { width: 34px; height: 34px; font-size: 18px; }
   #a4bound { bottom: 70px; padding: 8px; } .knock { height: 48px; }
 }
+/* 第一章結算 */
+.result { width: 100%; border-collapse: collapse; margin: 6px 0 10px; }
+.result th { text-align: left; color: var(--dim); font-weight: normal; padding: 4px 8px 4px 0; } .result td { text-align: right; color: #f3d98e; padding: 4px 0; }
+.result tr + tr { border-top: 1px solid var(--line); }
+/* 英文介面：用西文字型排英文（中文字型的 ’ “ ” 是全形的，會多出空白） */
+html[lang="en"] body, html[lang="en"] button, html[lang="en"] input, html[lang="en"] select { font-family: Georgia, 'Times New Roman', 'Noto Serif TC', serif; }

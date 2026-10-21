@@ -1,5 +1,5 @@
 // 第 2 批的謎題畫面：P02、P03～P08。作答都送到伺服器判斷，這裡沒有答案。
-import { openPanel, closePanel, el, L, t } from './overlay.mjs';
+import { openPanel, closePanel, el, L, LP, t } from './overlay.mjs';
 import { errText, getLang } from '../logic/i18n.mjs';
 import { RUMORS } from '../data/world-ch1.mjs';
 import { MORSE_TABLE, RUNE_ROWS } from '../data/story-ch1.mjs';
@@ -68,7 +68,7 @@ const BUILD = {
     const ul = el('ul', { class: 'rumors' });
     const got = [...heard].sort();
     if (!got.length) ul.append(el('li', { class: 'dim', text: t('p02_none') }));
-    for (const i of got) for (const half of RUMORS[i]) ul.append(el('li', { text: L(half) }));
+    for (const i of got) for (const half of RUMORS[i]) ul.append(el('li', { text: LP(half) }));
     body.append(ul, el('p', { text: t('p02_ask') }));
     const inputs = [0, 1, 2].map((i) => el('input', { placeholder: `${t('p02_ph')} ${i + 1}`, onkeydown: (e) => e.stopPropagation() }));
     body.append(el('div', { class: 'row' }, ...inputs), el('button', { text: t('answer'), onclick: () => submit(inputs.map((x) => x.value.trim())) }));
@@ -232,7 +232,7 @@ const BUILD = {
 
   // P14：翻書（頁面內容由伺服器給）
   P14(body, { conn, submit }) {
-    body.append(el('p', { class: 'dim', text: L(BOOK_RULE) }));
+    body.append(el('p', { class: 'dim', text: LP(BOOK_RULE) }));
     const book = el('select', {}, ...Array.from({ length: 12 }, (_, i) => el('option', { value: String(i + 1), text: `${i + 1}` })));
     const page = el('input', { inputmode: 'numeric', maxlength: '3', class: 'num', placeholder: t('page'), onkeydown: (e) => e.stopPropagation() });
     const view = el('div', { class: 'bookpage' });
@@ -296,8 +296,8 @@ const BUILD = {
   },
 
   // P19：月光反射（艾爾德林看得到光的路線）
-  P19(body, { submit, items, myHouse, solo }) {
-    const see = myHouse() === 'eldrin' || solo;
+  P19(body, { submit, items, myHouse, solo, aiHouse }) {
+    const see = myHouse() === 'eldrin' || solo || aiHouse('eldrin'); // 艾爾德林由電腦控制時，同伴會告訴你
     const hasMirror = items().includes('mirror');
     const set = { 1: '', 2: '', 3: '', 4: '' }; let done = false;
     const grid = el('div', { class: 'light-grid' });
@@ -325,7 +325,7 @@ const BUILD = {
         };
         grid.append(b);
       }));
-      if (tr.hit && !done) { done = true; submit('done'); }
+      if (tr.hit && !done) { done = true; submit('done').then((r) => { if (!r?.solved) done = false; }); } // 沒送成功可以再試
     };
     const status = el('p', { class: 'dim', text: see ? t('p19_see') : t('p19_blind') });
     body.append(el('p', { text: t('p19_intro') }), grid, status);
@@ -345,7 +345,7 @@ const BUILD = {
         const tgt = targets.some(([a, b]) => a === x && b === y);
         grid.append(el('span', { class: `${c === '#' ? 'wall' : ''} ${tgt ? 'target' : ''}`, text: x === px && y === py ? '◉' : c === 'B' ? '🗿' : '' }));
       }));
-      if (!done && targets.every(([x, y]) => map[y][x] === 'B')) { done = true; submit('done'); }
+      if (!done && targets.every(([x, y]) => map[y][x] === 'B')) { done = true; submit('done').then((r) => { if (!r?.solved) done = false; }); }
     };
     const move = (dx, dy) => {
       const nx = px + dx, ny = py + dy, c = map[ny]?.[nx];
@@ -363,8 +363,8 @@ const BUILD = {
   },
 
   // P21：煉金天平（九瓶裡找出重的那瓶，只能秤兩次）
-  P21(body, { conn, submit, myHouse, solo }) {
-    const named = myHouse() === 'ouroboros' || solo;
+  P21(body, { conn, submit, myHouse, solo, aiHouse }) {
+    const named = myHouse() === 'ouroboros' || solo || aiHouse('ouroboros');
     const side = Array(9).fill(''); let mode = 'weigh';
     const row = el('div', { class: 'vials' }); const out = el('p', { class: 'dim', text: t('p21_intro') });
     const paint = () => {
@@ -380,7 +380,7 @@ const BUILD = {
       const r = await conn.request({ t: 'answer', pid: 'P21', value: { weigh: { left, right } } });
       if (r.reply?.reshuffled) out.textContent = t('p21_reshuffled');
       else if (r.reply?.result) out.textContent = t(`p21_${r.reply.result}`, { n: r.reply.used });
-      else if (r.t === 'error') out.textContent = t(`err.${r.error}`);
+      else if (r.t === 'error') out.textContent = errText(r.error, { s: Math.ceil((r.wait ?? 0) / 1000) });
       side.fill(''); paint();
     };
     body.append(row, out, el('div', { class: 'row' },
@@ -651,7 +651,7 @@ function blink(lamp, codes) {
 }
 
 // P02 用：玩家走到長桌旁時記下聽到的傳聞
-export function rumorText(i) { return RUMORS[i].map(L).join(' '); }
+export function rumorText(i) { return RUMORS[i].map(LP).join(' '); }
 
 // ---- 第三幕的小工具 ----
 function brailleCell(dots, hidden = false) {
