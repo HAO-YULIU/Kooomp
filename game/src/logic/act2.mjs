@@ -29,8 +29,10 @@ export function createAct2({ world, conn, toast, play, S, house, solo, lang }) {
     const r = await conn.request({ t: 'answer', pid: 'P09', value: { loop, choice } });
     busy = false;
     if (r.t === 'error') { if (r.reply) await sync(); else toast(t(`err.${r.error}`)); return; }
+    if (r.pending) { deep = false; return toast(voteText(r)); } // 多人：等隊友投票
     apply(r.reply ?? {}, r.solved, true);
   }
+  const voteText = (v) => t('corridor_vote', { f: v.forward, b: v.back, need: v.need });
   function apply(rep, solved, mine) {
     if (rep.right) chime(true); else chime(false);
     if (solved) { openEnd(); toast(t('corridor_done')); return; }
@@ -43,7 +45,8 @@ export function createAct2({ world, conn, toast, play, S, house, solo, lang }) {
     gallery,
     enter() { setRain(true); sync(); },
     leave() { setRain(false); },
-    onCorridor(msg) { apply(msg, msg.streak >= 8, false); }, // 隊友做的決定
+    onCorridor(msg) { apply(msg, msg.streak >= 8, false); }, // 全隊投票的結果
+    onVote(msg) { toast(voteText(msg)); },
     onSolved(pid) { if (pid === 'P09') openEnd(); },
     toggleFamiliar() { if (!solo) return; familiarView = !familiarView; gallery.setLoop(anomaly, loop, { familiarView }); toast(familiarView ? t('familiar_on') : t('familiar_off')); },
     interact(tg) {

@@ -198,6 +198,7 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
   return {
     world, sender, receiver, onState, onSolved,
     onCorridor: (msg) => act2.onCorridor(msg),
+    onVote: (msg) => act2.onVote(msg),
     zoneName: (z) => L(ROOMS.find((r) => r.id === z)?.name) || z,
     setNotes(n) { Object.assign(notes, n); },
   };
