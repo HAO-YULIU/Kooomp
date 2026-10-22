@@ -47,6 +47,7 @@ c.talk(秒數); c.setMood('calm' | 'smile' | 'scared');
 動作照 AI 狀態：`idle`、`stun` → 待機；`patrol`、`search` → 走路；`chase` → 跑步；`grab` → 撲抓。
 測試頁：在儲存庫根目錄開伺服器，開 `prototype/warden-game.html#chase`（`#patrol`、`#grab`、`#auto`）。
 守夜人用 `prototype/bake-warden.html` 烘焙。
+蝕化（`warden.mjs` 的 `corrupt()`）：背後沿脊椎裂開的血肉、往兩側翻開的肋骨、從背上和肩膀刺出的黑色結晶、左臉剝落的臉皮和底下的紅肉、發綠光的眼睛。都掛在骨頭上，跟著走路、跑步、撲抓一起動。測試頁：`prototype/warden-view.html`。
 
 ## 怎麼重新烘焙（帳號二）
 1. 在 `prototype/` 開伺服器，用瀏覽器開 `bake.html`（加 `window.JOB = { key, tex }`，用 Playwright 跑，見帳號二的工作紀錄），存成 `<代號>_raw.glb`。

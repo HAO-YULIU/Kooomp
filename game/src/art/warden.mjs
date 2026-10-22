@@ -27,6 +27,8 @@ export async function loadWardenModel() {
   });
   const root = new THREE.Group(); model.rotation.y = Math.PI; root.add(model); // 模型面向 +z，遊戲要 -z
 
+  corrupt(model, root);
+
   const mixer = new THREE.AnimationMixer(model);
   const actions = Object.fromEntries(gltf.animations.map((c) => [c.name, mixer.clipAction(c)]));
   actions.attack.setLoop(THREE.LoopOnce); actions.attack.clampWhenFinished = true;
@@ -53,6 +55,67 @@ export async function loadWardenModel() {
       glass.opacity = 0.7 + 0.25 * Math.sin(t * 9) * Math.sin(t * 3.7);
     },
   };
+}
+
+
+// ---------- 蝕化（docs：背後裂開、肋骨像門一樣往兩側撐開、黑色結晶刺穿衣服、臉皮往下剝落） ----------
+// 先在「站好的姿勢」下，用世界座標把東西擺在身上，再掛到最近的骨頭（bone.attach 會保留位置），之後就跟著動作動。
+function corrupt(model, root) {
+  root.updateMatrixWorld(true);
+  // 骨頭有好幾份（每個零件自己一份，名字後面可能多了 _1）；找會動的那一份：被零件的骨架用到的
+  const used = []; model.traverse((o) => { if (o.isSkinnedMesh) used.push(...o.skeleton.bones); });
+  const bone = (n) => used.find((b) => b.name === n) || used.find((b) => new RegExp('^' + n + '(_\\d+)?$').test(b.name));
+  const spine = bone('spine_03') || bone('spine_02'), spineLow = bone('spine_01'), head = bone('head'), neck = bone('neck_01'), armL = bone('upperarm_l'), armR = bone('upperarm_r');
+  if (window.__wardenDebug) console.error('warden bones ' + [spine, spineLow, head, neck, armL, armR].map((b) => b?.name).join(','));
+  if (!spine || !head) return;
+  const W = (b) => b.getWorldPosition(new THREE.Vector3());
+  const q = model.getWorldQuaternion(new THREE.Quaternion());
+  const BACK = new THREE.Vector3(0, 0, -1).applyQuaternion(q), UP = new THREE.Vector3(0, 1, 0), SIDE = new THREE.Vector3(1, 0, 0).applyQuaternion(q), FRONT = BACK.clone().negate();
+  const chest = W(spine), low = spineLow ? W(spineLow) : chest.clone().addScaledVector(UP, -0.25), H = W(head);
+  const torsoR = 0.17; // 背離骨頭大約多遠（公尺）
+  const put = (mesh, pos, parent) => { mesh.position.copy(pos); root.add(mesh); mesh.updateMatrixWorld(true); parent.attach(mesh); mesh.frustumCulled = false; mesh.castShadow = true; return mesh; };
+  const look = (mesh, dir) => { mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize()); return mesh; };
+
+  const flesh = new THREE.MeshStandardMaterial({ color: '#4a0808', roughness: 0.35, emissive: '#1a0000' });
+  const wet = new THREE.MeshStandardMaterial({ color: '#2a0204', roughness: 0.15, metalness: 0.2 });
+  const boneMat = new THREE.MeshStandardMaterial({ color: '#d6cbb8', roughness: 0.5 });
+  const crystal = new THREE.MeshStandardMaterial({ color: '#07060c', emissive: '#0a0618', roughness: 0.18, metalness: 0.55, flatShading: true }); // 黑色、帶一點紫，邊緣反光
+
+  // 1. 背後的裂口：一條長長的血肉（橢圓），沿著脊椎
+  const mid = chest.clone().lerp(low, 0.4).addScaledVector(BACK, torsoR * 0.9);
+  const AXIS = chest.clone().sub(low).normalize(); // 脊椎的方向（駝背時是斜的）
+  const wg = new THREE.SphereGeometry(1, 14, 10); wg.scale(0.06, 0.24, 0.03);
+  const wound = new THREE.Mesh(wg, flesh); look(wound, AXIS); put(wound, mid, spine);
+  const wg2 = new THREE.SphereGeometry(1, 10, 8); wg2.scale(0.03, 0.2, 0.03);
+  const wound2 = new THREE.Mesh(wg2, wet); look(wound2, AXIS); put(wound2, mid.clone().addScaledVector(BACK, 0.01), spine);
+
+  // 2. 肋骨像門一樣往兩側撐開：每邊 4 根彎彎的骨頭，從裂口兩邊往外翻
+  for (let i = 0; i < 4; i++) for (const sd of [-1, 1]) {
+    const base = mid.clone().addScaledVector(AXIS, 0.12 - i * 0.075).addScaledVector(SIDE, sd * 0.045);
+    const r = 0.1 - Math.abs(i - 1.5) * 0.01;
+    const rib = new THREE.Mesh(new THREE.TorusGeometry(r, 0.012, 5, 12, Math.PI * 0.85), boneMat);
+    // 圓弧的平面：往旁邊、往後；從裂口邊緣開始彎出去再彎回身上
+    const m = new THREE.Matrix4().makeBasis(SIDE.clone().multiplyScalar(sd), BACK, AXIS.clone().cross(SIDE).normalize().multiplyScalar(sd));
+    rib.quaternion.setFromRotationMatrix(m); rib.rotateZ(-Math.PI * 0.15);
+    put(rib, base.clone().addScaledVector(SIDE, sd * r * 0.9), spine);
+  }
+
+  // 3. 黑色結晶：從背上的裂口、肩膀、手臂刺穿衣服
+  const spikes = [
+    ...Array.from({ length: 9 }, (_, i) => ({ b: spine, p: chest.clone().lerp(low, 0.1 + (i % 5) * 0.2).addScaledVector(BACK, torsoR * 0.8).addScaledVector(SIDE, (i % 2 ? 1 : -1) * (0.05 + (i * 37 % 7) * 0.012)), d: BACK.clone().addScaledVector(UP, 0.5 + (i % 3) * 0.3).addScaledVector(SIDE, (i % 2 ? 1 : -1) * 0.35), l: 0.22 + (i * 13 % 9) * 0.03 })),
+    ...[armL, armR].filter(Boolean).flatMap((a, j) => [0, 1, 2].map((i) => ({ b: a, p: W(a).addScaledVector(UP, 0.03 - i * 0.07).addScaledVector(BACK, 0.04), d: UP.clone().addScaledVector(SIDE, (j ? -1 : 1) * 0.6).addScaledVector(BACK, 0.4), l: 0.12 + i * 0.04 }))),
+  ];
+  for (const s of spikes) {
+    const c = new THREE.Mesh(new THREE.ConeGeometry(0.022 + s.l * 0.08, s.l, 5), crystal); c.geometry.translate(0, s.l / 2, 0);
+    look(c, s.d); put(c, s.p, s.b);
+  }
+
+  // 4. 臉皮往下剝落：一片皮從下巴垂下來，露出底下的紅肉；眼睛（模型本身）發綠光
+  const face = H.clone().addScaledVector(FRONT, 0.095).addScaledVector(UP, 0.09).addScaledVector(SIDE, -0.035); // 左邊臉頰
+  const raw = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 8), flesh); raw.scale.set(0.035, 0.045, 0.012); raw.quaternion.copy(q); put(raw, face, head);
+  const peel = new THREE.Mesh(new THREE.PlaneGeometry(0.06, 0.1, 1, 3), new THREE.MeshStandardMaterial({ color: '#8a7466', roughness: 0.7, side: THREE.DoubleSide }));
+  const pp = peel.geometry.attributes.position; for (let i = 0; i < pp.count; i++) { const y = pp.getY(i); pp.setZ(i, (0.05 - y) ** 2 * 3); } peel.geometry.translate(0, -0.05, 0); peel.geometry.computeVertexNormals();
+  peel.quaternion.copy(q); peel.rotateX(0.35); peel.scale.setScalar(0.8); put(peel, face.clone().addScaledVector(UP, -0.025).addScaledVector(FRONT, 0.004), head);
 }
 
 decorators.npc.push(({ key, group }) => {
