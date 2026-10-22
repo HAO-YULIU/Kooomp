@@ -33,10 +33,11 @@ if (!plain) {
 writeFileSync(join(DIST, 'app.js'), code);
 
 // 2. 網頁與素材
-for (const f of ['index.html', 'style.css']) cpSync(join(ROOT, 'game', f), join(DIST, f));
+for (const f of ['index.html', 'style.css', 'manifest.webmanifest', 'icon.png']) cpSync(join(ROOT, 'game', f), join(DIST, f));
 cpSync(join(ROOT, 'prototype/vendor/supabase.js'), join(DIST, 'vendor/supabase.js'));
 cpSync(join(ROOT, 'prototype/vendor/three.module.min.js'), join(DIST, 'vendor/three.module.min.js'));
 if (existsSync(join(ROOT, 'assets'))) cpSync(join(ROOT, 'assets'), join(DIST, 'assets'), { recursive: true });
+if (existsSync(join(ROOT, 'game/img'))) cpSync(join(ROOT, 'game/img'), join(DIST, 'img'), { recursive: true }); // 選角色的頭像、登入畫面的背景
 if (existsSync(join(ROOT, 'game/models'))) cpSync(join(ROOT, 'game/models'), join(DIST, 'models'), { recursive: true }); // 角色模型（帳號二，game/src/art/）
 
 // 3. 檢查：發佈版裡不能有答案資料

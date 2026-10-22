@@ -14,12 +14,15 @@ export function openSorting(onDone) {
       if (i >= SORTING.length) {
         const best = Math.max(...Object.values(score));
         const house = SORTING_HOUSES.filter((h) => score[h] === best).sort((a, b) => reached[a] - reached[b])[0];
-        body.append(el('p', { class: 'mirror-result', text: `${HOUSES[house][getLang()]}！` }));
-        setTimeout(() => { closePanel(); onDone(house); }, 1400);
+        const H = HOUSES[house], L = getLang();
+        const res = el('div', { class: 'mirror-result', style: `--hc:${H.color}` },
+          el('i', { class: 'sigil', text: H.sigil }), el('b', { text: `${H[L]}！` }), el('small', { text: H.motto[L] }), el('small', { class: 'power', text: H.power[L] }));
+        body.append(res);
+        setTimeout(() => { closePanel(); onDone(house); }, 2600);
         return;
       }
       const q = SORTING[i];
-      body.append(el('p', { class: 'dim', text: `${i + 1} / ${SORTING.length}` }), el('p', { class: 'mirror-q', text: q.q[k] }));
+      body.append(el('div', { class: 'mirror-steps' }, ...SORTING.map((_, j) => el('i', { class: j < i ? 'done' : j === i ? 'on' : '' }))), el('p', { class: 'mirror-q', text: q.q[k] }));
       q.a.forEach((opt, j) => body.append(el('button', { class: 'choice', text: opt[k], onclick: () => {
         const h = SORTING_HOUSES[j]; score[h]++; reached[h] = i;
         show(i + 1);

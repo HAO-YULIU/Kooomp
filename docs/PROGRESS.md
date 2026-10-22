@@ -8,7 +8,6 @@
 
 
 - `claude/sweet-goldberg-nklgb6`（帳號二）：**帳號一額度用完，帳號二暫時接手全部工作**（2026-10-22 製作人）。已把法杖接進遊戲（`play.mjs`：依角色換法杖、施咒時發光）。本機用 `.dev.vars`（`DEV_AUTH=1`，不 commit）跑 `wrangler dev`，`?dev=名字` 單人實測過序幕～第四幕畫面正常；`npm test` 28 項全過。
-- `claude/sweet-goldberg-nklgb6`：手機橫向全螢幕、等待室改版（先分學院才能選角色、看得到角色模樣、登入與選角畫面美化）（`game/index.html`、`game/style.css`、`game/src/main.mjs`、`game/src/ui/`、`game/src/logic/i18n.mjs`、`server/room.mjs`、`tools/test/`、`game/img/`）。
 
 
 ## 等製作人回答
@@ -75,3 +74,4 @@
 - 2026-10-22：把最新的 main 手動部署到 Cloudflare（版本 6b4a02ae）；上一次部署停在 2026-10-21，推上 main 的自動部署可能沒有在跑，要到 Cloudflare 後台確認。
 - 2026-10-22：帳號二：角色走路動作（腿、膝蓋、手臂跟著移動速度擺動）。
 - 2026-10-22：遊戲還沒上架大廳時，登入畫面加「開發者登入」：用大廳的 Email＋密碼登入，只有大廳管理員帳號（admins 名單）能進。已手動部署（版本 9d6fc644）。
+- 2026-10-22：等待室改版（製作人要求）：一定要先在分院鏡前分完學院才能選角色（伺服器也會擋）；左邊展示台看得到角色的 3D 模樣（可以拖曳轉動）、角色卡片有頭像與介紹；登入、選單畫面加上典禮廳背景、學院徽章、霧與火星；手機進遊戲時自動全螢幕（Android），右上角 ⛶ 按鈕，iPhone 提示「加入主畫面」（加了 manifest，從主畫面打開沒有網址列）。頭像由 `prototype/thumbs.html` 烘焙到 `game/img/chars/`。

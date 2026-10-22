@@ -1,0 +1,23 @@
+<!doctype html><meta charset="utf-8"><title>選角色頭像</title>
+<style>html,body{margin:0;background:#000}canvas{width:480px;height:640px;display:block}</style>
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js" } }</script>
+<!-- 帳號二：烘焙選角色畫面的頭像（game/img/chars/<代號>.webp）。從儲存庫根目錄開伺服器，window.shot(代號) 換角色。 -->
+<canvas id="c"></canvas>
+<script type="module">
+import { setCharacterBase } from '../game/src/art/characters.mjs';
+import { createPreview } from '../game/src/art/preview.mjs';
+import { CHARS, HOUSES } from '../game/src/logic/chars.mjs';
+setCharacterBase('../game/models/chars/');
+const pv = createPreview(document.getElementById('c'));
+window.shot = async (key, mode = 'bust') => {
+  const hc = HOUSES[CHARS[key].house].color;
+  document.body.style.background = `radial-gradient(circle at 50% 35%, color-mix(in srgb, ${hc} 30%, #1a1418), #07060a 75%)`;
+  await pv.show(key, hc);
+  await new Promise((r) => { const f = () => (pv.ready() ? r() : setTimeout(f, 100)); f(); });
+  pv.setSpin(0.35);
+  if (mode === 'bust') { pv.camera.fov = 22; const y = pv.headY(); pv.camera.position.set(-0.25, y - 0.05, -2.3); pv.camera.lookAt(0, y - 0.2, 0); pv.camera.updateProjectionMatrix(); }
+  await new Promise((r) => setTimeout(r, 1500));
+  return true;
+};
+window.ready = true;
+</script>

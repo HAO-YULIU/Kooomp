@@ -139,58 +139,116 @@ const paren = (x) => (getLang() === 'en' ? ` (${x})` : `（${x}）`);
 const colon = () => (getLang() === 'en' ? ': ' : '：');
 const nameOf = (uid) => state?.members.find((m) => m.uid === uid)?.name ?? '?';
 
+// 等待室：① 分院鏡（一定要做）→ ② 選角色（左邊的展示台看得到角色）→ ③ 準備
+let preview = null, peek = null, autoSorted = false, sortingOpen = false;
+async function stage(c) { // 展示台換角色
+  if (!c) return;
+  const info = CHARS[c], H = HOUSES[info.house], L = getLang();
+  $('stage-name').textContent = info[L]; $('stage-house').textContent = `${H.sigil} ${H[L]}・${H.motto[L]}`;
+  $('stage-blurb').textContent = info.blurb[L]; $('stage-power').textContent = H.power[L];
+  $('s-wait').style.setProperty('--hc', H.color);
+  if (!preview) { const { createPreview } = await import('./art/preview.mjs'); preview ??= createPreview($('char-stage')); }
+  preview.show(c, H.color);
+}
+function closeStage() { preview?.dispose(); preview = null; peek = null; autoSorted = false; }
+function sortNow() {
+  sortingOpen = true;
+  openSorting(async (h) => {
+    sortingOpen = false;
+    const r = await conn.request({ t: 'house', house: h });
+    if (r.t === 'error') return ($('wait-err').textContent = errText(r.error));
+    const me = state.members.find((m) => m.uid === myUid);
+    if (!me?.char && !state.members.some((m) => m.char === charOfHouse(h))) { await conn.request({ t: 'char', char: charOfHouse(h) }); preview?.mood('smile'); }
+  });
+  // 中途關掉視窗：還是沒分學院，之後按按鈕可以再來
+  const close = document.getElementById('panel-close'), prev = close.onclick;
+  close.onclick = (e) => { sortingOpen = false; close.onclick = prev; prev?.(e); };
+}
+
 function renderWait() {
   if (!state || state.phase !== 'lobby') return;
-  const mine = state.members.find((m) => m.uid === myUid);
+  const mine = state.members.find((m) => m.uid === myUid), L = getLang();
+  const sortedHouse = mine?.sorted ? CHARS[mine.sorted].house : null;
   $('room-code').textContent = state.mode === 'solo' ? '—' : state.code;
   $('member-list').innerHTML = '';
   for (const m of state.members) {
     const li = document.createElement('li');
-    const c = m.char ? CHARS[m.char][getLang()] : '—';
+    if (m.char) li.style.setProperty('--hc', HOUSES[CHARS[m.char].house].color);
     li.innerHTML = `<span></span><span class="tag"></span>`;
-    li.firstChild.textContent = `${m.name}　${c}`;
+    li.firstChild.textContent = `${m.name}　${m.char ? CHARS[m.char][L] : '—'}`;
     li.lastChild.textContent = [m.uid === state.host ? t('host') : '', m.ready ? '✔' : '', m.online ? '' : t('offline')].filter(Boolean).join(' · ');
     $('member-list').append(li);
   }
-  // 分院鏡的問答（P01）：結果把對應學院的角色設成預設，可以改選
+  // ① 分院鏡（P01）：一定要先做；結果把對應學院的角色設成預設，可以改選
   $('house-pick').innerHTML = '';
   const sb = document.createElement('button');
-  sb.className = 'primary small';
-  sb.textContent = mine?.sorted ? `${t('sorting_done')}${colon()}${HOUSES[CHARS[mine.sorted].house][getLang()]}${paren('↻')}` : t('sorting_open');
-  sb.onclick = () => openSorting(async (h) => {
-    const r = await conn.request({ t: 'house', house: h });
-    if (r.t === 'error') return ($('wait-err').textContent = errText(r.error));
-    const me = state.members.find((m) => m.uid === myUid);
-    if (!me?.char && !state.members.some((m) => m.char === charOfHouse(h))) conn.send({ t: 'char', char: charOfHouse(h) });
-  });
+  if (sortedHouse) {
+    const H = HOUSES[sortedHouse];
+    sb.className = 'house-badge'; sb.style.setProperty('--hc', H.color); sb.disabled = !!mine?.ready;
+    sb.innerHTML = '<i></i><b></b><small></small>';
+    sb.children[0].textContent = H.sigil; sb.children[1].textContent = H[L]; sb.children[2].textContent = `${t('sorting_done')} ${paren('↻')}`;
+  } else { sb.className = 'primary small glow'; sb.textContent = t('sorting_open'); }
+  sb.onclick = sortNow;
   $('house-pick').append(sb);
-  $('sorted-hint').textContent = mine?.sorted ? t('sorted_hint', { house: HOUSES[CHARS[mine.sorted].house][getLang()] }) : '';
-  // 角色
+  $('sorted-hint').textContent = sortedHouse ? t('sorted_hint', { house: HOUSES[sortedHouse][L] }) : '';
+  $('step-sort').className = sortedHouse ? 'done' : 'now';
+  $('step-char').className = !sortedHouse ? 'locked' : mine?.char ? 'done' : 'now';
+  $('step-ready').className = mine?.ready ? 'done' : mine?.char ? 'now' : 'locked';
+  $('char-lock').textContent = sortedHouse ? '' : t('sort_first');
+  // ② 角色卡片：還沒分學院時只能看、不能選
   $('char-pick').innerHTML = '';
   for (const [c, info] of Object.entries(CHARS)) {
     const takenBy = state.members.find((m) => m.char === c && m.uid !== myUid);
     const b = document.createElement('button');
     b.style.setProperty('--hc', HOUSES[info.house].color);
-    b.classList.toggle('on', mine?.char === c); b.disabled = !!takenBy || !!mine?.ready;
-    b.innerHTML = '<b></b><small></small>';
-    b.firstChild.textContent = info[getLang()];
-    b.lastChild.textContent = takenBy ? `${t('taken')}${paren(takenBy.name)}` : HOUSES[info.house][getLang()];
-    b.onclick = async () => { const r = await conn.request({ t: 'char', char: mine?.char === c ? null : c }); $('wait-err').textContent = r.t === 'error' ? errText(r.error) : ''; };
+    b.classList.toggle('on', mine?.char === c); b.classList.toggle('locked', !sortedHouse); b.classList.toggle('mine', info.house === sortedHouse);
+    b.disabled = !!takenBy || !!mine?.ready;
+    b.innerHTML = `<img alt="" src="img/chars/${c}.webp"><b></b><small></small>`;
+    b.children[1].textContent = info[L];
+    b.children[2].textContent = takenBy ? `${t('taken')}${paren(takenBy.name)}` : `${HOUSES[info.house].sigil} ${HOUSES[info.house][L]}`;
+    b.onpointerenter = () => { peek = c; stage(c); };
+    b.onpointerleave = () => { peek = null; stage(mine?.char || mine?.sorted || 'elora'); };
+    b.onclick = async () => {
+      peek = c; stage(c);
+      if (!sortedHouse) return ($('wait-err').textContent = t('sort_first'));
+      const r = await conn.request({ t: 'char', char: mine?.char === c ? null : c });
+      $('wait-err').textContent = r.t === 'error' ? errText(r.error) : '';
+      if (r.t !== 'error' && mine?.char !== c) { preview?.mood('smile'); $('step-ready').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+    };
     $('char-pick').append(b);
   }
+  stage(peek || mine?.char || mine?.sorted || 'elora');
+  if (!sortedHouse && !autoSorted && !sortingOpen) { autoSorted = true; setTimeout(sortNow, 400); } // 第一次進等待室就站到分院鏡前
   $('btn-ready').textContent = mine?.ready ? t('not_ready') : t('ready');
-  $('btn-ready').onclick = async () => { const r = await conn.request({ t: 'ready', ready: !mine?.ready }); $('wait-err').textContent = r.t === 'error' ? errText(r.error) : ''; };
+  $('btn-ready').className = mine?.char && !mine?.ready ? 'primary small' : '';
+  $('btn-ready').onclick = async () => { fullscreen(); const r = await conn.request({ t: 'ready', ready: !mine?.ready }); $('wait-err').textContent = r.t === 'error' ? errText(r.error) : ''; };
   $('btn-start').hidden = state.host !== myUid;
-  $('btn-start').onclick = async () => { import('../../prototype/src/orient.mjs').then((o) => o.enterFullscreen()); const r = await conn.request({ t: 'start' }); $('wait-err').textContent = r.t === 'error' ? errText(r.error) : ''; };
+  $('btn-start').onclick = async () => { fullscreen(); const r = await conn.request({ t: 'start' }); $('wait-err').textContent = r.t === 'error' ? errText(r.error) : ''; };
 }
-$('btn-leave').onclick = () => { conn?.close(); conn = null; state = null; history.replaceState(null, '', location.pathname + (params.has('dev') ? `?dev=${params.get('dev')}` : '')); show('s-menu'); };
+// 手機：全螢幕（Android 會藏起網址列；要在玩家按按鈕時呼叫才有效）
+const fullscreen = () => import('../../prototype/src/orient.mjs').then((o) => o.enterFullscreen());
+$('btn-leave').onclick = () => { closeStage(); conn?.close(); conn = null; state = null; history.replaceState(null, '', location.pathname + (params.has('dev') ? `?dev=${params.get('dev')}` : '')); show('s-menu'); };
+
+// 手機：右上角的全螢幕按鈕。不在全螢幕時才出現；iPhone 不支援網頁全螢幕，就說明「加入主畫面」
+function setupFullscreen() {
+  if (!document.body.classList.contains('touch')) return;
+  const standalone = matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || navigator.standalone;
+  const can = !!document.documentElement.requestFullscreen;
+  const upd = () => { $('btn-full').hidden = standalone || !!document.fullscreenElement; };
+  $('btn-full').onclick = () => { if (can) fullscreen(); else toast(t('full_tip')); };
+  document.addEventListener('fullscreenchange', upd); upd();
+  if (!standalone && !document.fullscreenElement) setTimeout(() => toast(t('full_tip')), 4000);
+  if (can) $('view').addEventListener('pointerup', () => { if (!document.fullscreenElement) fullscreen(); }, { once: true }); // 第一次點畫面就進全螢幕
+}
 
 // ---------- 遊戲 ----------
 let game = null, starting = false, pendingNotes = null;
 async function startGame() {
   if (game || starting) return;
   starting = true;
+  closeStage(); $('backdrop').hidden = true;
   for (const s of screens) $(s).hidden = true;
+  setupFullscreen();
   $('view').hidden = false; $('hud').hidden = false; $('dev').hidden = !DEV;
   const { startPlay } = await import('./logic/play.mjs');
   // 手機：遊戲中強制橫向（Android 全螢幕時會真的鎖住；iPhone 只能蓋提示）

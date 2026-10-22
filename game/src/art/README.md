@@ -44,6 +44,7 @@ c.talk(秒數); c.setMood('calm' | 'smile' | 'scared');
 
 ## 第一人稱的法杖
 - `game/src/art/staff.mjs`：星月法杖、龍首法杖（`game/models/staff/`），場景蓋好時自動掛到相機上（預設星月法杖），右下角，走路時輕輕晃，施咒時往前一揮、杖頭發光。
+- `game/src/art/preview.mjs`：等待室選角色的展示台（學院色魔法陣、光點、可以拖曳轉動）。選角色卡片的頭像由 `prototype/thumbs.html` 烘焙成 `game/img/chars/<代號>.webp`（角色模型或衣服改了要重新烘焙）。
 - **請帳號一**（兩行，`import { setStaff, staffCast } from '../art/index.mjs'`）：
   1. 知道玩家角色後 `setStaff(女生 ? 'moon' : 'dragon')`（艾洛拉、月晞 `moon`；沃恩、西里爾 `dragon`）；不想顯示時 `setStaff(null)`。
   2. 施咒成功時 `staffCast(咒語的顏色)`（例如顯影咒 `'#9fc4ff'`）。

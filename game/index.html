@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <title>魔蝕milner</title>
   <meta name="theme-color" content="#05060a">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="魔蝕milner">
+  <link rel="apple-touch-icon" href="icon.png">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Ccircle cx=%2216%22 cy=%2216%22 r=%2214%22 fill=%22%2305060a%22 stroke=%22%23c43a2f%22 stroke-width=%223%22/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
@@ -14,6 +20,7 @@
   <script type="module" src="app.js"></script>
 </head>
 <body>
+  <div id="backdrop"><i class="fog a"></i><i class="fog b"></i><div class="embers"></div></div>
   <canvas id="view" hidden></canvas>
   <div id="flash"></div>
   <div id="stick"><i></i></div>
@@ -21,7 +28,9 @@
   <!-- 18+ 提示 -->
   <section class="screen" id="s-age">
     <div class="card">
+      <div class="crest"><i style="--hc:#9fc4ff">✦</i><i style="--hc:#c0454f">❦</i><i style="--hc:#d1a640">⚔</i><i style="--hc:#4fa37a">◎</i></div>
       <h1 class="logo" data-t="title"></h1>
+      <p class="tagline" data-t="tagline"></p>
       <div class="lang-row"><span data-t="lang"></span>
         <button class="chip" data-lang="zh">中文</button><button class="chip" data-lang="en">English</button></div>
       <h2 class="warn" data-t="age_title"></h2>
@@ -33,7 +42,9 @@
   <!-- 要登入 -->
   <section class="screen" id="s-login" hidden>
     <div class="card">
+      <div class="crest"><i style="--hc:#9fc4ff">✦</i><i style="--hc:#c0454f">❦</i><i style="--hc:#d1a640">⚔</i><i style="--hc:#4fa37a">◎</i></div>
       <h1 class="logo" data-t="title"></h1>
+      <p class="tagline" data-t="tagline"></p>
       <h2 data-t="need_login_title"></h2>
       <p id="login-body"></p>
       <a class="primary" id="to-lobby" data-t="to_lobby"></a>
@@ -52,7 +63,9 @@
   <!-- 選單 -->
   <section class="screen" id="s-menu" hidden>
     <div class="card">
+      <div class="crest"><i style="--hc:#9fc4ff">✦</i><i style="--hc:#c0454f">❦</i><i style="--hc:#d1a640">⚔</i><i style="--hc:#4fa37a">◎</i></div>
       <h1 class="logo" data-t="title"></h1>
+      <p class="tagline" data-t="tagline"></p>
       <p id="hello"></p>
       <div class="row"><label for="plang" data-t="puzzle_lang"></label>
         <select id="plang"><option value="zh">中文</option><option value="en">English</option></select></div>
@@ -69,23 +82,34 @@
     </div>
   </section>
 
-  <!-- 等待室 -->
+  <!-- 等待室：① 分院鏡 → ② 選角色（看得到角色）→ ③ 準備 -->
   <section class="screen" id="s-wait" hidden>
-    <div class="card wide">
-      <div class="code-row"><span data-t="room"></span> <b id="room-code"></b></div>
-      <h3 data-t="members"></h3>
-      <ul id="member-list"></ul>
-      <h3 data-t="sorting"></h3>
-      <div class="houses" id="house-pick"></div>
-      <p class="sub" id="sorted-hint"></p>
-      <h3 data-t="choose_char"></h3>
-      <div class="chars" id="char-pick"></div>
-      <div class="row end">
-        <button id="btn-leave" data-t="leave"></button>
-        <button id="btn-ready"></button>
-        <button class="primary small" id="btn-start" data-t="start" hidden></button>
+    <div class="wait">
+      <div class="stage">
+        <canvas id="char-stage"></canvas>
+        <div class="stage-info" id="stage-info">
+          <b id="stage-name"></b><small id="stage-house"></small>
+          <p id="stage-blurb"></p><p class="power" id="stage-power"></p>
+        </div>
+        <p class="stage-tip" data-t="stage_tip"></p>
       </div>
-      <p class="err" id="wait-err"></p>
+      <div class="card side">
+        <div class="code-row"><span data-t="room"></span> <b id="room-code"></b></div>
+        <ul id="member-list"></ul>
+        <ol class="steps">
+          <li id="step-sort"><h3><i>Ⅰ</i><span data-t="sorting"></span></h3>
+            <div class="houses" id="house-pick"></div><p class="sub" id="sorted-hint"></p></li>
+          <li id="step-char"><h3><i>Ⅱ</i><span data-t="choose_char"></span></h3>
+            <div class="chars" id="char-pick"></div><p class="sub" id="char-lock"></p></li>
+          <li id="step-ready"><h3><i>Ⅲ</i><span data-t="get_ready"></span></h3>
+            <div class="row end">
+              <button id="btn-leave" data-t="leave"></button>
+              <button id="btn-ready"></button>
+              <button class="primary small" id="btn-start" data-t="start" hidden></button>
+            </div></li>
+        </ol>
+        <p class="err" id="wait-err"></p>
+      </div>
     </div>
   </section>
 
@@ -103,6 +127,7 @@
       <ul id="chat-log"></ul>
       <input id="chat-input" maxlength="200" autocomplete="off">
     </div>
+    <button id="btn-full" hidden>⛶</button>
     <div id="toast"></div>
     <div id="prompt" hidden></div>
     <div id="actions">

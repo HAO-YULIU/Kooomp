@@ -41,7 +41,11 @@ function player(code, name) {
     const p = {
       ws, inbox, uid: `dev-${encodeURIComponent(name)}`,
       send: (m) => ws.send(JSON.stringify(m)),
-      request: (m) => { const mid = id++; ws.send(JSON.stringify({ ...m, id: mid })); return p.wait((x) => x.id === mid); },
+      raw: (m) => { const mid = id++; ws.send(JSON.stringify({ ...m, id: mid })); return p.wait((x) => x.id === mid); },
+      async request(m) { // 選角色前要先分學院：測試裡自動補上
+        if (m.t === 'char' && m.char && !p.sorted) { p.sorted = true; await p.raw({ t: 'house', house: 'eldrin' }); }
+        return p.raw(m);
+      },
       wait(pred, ms = 3000) {
         const i = inbox.findIndex(pred); if (i >= 0) return Promise.resolve(inbox.splice(i, 1)[0]);
         return new Promise((res, rej) => { const w = { pred, res }; waiters.push(w); setTimeout(() => rej(new Error('timeout waiting')), ms); });
@@ -73,6 +77,8 @@ test('多人：加入、選角色、準備、開始、同步、聊天、作答',
   let s = await b.wait((m) => m.t === 'state' && m.members.length === 2);
   assert.equal(s.host, a.uid);
 
+  // 還沒分學院不能選角色
+  assert.equal((await a.raw({ t: 'char', char: 'vaughn' })).error, 'need_sorting');
   // 同一個角色不能兩個人選
   assert.equal((await a.request({ t: 'char', char: 'vaughn' })).t, 'ok');
   assert.equal((await b.request({ t: 'char', char: 'vaughn' })).error, 'character_taken');
@@ -216,7 +222,7 @@ test('製作人的測試登入：密碼對才能用，可以跳段', async () =>
   const ws = await new Promise((res, rej) => { const w = new WebSocket(`${base.replace('http', 'ws')}/api/rooms/${code}/ws`, ['milner', `test.${enc('moon.light')}.${enc('製作人')}`]); w.onopen = () => res(w); w.onerror = rej; });
   const got = []; ws.onmessage = (e) => got.push(JSON.parse(e.data));
   const ask = async (m) => { ws.send(JSON.stringify({ ...m, id: m.t })); for (let i = 0; i < 50; i++) { const x = got.find((g) => g.id === m.t); if (x) return x; await sleep(40); } };
-  await ask({ t: 'char', char: 'cyril' }); await ask({ t: 'ready', ready: true }); await ask({ t: 'start' });
+  await ask({ t: 'house', house: 'ouroboros' }); await ask({ t: 'char', char: 'cyril' }); await ask({ t: 'ready', ready: true }); await ask({ t: 'start' });
   assert.equal((await ask({ t: 'dev', segment: 'act1' })).t, 'ok');
   assert.equal(got.find((g) => g.t === 'hello').you, 'test-製作人');
   ws.close();

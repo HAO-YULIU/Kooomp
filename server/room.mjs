@@ -243,6 +243,7 @@ export class Room extends DurableObject {
       case 'char': {
         if (r.phase !== 'lobby') return err('not_now');
         if (msg.char !== null && !(msg.char in CHARS)) return err('bad_value');
+        if (msg.char && !me.sorted) return err('need_sorting'); // 先在分院鏡前分完學院才能選角色（2026-10-22 製作人）
         if (msg.char && r.order.some((u) => u !== uid && r.members[u].char === msg.char)) return err('character_taken');
         me.char = msg.char; if (!me.char) me.ready = false;
         await this.save(); this.broadcastState(); return reply({ t: 'ok' });
