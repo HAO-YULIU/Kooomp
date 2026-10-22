@@ -13,5 +13,7 @@ const list = []; const keys = window.KEYS || (location.hash ? location.hash.slic
 for (const [i, key] of keys.entries()) { const c = await loadCharacter(key); c.root.position.x = (i - (keys.length - 1) / 2) * 0.9; s.add(c.root); list.push(c); }
 list[1]?.setMood('smile'); list[1]?.talk(5);
 window.shot = (mode) => { const p = mode === 'face' ? new THREE.Vector3(0.3, 1.45, -2.2) : new THREE.Vector3(0, 1.0, -5.2); for (let i = 0; i < 20; i++) list.forEach((q) => q.update(0.05, p)); cam.position.copy(p); cam.lookAt(0, mode === 'face' ? 1.35 : 0.9, 0); r.render(s, cam); };
+window.walk = (v, sec = 0.6) => { list.forEach((q) => q.setMoving(v)); for (let i = 0; i < sec * 30; i++) list.forEach((q) => q.update(1 / 30)); };
+window.side = () => { cam.position.set(5.5, 1.0, 0); cam.lookAt(0, 0.9, 0); r.render(s, cam); };
 window.ready = true;
 </script></body>

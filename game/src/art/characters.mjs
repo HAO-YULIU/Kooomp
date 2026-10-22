@@ -7,7 +7,7 @@
 //   group.add(c.root);                          // 正面朝 -z，腳底在 y=0
 //   每一格：c.update(dt, lookAt)              // lookAt：要看的世界座標（例如玩家的相機位置），可以不給
 //   c.talk(秒數)、c.setMood('calm' | 'smile' | 'scared')
-//   c.setMoving(速度)                           // 走路時身體輕微上下晃（模型還沒有走路動作）
+//   c.setMoving(速度)                           // 走路：腿前後擺、膝蓋彎、手臂擺（沒有骨架的模型只上下晃）
 import * as THREE from 'three';
 import { GLTFLoader } from '../../../prototype/vendor/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from '../../../prototype/vendor/addons/libs/meshopt_decoder.module.js';
@@ -71,10 +71,14 @@ export async function loadCharacter(key) {
   // 找骨頭（不同模型前綴不同）、表情
   let head = null, spine = null;
   model.traverse((o) => { if (!o.isBone) return; if (!head && /_Head$/.test(o.name)) head = o; if (!spine && /_Spine02$/.test(o.name)) spine = o; });
+  // 走路用的骨頭（同名的可能有好幾份，全部一起轉）。大腿、小腿本身不一定是骨頭（只有轉動的部分是），轉它就會帶動底下的骨頭
+  const named = (re) => { const out = []; model.traverse((o) => { if (!o.isMesh && re.test(o.name)) out.push({ b: o, q: o.quaternion.clone() }); }); return out; };
+  const LEG = { lt: named(/_L_Thigh$/), rt: named(/_R_Thigh$/), lc: named(/_L_Calf$/), rc: named(/_R_Calf$/), la: named(/_L_Upperarm$/), ra: named(/_R_Upperarm$/) };
+  const canWalk = LEG.lt.length && LEG.rt.length;
   const morphMeshes = []; model.traverse((o) => { if (o.morphTargetDictionary) morphMeshes.push(o); });
   const set = (k, v) => { for (const m of morphMeshes) { const i = m.morphTargetDictionary[k]; if (i != null) m.morphTargetInfluences[i] = v; } };
   const headBase = head?.quaternion.clone(), spineBase = spine?.quaternion.clone();
-  const st = { t: Math.random() * 10, blink: 0, next: 1 + Math.random() * 3, talk: 0, mood: 'calm', yaw: 0, pitch: 0, moving: 0 };
+  const st = { t: Math.random() * 10, blink: 0, next: 1 + Math.random() * 3, talk: 0, mood: 'calm', yaw: 0, pitch: 0, moving: 0, walk: 0, phase: 0 };
   const tmp = new THREE.Vector3(), q = new THREE.Quaternion(), e = new THREE.Euler(), inv = new THREE.Matrix4();
   const rotWorld = (b, axis, ang) => {
     const pw = new THREE.Quaternion(); b.parent.getWorldQuaternion(pw);
@@ -92,7 +96,19 @@ export async function loadCharacter(key) {
       const t = st.t;
       // 呼吸；走路時上下晃
       if (spine) { e.set(Math.sin(t * 1.4) * 0.015, 0, 0); spine.quaternion.copy(spineBase).multiply(q.setFromEuler(e)); }
-      model.position.y = st.moving > 0.1 ? Math.abs(Math.sin(t * 7)) * 0.025 : 0;
+      // 走路：腿前後擺、膝蓋彎、手臂反方向擺（沒有骨架的模型只上下晃）
+      st.walk += (Math.min(1, st.moving / 1.4) - st.walk) * Math.min(1, dt * 6);
+      st.phase += dt * (2 + st.moving * 3.4);
+      const sw = Math.sin(st.phase), w = st.walk;
+      if (canWalk) {
+        const side = new THREE.Vector3(1, 0, 0).applyQuaternion(root.getWorldQuaternion(new THREE.Quaternion()));
+        const swing = (list, a) => { for (const { b, q: q0 } of list) { b.quaternion.copy(q0); if (a) rotWorld(b, side, a); } };
+        root.updateMatrixWorld(true);
+        swing(LEG.lt, -sw * 0.38 * w); swing(LEG.rt, sw * 0.38 * w);
+        swing(LEG.lc, -Math.max(0, sw) * 0.55 * w); swing(LEG.rc, -Math.max(0, -sw) * 0.55 * w); // 膝蓋往後彎
+        swing(LEG.la, sw * 0.22 * w); swing(LEG.ra, -sw * 0.22 * w);
+      }
+      model.position.y = Math.abs(Math.cos(st.phase)) * 0.022 * w;
       // 轉頭看目標（限制角度）
       if (head) {
         head.quaternion.copy(headBase);
