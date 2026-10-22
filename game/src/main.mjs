@@ -10,6 +10,13 @@ const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const DEV = params.has('dev') || testPanel; // ?dev（本機）或測試登入加 &panel：顯示測試作答面板
 document.body.classList.toggle('touch', matchMedia('(pointer: coarse)').matches);
+// 手機：不小心點兩下、兩指捏都不要放大畫面（iPhone 的 Safari 不理會 viewport 的 user-scalable=no）
+// 按鈕不擋（轉環、敲節奏要能快速連點；按鈕本身有 touch-action: manipulation 不會放大）
+{ let lastTap = 0;
+  document.addEventListener('touchend', (e) => { const now = Date.now(); if (now - lastTap < 350 && !e.target.closest('button, a, input, textarea, select, canvas, [onclick], .choice')) e.preventDefault(); lastTap = now; }, { passive: false });
+  for (const ev of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
+  document.addEventListener('touchmove', (e) => { if (e.touches.length > 1 || (e.scale ?? 1) !== 1) e.preventDefault(); }, { passive: false });
+  document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false }); }
 
 // ---------- 畫面切換與文字 ----------
 const screens = ['s-age', 's-login', 's-menu', 's-wait'];

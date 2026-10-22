@@ -468,3 +468,9 @@ body:not(.touch) #btn-devtools { top: 116px; }
 .dt-p { display: grid; grid-template-columns: 64px auto auto auto 1fr; gap: 4px; align-items: center; }
 .dt-p.done span { color: var(--ok); } .dt-ans { color: #f3d98e; overflow-wrap: anywhere; }
 #dev { top: 190px; }
+/* 手機：點兩下、兩指捏不要放大畫面（放大後會卡住）。iPhone 不理會 user-scalable=no，要靠 touch-action 和 main.mjs 擋 */
+html, body { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
+body.touch { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+body.touch input, body.touch textarea { -webkit-user-select: text; user-select: text; font-size: max(16px, 1em); } /* 輸入框字小於 16px 時 iPhone 會自動放大 */
+#view, #stick { touch-action: none; }
+button, a, input, select, canvas, .choice { touch-action: manipulation; }

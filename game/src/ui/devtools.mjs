@@ -44,7 +44,7 @@ export function createDevTools({ conn, world, S, things, toast, onSolved }) {
         go,
         el('button', { text: T('解開', 'Solve'), onclick: async () => {
           const r = await req({ t: 'answer', pid: p.pid, devSolve: true, value: null });
-          if (r.solved) { onSolved(p.pid, r); toast(`🛠 ${p.pid} ✔`); setTimeout(render, 500); }
+          if (r.solved) { if (th) world.fx(th, 'solved'); onSolved(p.pid, r); toast(`🛠 ${p.pid} ✔`); setTimeout(render, 500); } // 跟自己答對一樣，場景裡放金光
         } }),
         el('button', { text: T('答案', 'Ans'), onclick: async () => { const r = await req({ t: 'dev', answer: p.pid }); ans.textContent = r.t === 'ok' ? JSON.stringify(r.ans ?? r.kind) : ''; } }),
         ans));
