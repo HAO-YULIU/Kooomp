@@ -52,12 +52,32 @@ const SOUNDS = {
   solved: () => { [523, 659, 784, 1047].forEach((f, i) => tone(f, { dur: 1.4 - i * 0.2, vol: 0.12, at: i * 0.11 })); noise({ dur: 1.2, vol: 0.03, type: 'highpass', freq: 6000, at: 0.3 }); },
   hum: () => { tone(110, { dur: 1.5, vol: 0.08, attack: 0.3 }); tone(165, { dur: 1.5, vol: 0.05, attack: 0.3 }); },
 };
-export function sfx(name, arg) { try { SOUNDS[name]?.(arg); } catch { /* 沒有聲音也沒關係 */ } }
+// ---------- 真的音檔（製作人之後補）：assets/audio/sfx/list.json 列出有哪些，有就用音檔、沒有就用上面合成的 ----------
+// 清單與檔名見 docs/09-audio-wishlist.md。同一種聲音可以有好幾個檔（step_stone_1、step_stone_2…），每次隨機挑一個
+const FILES = {}; let filesLoaded = false;
+async function loadFiles() {
+  if (filesLoaded) return; filesLoaded = true;
+  try {
+    const list = await (await fetch('assets/audio/sfx/list.json')).json(); const c = audio(); if (!c) return;
+    await Promise.all(list.map(async (f) => { try { const buf = await c.decodeAudioData(await (await fetch(`assets/audio/sfx/${f}`)).arrayBuffer()); const key = f.replace(/\.(mp3|ogg|wav)$/, '').replace(/_\d+$/, ''); (FILES[key] ??= []).push(buf); } catch { /* 這個檔有問題：用合成的 */ } }));
+  } catch { /* 沒有清單：全部用合成的 */ }
+}
+addEventListener('pointerdown', () => loadFiles(), { once: true });
+/** 播一個音檔（有的話）；回傳有沒有播 */
+function playFile(key, { vol = 1, rate = 1, loop = false, dest = null, pan = 0 } = {}) {
+  const list = FILES[key]; const c = audio(); if (!list?.length || !c) return null;
+  const src = c.createBufferSource(); src.buffer = list[Math.floor(Math.random() * list.length)]; src.loop = loop; src.playbackRate.value = rate;
+  const g = c.createGain(); g.gain.value = vol; let node = src.connect(g);
+  if (pan && c.createStereoPanner) { const p = c.createStereoPanner(); p.pan.value = pan; node = node.connect(p); }
+  node.connect(dest ?? master); src.start(); return { src, g };
+}
+export function sfx(name, arg) { try { if (playFile(name, { rate: 0.95 + Math.random() * 0.1 })) return; SOUNDS[name]?.(arg); } catch { /* 沒有聲音也沒關係 */ } }
 
 // ---------- 腳步聲：石地、木地板聲音不同；跑步重一點 ----------
 let stepN = 0;
 export function step(floor = 'stone', run = false) {
   const c = audio(); if (!c) return; stepN++;
+  if (playFile(`step_${floor}`, { vol: run ? 0.9 : 0.6, rate: 0.95 + Math.random() * 0.1 })) return;
   const v = run ? 0.16 : 0.1, p = 1 + (Math.random() - 0.5) * 0.15 + (stepN % 2 ? 0.04 : -0.04);
   if (floor === 'wood') { tone(110 * p, { type: 'triangle', dur: 0.09, vol: v * 0.9, slide: 0.7 }); noise({ dur: 0.07, vol: v * 0.6, type: 'bandpass', freq: 700 * p, q: 1.5 }); }
   else { noise({ dur: 0.06, vol: v, type: 'bandpass', freq: 1400 * p, q: 1.2 }); tone(75 * p, { dur: 0.07, vol: v * 0.7, slide: 0.6 }); }
@@ -92,15 +112,15 @@ function blip(kind) {
   } finally { master = save; }
 }
 const PROFILES = {
-  lake: { beds: [{ freq: 350, vol: 0.06, lfo: 0.15, lfoDepth: 150 }, { type: 'bandpass', freq: 700, q: 0.4, vol: 0.025, lfo: 0.07, lfoDepth: 300 }], blips: [['water', 2, 4], ['bell', 25, 40], ['gust', 8, 14]] },
-  fire: { beds: [{ freq: 180, vol: 0.05 }], drones: [[55, 0.012]], blips: [['crackle', 0.15, 0.6], ['creak', 10, 20]] },
-  hearth: { beds: [{ freq: 160, vol: 0.035 }], blips: [['crackle', 0.4, 1.4], ['creak', 12, 25]] },
-  clock: { beds: [{ freq: 220, vol: 0.025 }], drones: [[73.4, 0.012]], blips: [['tick', 1, 1], ['creak', 14, 26]] },
-  hush: { beds: [{ freq: 260, vol: 0.02 }], drones: [[49, 0.015]], blips: [['creak', 6, 14]] },
-  library: { beds: [{ freq: 200, vol: 0.025 }], drones: [[55, 0.02], [82.4, 0.008]], blips: [['page', 5, 12], ['creak', 8, 16], ['drip', 9, 18]] },
-  drip: { beds: [{ freq: 150, vol: 0.02 }], drones: [[41.2, 0.02]], blips: [['drip', 0.8, 3]] },
-  tower: { beds: [{ freq: 300, vol: 0.03 }], drones: [[36.7, 0.03], [55, 0.01]], blips: [['bigtick', 1, 1], ['creak', 4, 9]] },
-  roof: { beds: [{ type: 'bandpass', freq: 500, q: 0.5, vol: 0.06, lfo: 0.1, lfoDepth: 250 }], blips: [['gust', 3, 7]] },
+  lake: { file: 'amb_lake', beds: [{ freq: 350, vol: 0.06, lfo: 0.15, lfoDepth: 150 }, { type: 'bandpass', freq: 700, q: 0.4, vol: 0.025, lfo: 0.07, lfoDepth: 300 }], blips: [['water', 2, 4], ['bell', 25, 40], ['gust', 8, 14]] },
+  fire: { file: 'amb_fire', beds: [{ freq: 180, vol: 0.05 }], drones: [[55, 0.012]], blips: [['crackle', 0.15, 0.6], ['creak', 10, 20]] },
+  hearth: { file: 'amb_fire', beds: [{ freq: 160, vol: 0.035 }], blips: [['crackle', 0.4, 1.4], ['creak', 12, 25]] },
+  clock: { file: 'amb_castle', beds: [{ freq: 220, vol: 0.025 }], drones: [[73.4, 0.012]], blips: [['tick', 1, 1], ['creak', 14, 26]] },
+  hush: { file: 'amb_castle', beds: [{ freq: 260, vol: 0.02 }], drones: [[49, 0.015]], blips: [['creak', 6, 14]] },
+  library: { file: 'amb_castle', beds: [{ freq: 200, vol: 0.025 }], drones: [[55, 0.02], [82.4, 0.008]], blips: [['page', 5, 12], ['creak', 8, 16], ['drip', 9, 18]] },
+  drip: { file: 'amb_drip', beds: [{ freq: 150, vol: 0.02 }], drones: [[41.2, 0.02]], blips: [['drip', 0.8, 3]] },
+  tower: { file: 'amb_clocktower', beds: [{ freq: 300, vol: 0.03 }], drones: [[36.7, 0.03], [55, 0.01]], blips: [['bigtick', 1, 1], ['creak', 4, 9]] },
+  roof: { file: 'amb_wind', beds: [{ type: 'bandpass', freq: 500, q: 0.5, vol: 0.06, lfo: 0.1, lfoDepth: 250 }], blips: [['gust', 3, 7]] },
 };
 /** 換環境音（null＝安靜）；同一種不重來 */
 export function setAmbience(kind) {
@@ -108,9 +128,49 @@ export function setAmbience(kind) {
   if (!amb.bus) { amb.bus = c.createGain(); amb.bus.gain.value = AMB_VOL * volume; amb.bus.connect(c.destination); }
   for (const l of amb.layers) l.stop(); amb.layers = []; clearTimeout(amb.timer); amb.kind = kind;
   const P = PROFILES[kind]; if (!P) return;
-  for (const b of P.beds ?? []) amb.layers.push(bed(b));
+  const file = P.file && playFile(P.file, { loop: true, dest: amb.bus, vol: 0 }); // 有錄好的環境音就用它當底
+  if (file) { file.g.gain.linearRampToValueAtTime(P.fileVol ?? 0.6, c.currentTime + 1.5); amb.layers.push({ stop() { const t = c.currentTime; file.g.gain.setValueAtTime(file.g.gain.value, t); file.g.gain.linearRampToValueAtTime(0, t + 1.5); setTimeout(() => file.src.stop(), 1700); } }); }
+  else for (const b of P.beds ?? []) amb.layers.push(bed(b));
   for (const [f, v] of P.drones ?? []) amb.layers.push(drone(f, v));
   const next = {}; for (const [k, a, b] of P.blips ?? []) next[k] = c.currentTime + a + Math.random() * (b - a);
   const loop = () => { if (amb.kind !== kind) return; const now = c.currentTime; for (const [k, a, b] of P.blips ?? []) if (now >= next[k]) { blip(k); next[k] = now + a + Math.random() * (b - a); } amb.timer = setTimeout(loop, 100); };
   loop();
+}
+
+// ---------- 守夜人的聲音：越近越大聲、分左右；平常低沉的呼吸，追人時低吼加重，剛發現你時嘶吼一聲，腳步一步一步重重踩下 ----------
+const W = { on: false, breath: null, growl: null, panner: null, bus: null, mode: null, stepT: 0, roarAt: 0 };
+function wardenNodes() {
+  const c = audio(); if (!c || W.bus) return;
+  W.bus = c.createGain(); W.bus.gain.value = 0; W.panner = c.createStereoPanner ? c.createStereoPanner() : null;
+  (W.panner ? W.bus.connect(W.panner) : W.bus).connect(master);
+  const file = playFile('warden_breath', { loop: true, dest: W.bus, vol: 0.9 });
+  if (!file) { // 合成的呼吸：濾過的雜訊，一吸一吐（0.3 Hz）
+    const src = c.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+    const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 420; f.Q.value = 1.4;
+    const g = c.createGain(); g.gain.value = 0.25; const lfo = c.createOscillator(); lfo.frequency.value = 0.32; const d = c.createGain(); d.gain.value = 0.22; lfo.connect(d).connect(g.gain); lfo.start();
+    src.connect(f).connect(g).connect(W.bus); src.start();
+  }
+  // 低吼：兩個不和諧的低音＋顫動
+  const g2 = c.createGain(); g2.gain.value = 0; g2.connect(W.bus); W.growl = g2;
+  for (const fr of [55, 58.3]) { const o = c.createOscillator(); o.type = 'sawtooth'; o.frequency.value = fr; const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 260; const trem = c.createOscillator(); trem.frequency.value = 7; const td = c.createGain(); td.gain.value = 6; trem.connect(td).connect(o.frequency); trem.start(); o.connect(lp).connect(g2); o.start(); }
+}
+/** 每一格：守夜人在哪（跟玩家的距離、在玩家左邊還右邊 −1～1）、狀態 */
+export function wardenVoice({ visible, dist = 99, side = 0, mode = 'patrol', dt = 0.016 }) {
+  if (!visible && !W.bus) return; // 還沒出場：不用建立聲音
+  const c = audio(); if (!c) return; wardenNodes(); if (!W.bus) return;
+  const near = visible ? Math.max(0, 1 - dist / 18) : 0, k = near * near;
+  W.bus.gain.setTargetAtTime(k * 0.9, c.currentTime, 0.2);
+  if (W.panner) W.panner.pan.setTargetAtTime(Math.max(-1, Math.min(1, side)) * 0.8, c.currentTime, 0.1);
+  W.growl.gain.setTargetAtTime(mode === 'chase' || mode === 'grab' ? 0.12 : mode === 'search' ? 0.05 : 0.015, c.currentTime, 0.3);
+  // 剛開始追：嘶吼（10 秒內不重複）
+  if (visible && mode === 'chase' && W.mode !== 'chase' && c.currentTime > W.roarAt) {
+    W.roarAt = c.currentTime + 10;
+    if (!playFile('warden_roar', { vol: 0.3 + k })) { tone(140, { type: 'sawtooth', dur: 1.2, vol: 0.12 * (0.4 + k), slide: 0.45, attack: 0.05 }); noise({ dur: 1.1, vol: 0.12 * (0.4 + k), type: 'bandpass', freq: 900, q: 1.2, sweep: 0.4 }); }
+  }
+  W.mode = mode;
+  // 腳步：走 0.7 秒一步、跑 0.38 秒一步
+  if (visible && mode !== 'idle' && mode !== 'stun' && mode !== 'grab') {
+    W.stepT -= dt;
+    if (W.stepT <= 0) { W.stepT = mode === 'chase' ? 0.38 : 0.7; if (k > 0.02 && !playFile('warden_step', { vol: k * 1.2, rate: 0.9 + Math.random() * 0.1 })) { tone(48, { dur: 0.35, vol: 0.4 * k, slide: 0.6 }); noise({ dur: 0.15, vol: 0.12 * k, freq: 260 }); } }
+  }
 }

@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from '../../../prototype/vendor/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from '../../../prototype/vendor/addons/libs/meshopt_decoder.module.js';
 import { decorators } from '../world/art-hooks.mjs';
+import { wardenVoice } from './sfx.mjs';
 
 let base = 'models/chars/';
 /** 模型資料夾的位置（跟 characters.mjs 的 setCharacterBase 一樣，預設 models/chars/） */
@@ -134,19 +135,30 @@ decorators.npc.push(({ key, group }) => {
     group.add(w.root);
     let told = false, last = null, speed = 0;
     const clock = new THREE.Clock();
-    group.userData.update = (dt, mode) => { told = true; w.play(MODE_ANIM[mode] || 'walk'); w.update(dt, mode); };
+    let curMode = 'patrol', lastDraw = 0;
+    group.userData.update = (dt, mode) => { told = true; curMode = mode; w.play(MODE_ANIM[mode] || 'walk'); w.update(dt, mode); };
+    // 守夜人的聲音：畫它的時候算跟玩家（鏡頭）的距離、在左邊還右邊；看不到（別的房間、還沒出場）就慢慢安靜
+    const wp = new THREE.Vector3(), cp = new THREE.Vector3(), right = new THREE.Vector3();
+    const voice = (camera, dt) => {
+      group.getWorldPosition(wp); camera.getWorldPosition(cp); right.set(1, 0, 0).applyQuaternion(camera.quaternion);
+      const d = wp.distanceTo(cp), side = d > 0.01 ? wp.clone().sub(cp).normalize().dot(right) : 0;
+      lastDraw = performance.now(); wardenVoice({ visible: true, dist: d, side, mode: curMode, dt });
+    };
+    setInterval(() => { if (performance.now() - lastDraw > 300) wardenVoice({ visible: false }); }, 250);
     // 帳號一還沒呼叫 userData.update 時：在畫面要畫它之前自己更新
     // （看不見的材質不會被畫，onBeforeRender 就不會被叫；所以用一個縮成一點、不寫顏色也不寫深度的三角形）
     const tg = new THREE.BufferGeometry(); tg.setAttribute('position', new THREE.Float32BufferAttribute([0, 1, 0, 0, 1, 0, 0, 1, 0], 3));
     const tick = new THREE.Mesh(tg, new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false }));
     tick.frustumCulled = false;
-    tick.onBeforeRender = () => {
+    tick.onBeforeRender = (renderer, scene, camera) => {
       const dt = Math.min(clock.getDelta(), 0.1);
+      voice(camera, dt);
       if (told) return;
       const p = group.position;
       if (last && dt > 0) speed += (Math.hypot(p.x - last.x, p.z - last.z) / dt - speed) * Math.min(1, dt * 5);
       last = { x: p.x, z: p.z };
       w.play(speed > 2.2 ? 'run' : speed > 0.2 ? 'walk' : 'idle');
+      curMode = speed > 2.2 ? 'chase' : speed > 0.2 ? 'patrol' : 'idle';
       w.update(dt, speed > 2.2 ? 'chase' : 'patrol');
     };
     group.add(tick);
