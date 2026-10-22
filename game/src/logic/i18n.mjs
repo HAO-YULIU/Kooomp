@@ -172,6 +172,8 @@ const TEXT = {
     res_caught: '被守夜人抓到', res_hints: '看過的提示', res_retries: '第四幕重來',
     // ---- 第四幕 ----
     a4_clock: '第十三響的餘音',
+    a4_rest: '童謠聲慢慢遠去……守夜人回蝕巢去了。趁現在！',
+    a4_hunt: '童謠聲又近了……他出來找人了。',
     a4_grab: '被抓住了！快連點（空白鍵／點畫面）掙脫！',
     a4_escaped: '你掙脫了！他被推開，停了一下。',
     a4_grab_other: '{name} 被守夜人抓住了！',
@@ -425,6 +427,8 @@ const TEXT = {
     res_caught: 'Caught by the Warden', res_hints: 'Hints used', res_retries: 'Act Four restarts',
     // ---- Act 4 ----
     a4_clock: 'The thirteenth toll fades in',
+    a4_rest: 'The lullaby fades away… the Warden has gone back to the nest. Now’s your chance!',
+    a4_hunt: 'The lullaby draws near again… he’s hunting.',
     a4_grab: 'You’re caught! Mash Space / tap the screen to break free!',
     a4_escaped: 'You tore free! He staggers back.',
     a4_grab_other: 'The Night Warden has grabbed {name}!',

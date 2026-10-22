@@ -89,4 +89,5 @@ export const WARDEN_START = { x: 107.5, z: 14.5, zone: 'lib_entry' };
 export const WARDEN = {
   patrol: 1.4, chase: 3.24, view: 12, fov: 60, notice: 0.5, hearRun: 15, hearWalk: 6, lose: 4,
   reach: 1.1, findHidden: 1.5, stun: 2, repel: 5,
+  calm: 40, hunt: 90, rest: 45, // 開場先走開 40 秒；之後找人 90 秒、回蝕巢 45 秒輪流（2026-10-22 製作人：一開始就追太難，玩家還要解謎）
 };

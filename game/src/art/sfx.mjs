@@ -12,6 +12,8 @@ function audio() {
   return ctx;
 }
 addEventListener('pointerdown', () => audio(), { once: true }); // 瀏覽器要等玩家點過畫面才能出聲
+// 每一格都在調的音量、左右：數值沒什麼變就不要再排一次（一直排會越積越多，守夜人靠近時會卡）
+function glide(param, v, tc) { if (Math.abs((param._v ?? -9) - v) < 0.01) return; param._v = v; param.setTargetAtTime(v, ctx.currentTime, tc); }
 addEventListener('keydown', () => audio(), { once: true });
 /** 音量（0～1.5），設定裡調；存在這台裝置 */
 export function setVolume(v) { volume = v; try { localStorage.setItem('ml_volume', String(v)); } catch { /* 無痕 */ } if (master) master.gain.value = 0.55 * v; if (amb.bus) amb.bus.gain.value = AMB_VOL * v; }
@@ -212,9 +214,9 @@ export function wardenVoice({ visible, dist = 99, side = 0, mode = 'patrol', dt 
   if (!visible && !W.bus) return; // 還沒出場：不用建立聲音
   const c = audio(); if (!c) return; wardenNodes(); if (!W.bus) return;
   const near = visible ? Math.max(0, 1 - dist / 18) : 0, k = near * near;
-  W.bus.gain.setTargetAtTime(k * 0.9, c.currentTime, 0.2);
-  if (W.panner) W.panner.pan.setTargetAtTime(Math.max(-1, Math.min(1, side)) * 0.8, c.currentTime, 0.1);
-  W.growl.gain.setTargetAtTime(mode === 'chase' || mode === 'grab' ? 0.12 : mode === 'search' ? 0.05 : 0.015, c.currentTime, 0.3);
+  glide(W.bus.gain, k * 0.9, 0.2);
+  if (W.panner) glide(W.panner.pan, Math.max(-1, Math.min(1, side)) * 0.8, 0.1);
+  glide(W.growl.gain, mode === 'chase' || mode === 'grab' ? 0.12 : mode === 'search' ? 0.05 : 0.015, 0.3);
   // 剛開始追：嘶吼（10 秒內不重複）
   if (visible && mode === 'chase' && W.mode !== 'chase' && c.currentTime > W.roarAt) {
     W.roarAt = c.currentTime + 10;
@@ -310,9 +312,9 @@ export function setMusic(kind) {
 export function setTension(k) {
   M.k = Math.max(0, Math.min(1, k));
   if (M.kind !== 'chase' || !M.mix) return; const c = audio();
-  M.mix.gain.setTargetAtTime(M.file ? M.k : 0.25 + 0.75 * M.k, c.currentTime, 0.4);
-  M.high?.g.gain.setTargetAtTime(M.k * M.k, c.currentTime, 0.4);
-  if (M.hb) { M.hb.g.gain.setTargetAtTime(0.2 + 0.8 * M.k, c.currentTime, 0.4); M.hb.src.playbackRate.setTargetAtTime(0.85 + 0.6 * M.k, c.currentTime, 0.6); }
+  glide(M.mix.gain, M.file ? M.k : 0.25 + 0.75 * M.k, 0.4);
+  if (M.high) glide(M.high.g.gain, M.k * M.k, 0.4);
+  if (M.hb) { glide(M.hb.g.gain, 0.2 + 0.8 * M.k, 0.4); glide(M.hb.src.playbackRate, 0.85 + 0.6 * M.k, 0.6); }
 }
 addEventListener('pointerdown', () => { if (M.want) setMusic(M.want); }); // 點過畫面才能出聲：補開
 addEventListener('keydown', () => { if (M.want && !M.kind) setMusic(M.want); });
@@ -323,5 +325,5 @@ export function setLoop(name, vol) {
   const c = ctx; if (!c) return;
   let L = LOOPS[name];
   if (!L) { if (!vol) return; const f = playFile(name, { loop: true, vol: 0 }); if (!f) return; L = LOOPS[name] = f; }
-  L.g.gain.setTargetAtTime(vol, c.currentTime, vol ? 0.4 : 0.25);
+  glide(L.g.gain, vol, vol ? 0.4 : 0.25);
 }

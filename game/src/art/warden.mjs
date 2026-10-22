@@ -14,7 +14,7 @@ let base = 'models/chars/';
 export const setWardenBase = (url) => { base = url.endsWith('/') ? url : url + '/'; };
 let source = null;
 
-const MODE_ANIM = { idle: 'idle', stun: 'idle', patrol: 'walk', search: 'walk', chase: 'run', grab: 'attack' };
+const MODE_ANIM = { idle: 'idle', stun: 'idle', rest: 'walk', patrol: 'walk', search: 'walk', chase: 'run', grab: 'attack' };
 
 export async function loadWardenModel() {
   source ||= new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(base + 'warden.glb');

@@ -6,8 +6,8 @@ import { A4_ROOMS, A4_DOORS, WARDEN, WARDEN_POINTS } from '../../game/src/data/a
 import { LIB_ROOMS } from '../../game/src/data/library-ch1.mjs';
 
 const rooms = [...LIB_ROOMS.filter((r) => r.id === 'lib_entry'), ...A4_ROOMS];
-const make = (x, z, zone = 'lib_entry', yaw = 0) => {
-  const ai = createWardenAI({ rooms, doors: A4_DOORS, points: WARDEN_POINTS, params: WARDEN, start: { x, z, zone }, rand: () => 0.5 });
+const make = (x, z, zone = 'lib_entry', yaw = 0, params = { ...WARDEN, calm: 0, hunt: 0 }) => { // 預設不輪休息，單純測看、聽、追
+  const ai = createWardenAI({ rooms, doors: A4_DOORS, points: WARDEN_POINTS, params, start: { x, z, zone }, rand: () => 0.5 });
   ai.start(); ai.state.yaw = yaw;
   Object.assign(ai.state, { goal: { x, z, zone }, wait: -1e9 }); // 先站著不動，面向 yaw
   return ai;
@@ -59,4 +59,26 @@ test('掙脫後停 2 秒；沒掙脫就退到遠處，連續被抓會變慢', ()
   assert.equal(ai.state.mode, 'stun');
   ai.resolve(false, 0, [me()]);
   assert.ok(Math.hypot(ai.state.x - 108, ai.state.z - 5) > 10 || ai.state.zone !== 'lib_entry');
+});
+
+test('開場先走開、看不到人；之後找人和回蝕巢休息輪流', () => {
+  const P = { ...WARDEN, calm: 10, hunt: 20, rest: 8 };
+  const ai = createWardenAI({ rooms, doors: A4_DOORS, points: WARDEN_POINTS, params: P, start: { x: 108, z: 12, zone: 'lib_entry' }, rand: () => 0.5 });
+  ai.start(); ai.state.yaw = 0;
+  assert.equal(ai.state.mode, 'rest');
+  const ev = run(ai, [me()], 9.5); // 玩家就站在他前面，開場這段不會被發現
+  assert.ok(!ev.some((e) => e.type === 'spotted' || e.type === 'catch'));
+  const ev2 = run(ai, [me({ zone: 'a4_roof', x: 155, z: -50 })], 1); // 時間到：開始找人
+  assert.ok(ev2.some((e) => e.type === 'hunt')); assert.equal(ai.state.mode, 'patrol');
+  const ev3 = run(ai, [me({ zone: 'a4_roof', x: 155, z: -50 })], 21); // 沒找到人：回去休息
+  assert.ok(ev3.some((e) => e.type === 'rest'));
+});
+
+test('穿過門時是走過去，不會一下子跳到另一邊', () => {
+  const ai = make(112, 7.75, 'lib_entry', -Math.PI / 2);
+  Object.assign(ai.state, { mode: 'search', goal: { x: 125, z: 7.75, zone: 'a4_pass' }, wait: 0 });
+  let last = { x: ai.state.x, z: ai.state.z }, maxStep = 0;
+  for (let i = 0; i < 200; i++) { ai.update(0.05, [me({ zone: 'a4_roof', x: 155, z: -50 })], i * 50); maxStep = Math.max(maxStep, Math.hypot(ai.state.x - last.x, ai.state.z - last.z)); last = { x: ai.state.x, z: ai.state.z }; }
+  assert.equal(ai.state.zone, 'a4_pass');
+  assert.ok(maxStep < 0.2, `最大一步 ${maxStep}`);
 });

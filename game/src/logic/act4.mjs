@@ -32,6 +32,7 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
   let ai = newAI();
   let shown = { x: WARDEN_START.x, z: WARDEN_START.z, yaw: 0, mode: 'idle', zone: WARDEN_START.zone }, target = { ...shown };
   let active = false, introDone = false, startAt = 0, npcAt = 0, runFor = 0, tiredUntil = 0, humAt = 0;
+  let faceYaw = 0, lastMode = null;
   let grabbed = null, roofAt = null, roofDirty = false, boundOpen = false, ending = null; // ending：'climax'（屋頂）→ 'epilogue'（宿舍）→ 結束畫面
   const isSim = () => S().sim === myUid;
   const captured = () => !!S().nest?.[myUid];
@@ -39,6 +40,10 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
   // ---- 畫面：倒數、心跳（守夜人靠近時畫面邊緣變紅）、掙脫、被綁住、判定輸 ----
   const hud = el('div', { id: 'a4clock', hidden: true }); $('hud').append(hud);
   const veil = el('div', { id: 'a4veil' }); document.body.append(veil);
+  // 畫面邊緣的紅／黑：只在數值真的變了才改（每一格都重畫整個畫面的漸層，守夜人靠近時會卡）
+  let veilKey = '';
+  const setVeil = (bg, op) => { const key = bg + op; if (key === veilKey) return; veilKey = key; if (bg) veil.style.background = bg; veil.style.opacity = op; };
+  const RED = 'radial-gradient(circle, transparent 55%, rgba(120,0,0,0.55) 100%)';
   const fight = el('div', { id: 'a4grab', hidden: true }, el('b', { text: t('a4_grab') }), el('div', { class: 'bar' }, el('i')));
   const bound = el('div', { id: 'a4bound', hidden: true }, el('p', { text: t('a4_bound') }),
     el('button', { text: t('a4_self'), onclick: () => openRescue(conn, 'S', myUid, toast) }));
@@ -102,7 +107,7 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
     // 每一幀：回傳要放進位置訊息的躲藏狀態
     frame(dt, mine, segment) {
       if (segment !== 'act4') {
-        if (active) { active = false; hud.hidden = true; veil.style.opacity = 0; world.tired = false; setMusic(null); setLoop('hide_breath', 0); }
+        if (active) { active = false; hud.hidden = true; setVeil(null, 0); world.tired = false; setMusic(null); setLoop('hide_breath', 0); }
         if (ending === 'climax' && !talking()) { // 守夜人墜下屋頂之後：回到宿舍，播尾聲
           ending = 'epilogue'; warden.set({ visible: false }); world.setDark(false);
           world.teleport(SPAWNS.act1?.[CHARS[myChar()]?.house] ?? A4_SPAWN); playScript('segment:epilogue');
@@ -128,7 +133,7 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
       if (me) {
         if (!boundOpen) { boundOpen = true; world.teleport({ ...NEST_SPOT, yaw: Math.PI / 2 }); world.controls.setEnabled(false); bound.hidden = false; toast(t('a4_dragged')); }
         const k = Math.min(1, (Date.now() - (st.nest[myUid].at ?? Date.now())) / 240000); // 黑根慢慢爬上來，畫面越來越暗
-        veil.style.background = `radial-gradient(circle, transparent ${45 - k * 40}%, rgba(0,0,0,${0.6 + k * 0.35}) 100%)`; veil.style.opacity = 1;
+        const kq = Math.round(k * 20) / 20; setVeil(`radial-gradient(circle, transparent ${45 - kq * 40}%, rgba(0,0,0,${(0.6 + kq * 0.35).toFixed(2)}) 100%)`, 1);
       } else if (boundOpen) {
         boundOpen = false; bound.hidden = true; world.controls.setEnabled(true); world.teleport(NEST_EXIT); toast(t('a4_freed'));
       }
@@ -149,19 +154,26 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
         }
         const w = ai.state; target = { x: w.x, z: w.z, yaw: w.yaw, mode: w.mode, zone: w.zone };
         shown = target;
-        if (S().mode === 'multi' && performance.now() - npcAt > 200) { npcAt = performance.now(); conn.send({ t: 'npc', z: w.zone, w: [+w.x.toFixed(2), +w.z.toFixed(2), +w.yaw.toFixed(2)], m: w.mode }); }
+        if (S().mode === 'multi' && performance.now() - npcAt > 120) { npcAt = performance.now(); conn.send({ t: 'npc', z: w.zone, w: [+w.x.toFixed(2), +w.z.toFixed(2), +w.yaw.toFixed(2)], m: w.mode }); }
       } else {
         const a = 1 - Math.exp(-dt * 6);
         shown = { ...target, x: shown.x + (target.x - shown.x) * a, z: shown.z + (target.z - shown.z) * a };
       }
-      warden.set({ ...shown, visible: true });
+      // 轉身慢慢轉（不要一下子轉過去；多人時位置每 0.12 秒才來一次，轉向會一格一格的）
+      let dy = shown.yaw - faceYaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); faceYaw += dy * Math.min(1, dt * 10);
+      if (shown.mode !== lastMode) { // 守夜人回蝕巢／又出來找人：告訴大家
+        if (shown.mode === 'rest' && lastMode && lastMode !== 'idle') toast(t('a4_rest'));
+        if (lastMode === 'rest' && shown.mode !== 'rest') toast(t('a4_hunt'));
+        lastMode = shown.mode;
+      }
+      warden.set({ ...shown, yaw: faceYaw, visible: true });
       warden.frame(dt, shown.mode);
       // 靠近的感覺：畫面邊緣變紅、童謠
       const d = shown.zone === mine.z ? Math.hypot(shown.x - mine.p[0], shown.z - mine.p[1]) : 99;
-      if (!me) { const k = Math.max(0, 1 - d / 14); veil.style.background = `radial-gradient(circle, transparent 55%, rgba(120,0,0,${(0.55 * k).toFixed(2)}) 100%)`; veil.style.opacity = k > 0 ? 1 : 0; }
+      if (!me) setVeil(RED, (Math.round(Math.max(0, 1 - d / 14) * 10) / 10).toFixed(1));
       // 配樂：守夜人越近越緊張；在追人時至少一半；被綁在蝕巢時只剩一點點
       if (!ending) setMusic('chase'); const near = Math.max(0, 1 - d / 22);
-      setTension(me ? 0.12 : shown.mode === 'chase' || shown.mode === 'grab' ? 0.5 + 0.5 * near : shown.mode === 'search' ? 0.25 + 0.5 * near : 0.6 * near);
+      setTension(me ? 0.12 : shown.mode === 'rest' ? 0.15 * near : shown.mode === 'chase' || shown.mode === 'grab' ? 0.5 + 0.5 * near : shown.mode === 'search' ? 0.25 + 0.5 * near : 0.6 * near);
       if (d < 20 && performance.now() > humAt) { humAt = performance.now() + 16000; playLullaby({ lines: 1, volume: 0.06 + 0.25 * (1 - d / 20) }); }
       // 屋頂的石板：踩到新的一塊就問伺服器
       if (mine.z === 'a4_roof' && !st.solved.includes('P29') && !me) {
@@ -219,7 +231,7 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
     },
     // 尾聲：先在屋頂演完高潮（月光下的守夜人），再回宿舍。伺服器的段落可能比 P29 的回覆先到，所以在這裡排順序
     end() {
-      active = false; ending = 'climax'; hud.hidden = true; setMusic(null); setLoop('hide_breath', 0); veil.style.opacity = 0; ai.stun(9999, performance.now());
+      active = false; ending = 'climax'; hud.hidden = true; setMusic(null); setLoop('hide_breath', 0); setVeil(null, 0); ai.stun(9999, performance.now());
       if (world.zone() !== 'a4_roof') world.teleport({ x: 155, z: -42, yaw: 0 });
       warden.set({ x: 155, z: -52, yaw: Math.PI, visible: true, mode: 'stun' }); // 屋頂盡頭，月光下
       playScript('solved:P29'); playScript(myChar() === 'cyril' ? 'P29:cyril' : 'P29:others');

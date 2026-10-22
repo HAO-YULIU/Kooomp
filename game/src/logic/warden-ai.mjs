@@ -11,7 +11,7 @@ const inRect = (r, x, z) => x >= r.x[0] && x <= r.x[1] && z >= r.z[0] && z <= r.
 
 export function createWardenAI({ rooms, doors, points, params: P, start, rand = Math.random }) {
   const R = Object.fromEntries(rooms.map((r) => [r.id, r]));
-  const s = { x: start.x, z: start.z, zone: start.zone, yaw: 0, mode: 'idle', target: null, goal: null, wait: 0, until: 0, seen: {}, lost: 0, last: null, near: {}, exposed: new Set(), wasHidden: {}, catches: 0, idle: 0 };
+  const s = { rest: 0, hunt: 0, x: start.x, z: start.z, zone: start.zone, yaw: 0, mode: 'idle', target: null, goal: null, wait: 0, until: 0, seen: {}, lost: 0, last: null, near: {}, exposed: new Set(), wasHidden: {}, catches: 0, idle: 0 };
 
   // 區域之間怎麼走：用門連起來，找下一個要穿過的門
   function route(from, to) {
@@ -39,8 +39,9 @@ export function createWardenAI({ rooms, doors, points, params: P, start, rand = 
       const r = route(s.zone, goal.zone);
       if (!r) return true;
       const dd = Math.hypot(r.door[0] - s.x, r.door[1] - s.z);
-      [tx, tz] = dd > 0.4 ? r.door : r.beyond;
-      if (dd <= 0.4) { s.x = r.beyond[0]; s.z = r.beyond[1]; s.zone = r.zone; return false; }
+      [tx, tz] = dd > 0.4 ? r.door : r.beyond; // 走到門口，再走過去（不要一下子跳到門的另一邊，看起來會卡一下）
+      const db = Math.hypot(r.beyond[0] - s.x, r.beyond[1] - s.z);
+      if (dd <= 0.4 && db < 0.15) { s.zone = r.zone; return false; }
     }
     const dx = tx - s.x, dz = tz - s.z, d = Math.hypot(dx, dz);
     if (d < 0.05) return goal.zone === s.zone;
@@ -72,9 +73,19 @@ export function createWardenAI({ rooms, doors, points, params: P, start, rand = 
     return { x: pick[0], z: pick[1], zone };
   }
 
+  function farPoint(players) { // 離大家最遠的巡邏點
+    let best = null, bd = -1;
+    for (const [zone, list] of Object.entries(points)) for (const [x, z] of list) {
+      const d = Math.min(...players.filter((p) => !p.captured).map((p) => (p.zone === zone ? Math.hypot(p.x - x, p.z - z) : 40)), 99);
+      if (d > bd) { bd = d; best = { x, z, zone }; }
+    }
+    return best;
+  }
+
   return {
     state: s,
-    start() { if (s.mode === 'idle') s.mode = 'patrol'; },
+    // 開始：先走開一陣子（P.calm 秒看不到、聽不到人），之後「找人 P.hunt 秒 ⇄ 回蝕巢休息 P.rest 秒」輪流，玩家才有空解謎（2026-10-22 製作人）
+    start() { if (s.mode === 'idle') { s.mode = P.calm ? 'rest' : 'patrol'; s.rest = P.calm ?? 0; s.goal = null; } },
     stun(sec, now) { s.mode = 'stun'; s.until = now + sec * 1000; s.target = null; },
     // 被抓的結果：掙脫＝停 2 秒；沒掙脫＝他退到遠處（不會一復活又被抓）
     resolve(escaped, now, players) {
@@ -82,14 +93,7 @@ export function createWardenAI({ rooms, doors, points, params: P, start, rand = 
       s.catches++; s.target = null; s.mode = 'patrol'; s.goal = null; s.exposed.clear();
       this.placeFar(players);
     },
-    placeFar(players) {
-      let best = null, bd = -1;
-      for (const [zone, list] of Object.entries(points)) for (const [x, z] of list) {
-        const d = Math.min(...players.filter((p) => !p.captured).map((p) => (p.zone === zone ? Math.hypot(p.x - x, p.z - z) : 40)), 99);
-        if (d > bd) { bd = d; best = { x, z, zone }; }
-      }
-      if (best) Object.assign(s, { x: best.x, z: best.z, zone: best.zone });
-    },
+    placeFar(players) { const best = farPoint(players); if (best) Object.assign(s, { x: best.x, z: best.z, zone: best.zone }); },
     noise(p) { if (s.mode === 'patrol' || s.mode === 'search') { s.mode = 'search'; s.goal = { x: p.x, z: p.z, zone: p.zone }; s.wait = 0; } },
     // 每一幀；players：[{ uid, zone, x, z, moving, running, hidden, holding, captured }]；回傳事件
     update(dt, players, now) {
@@ -97,6 +101,14 @@ export function createWardenAI({ rooms, doors, points, params: P, start, rand = 
       if (s.mode === 'idle' || s.mode === 'grab') return out;
       if (s.mode === 'stun') { if (now < s.until) return out; s.mode = s.target ? 'chase' : 'patrol'; }
       s.idle += dt;
+      if (s.mode === 'rest') { // 休息：慢慢走到離大家最遠的地方，看不到也聽不到
+        s.rest -= dt;
+        if (s.rest <= 0) { s.mode = 'patrol'; s.goal = null; s.hunt = P.hunt ?? 1e9; out.push({ type: 'hunt' }); return out; }
+        if (!s.goal) s.goal = farPoint(players);
+        if (s.goal) moveTo(s.goal, P.patrol * 0.8, dt);
+        return out;
+      }
+      if (P.hunt && s.mode !== 'chase') { s.hunt -= dt; if (s.hunt <= 0) { s.mode = 'rest'; s.rest = P.rest; s.goal = null; s.target = null; s.seen = {}; out.push({ type: 'rest' }); return out; } }
       // 躲藏：剛躲進去的那一刻有沒有被看到
       for (const p of players) {
         if (p.hidden && !s.wasHidden[p.uid] && (sees(p, s.mode === 'chase' && s.target === p.uid))) s.exposed.add(p.uid);
