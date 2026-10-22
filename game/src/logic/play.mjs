@@ -4,6 +4,7 @@ import { createSender, createReceiver } from '../net/sync.mjs';
 import { say, talking, advanceDialog, setPauseHandler, panelOpen, openPanel, closePanel, el, L, LP, setPuzzleLang } from '../ui/overlay.mjs';
 import { openPuzzle } from '../ui/puzzles.mjs';
 import { openWand } from '../ui/wand.mjs';
+import { setStaff, staffCast } from '../art/index.mjs';
 import { t, getLang } from './i18n.mjs';
 import { CHARS, HOUSES } from './chars.mjs';
 import { SCRIPT } from '../data/story-ch1.mjs';
@@ -26,6 +27,7 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
   const me = () => S().members.find((m) => m.uid === myUid);
   const myHouse = () => CHARS[me()?.char]?.house;
   const code = S().code;
+  setStaff(['elora', 'yuexi'].includes(me()?.char) ? 'moon' : 'dragon'); // 第一人稱的法杖：女生星月法杖、男生龍首法杖
 
   // 看過的劇情（同一個房間重新連線不會再播一次）
   const seenKey = `ml_seen_${code}_${myUid}`;
@@ -123,9 +125,10 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
   // ---- 魔杖 ----
   function castWand() {
     if (panelOpen() || talking()) return;
-    if (segment === 'act4' && act4.canRepel()) return act4.repel(); // 貝爾蒙特：擊退守夜人
+    if (segment === 'act4' && act4.canRepel()) { staffCast('#ffd27a'); return act4.repel(); } // 貝爾蒙特：擊退守夜人
     openWand((spell) => {
       if (spell !== 'lumen') return;
+      staffCast('#9fc4ff'); // 法杖往前一揮、杖頭發光
       const tg = world.target((x) => x.id === 'lock_eldrin');
       if (tg) { revealed.add('lock_eldrin'); toast(t('revealed')); } else toast(t('wand_nothing'));
     });

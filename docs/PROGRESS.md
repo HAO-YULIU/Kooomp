@@ -7,7 +7,7 @@
 開始做一件事前在這裡登記；做完就移除。格式：`- 分支名稱：在做什麼（會動到的檔案或資料夾）`
 
 
-- **請帳號一**：第一人稱法杖已做好（`game/src/art/staff.mjs`，預設星月法杖會自動出現）。請在知道玩家角色時呼叫 `setStaff('moon' | 'dragon')`、施咒成功時呼叫 `staffCast(顏色)`，細節見 `game/src/art/README.md`「第一人稱的法杖」。長廊畫像已改成油畫風格：`corridor.mjs` 只改了 `paint` 那一行（帳號二，2026-10-22）。
+- `claude/sweet-goldberg-nklgb6`（帳號二）：**帳號一額度用完，帳號二暫時接手全部工作**（2026-10-22 製作人）。已把法杖接進遊戲（`play.mjs`：依角色換法杖、施咒時發光）。本機用 `.dev.vars`（`DEV_AUTH=1`，不 commit）跑 `wrangler dev`，`?dev=名字` 單人實測過序幕～第四幕畫面正常；`npm test` 28 項全過。
 
 
 ## 等製作人回答

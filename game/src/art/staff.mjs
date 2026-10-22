@@ -55,7 +55,7 @@ async function dragon() {
   return { object: s, glow: [head] };
 }
 
-const holder = new THREE.Group(); holder.position.set(0.4, -0.4, -0.8); holder.rotation.set(0.35, 0.3, -0.22);
+const holder = new THREE.Group(); holder.position.set(0.5, -0.5, -0.8); holder.rotation.set(0.35, 0.3, -0.22);
 const light = new THREE.PointLight('#9fc4ff', 0, 4, 1.5); light.position.set(0, 0.2, 0); holder.add(light); // 一直在（只調亮度，不會卡）
 const loaded = {}; let kind = 'moon', flash = 0, t = 0;
 const loading = {};
@@ -64,7 +64,7 @@ function show() {
   holder.visible = !!kind;
   const k = kind;
   if (k && !loaded[k] && !loading[k]) {
-    loading[k] = (k === 'moon' ? moon : dragon)().then((st) => { st.object.scale.setScalar(0.5); st.object.position.y = -0.36; holder.add(st.object); loaded[k] = st; show(); }).catch((e) => console.warn('法杖載入失敗', e));
+    loading[k] = (k === 'moon' ? moon : dragon)().then((st) => { st.object.scale.setScalar(0.42); st.object.position.y = -0.3; holder.add(st.object); loaded[k] = st; show(); }).catch((e) => console.warn('法杖載入失敗', e));
   }
 }
 export function setStaff(k) { kind = k; show(); }
@@ -83,8 +83,8 @@ decorators.room.push(({ group }) => {
     cam.getWorldPosition(now); const d = Math.hypot(now.x - last.x, now.z - last.z); last.copy(now);
     speed += ((dt > 0 ? d / dt : 0) - speed) * Math.min(1, dt * 6); if (speed > 0.3 && speed < 12) bob += dt * speed * 3.2;
     flash = Math.max(0, flash - dt * 1.6);
-    holder.position.y = -0.4 + Math.sin(bob) * 0.012 + Math.sin(t * 1.3) * 0.004 + flash * 0.12;
-    holder.position.x = 0.4 + Math.cos(bob * 0.5) * 0.008;
+    holder.position.y = -0.5 + Math.sin(bob) * 0.012 + Math.sin(t * 1.3) * 0.004 + flash * 0.12;
+    holder.position.x = 0.5 + Math.cos(bob * 0.5) * 0.008;
     holder.rotation.x = 0.35 - flash * 0.35;
     light.intensity = flash * 6;
     for (const st of Object.values(loaded)) for (const m of st.glow) m.emissiveIntensity = (st === loaded.moon ? 0.06 : 0) + flash * 2.5;
