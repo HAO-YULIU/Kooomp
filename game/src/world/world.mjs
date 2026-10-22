@@ -56,9 +56,44 @@ export function patrolAt(t) {
   return { x: P[0][0], z: P[0][1], yaw: 0 };
 }
 
+// 只畫玩家附近的房間（順暢度）：不會移動的場景（userData.static 的群組）裡每個東西，算一次它在哪幾個房間；
+// 玩家換房間時，不在「這個房間＋門連過去的房間」的東西換到看不到的圖層（不動 visible，玩法自己的顯示／隱藏不受影響）。
+// 燈不換圖層（燈的數量一變，畫面要重新編譯，會卡一下）。不在任何房間裡的東西（湖、遠方的城堡）一直畫。
+const HIDDEN_LAYER = 3;
+function makeRoomCuller(scene) {
+  const near = new Map(); for (const r of ROOMS) near.set(r.id, new Set([r.id]));
+  for (const d of DOORS) { near.get(d.a)?.add(d.b); near.get(d.b)?.add(d.a); }
+  const where = new WeakMap(), box = new THREE.Box3();
+  const roomsOf = (o) => {
+    if (where.has(o)) return where.get(o);
+    box.setFromObject(o); const list = [];
+    if (!box.isEmpty()) for (const r of ROOMS) if (box.max.x > r.x[0] - 0.5 && box.min.x < r.x[1] + 0.5 && box.max.z > r.z[0] - 0.5 && box.min.z < r.z[1] + 0.5) list.push(r.id);
+    where.set(o, list); return list;
+  };
+  let cur = null;
+  const cull = (zone) => {
+    if (!zone || zone === cur) return; cur = zone;
+    const show = near.get(zone) ?? new Set([zone]);
+    scene.updateMatrixWorld(true);
+    for (const root of scene.children) {
+      if (!root.userData.static) continue;
+      root.traverse((o) => {
+        if (!o.isMesh || o.isSkinnedMesh) return;
+        const list = roomsOf(o), on = !list.length || list.some((id) => show.has(id));
+        if (on) o.layers.enable(0); else { o.layers.disable(0); o.layers.enable(HIDDEN_LAYER); }
+      });
+    }
+  };
+  cull.near = (x, z) => { if (!cur) return true; const r = ROOMS.find((q) => x >= q.x[0] && x <= q.x[1] && z >= q.z[0] && z <= q.z[1]); return !r || (near.get(cur)?.has(r.id) ?? true); };
+  return cull;
+}
+
 export function createWorld(canvas, lang = 'zh') {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: !isTouch, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, isTouch ? 1.5 : 2));
+  // 解析度會依速度自動調（手機卡的時候先降解析度，順了再慢慢調回來）
+  const maxRatio = Math.min(devicePixelRatio, isTouch ? 1.5 : 2), minRatio = isTouch ? 0.6 : 0.85;
+  let ratio = maxRatio, slowT = 0, fastT = 0;
+  renderer.setPixelRatio(ratio);
   renderer.shadowMap.enabled = !isTouch;
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.2;
   const scene = new THREE.Scene();
@@ -77,6 +112,8 @@ export function createWorld(canvas, lang = 'zh') {
   cone.position.set(0, 1.3, -0.3); cone.target.position.set(0, 0, -4); helga.add(cone, cone.target);
   helga.visible = false; scene.add(helga);
 
+  if (new URLSearchParams(location.search).has('dev')) window.__world = { renderer, scene, camera }; // 本機測試：量效能用
+  const cullRooms = makeRoomCuller(scene); let compiledCount = -1;
   const avatars = new Map(); // uid 或 'ai:角色' → Group
   const marks = [];
   const resize = () => { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); };
@@ -134,7 +171,7 @@ export function createWorld(canvas, lang = 'zh') {
       const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.3, 3, 12, 1, true),
         new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.45, side: THREE.DoubleSide, depthWrite: false }));
       mesh.position.set(p[0], 1.5, p[1]);
-      const light = new THREE.PointLight(color, 3, 4); light.position.y = -1.2; mesh.add(light);
+      // 不加燈：每多一盞燈畫面就要重新編譯，放標記時會卡一下
       scene.add(mesh); marks.push({ mesh, until: performance.now() + 6000 });
     },
     setHelga(state) { // null＝不出現
@@ -149,7 +186,9 @@ export function createWorld(canvas, lang = 'zh') {
         const dx = controls.state.pos.x - bx, dz = controls.state.pos.z - bz, d = Math.hypot(dx, dz), max = 2.0 * dt;
         if (d > max) { controls.state.pos.x = bx + (dx / d) * max; controls.state.pos.z = bz + (dz / d) * max; }
       }
-      world.lightRoom(myZone);
+      // 場景多了新東西（例如新的一幕蓋好）就先把材質編譯好，走進去時才不會卡一下（先編譯，再藏起遠的房間）
+      if (scene.children.length !== compiledCount) { compiledCount = scene.children.length; renderer.compile(scene, camera); }
+      world.lightRoom(myZone); cullRooms(myZone);
       vel.copy(controls.state.pos).sub(lastPos).divideScalar(Math.max(dt, 1e-3)); vel.y = 0; lastPos.copy(controls.state.pos);
       for (const [uid, p] of peers) {
         const a = avatars.get(uid); if (!a) continue;
@@ -157,6 +196,8 @@ export function createWorld(canvas, lang = 'zh') {
         a.position.set(p.shown[0], 0, p.shown[1]); a.rotation.y = p.yShown;
         a.userData.char?.setMoving(Math.hypot(p.v[0], p.v[1]));
       }
+      // 電腦同伴、赫爾嘉夫人在遠的房間就不畫
+      for (const a of [...avatars.values(), helga]) if (a.visible && !cullRooms.near(a.position.x, a.position.z)) a.visible = false;
       // 正式模型：眨眼、呼吸、轉頭看玩家（只更新看得到的）
       for (const a of [...avatars.values(), helga]) if (a.visible) a.userData.char?.update(dt, camera.position);
       const now = performance.now();
@@ -166,6 +207,10 @@ export function createWorld(canvas, lang = 'zh') {
         if (left <= 0) { scene.remove(m.mesh); marks.splice(i, 1); }
       }
       renderer.render(scene, camera);
+      // 自動解析度：連續 1.5 秒每格超過 1/40 秒就降一級；連續 6 秒都在 1/55 秒內就升一級
+      if (dt > 1 / 40) { slowT += dt; fastT = 0; } else if (dt < 1 / 55) { fastT += dt; slowT = 0; } else { slowT = Math.max(0, slowT - dt); fastT = 0; }
+      if (slowT > 1.5 && ratio > minRatio) { ratio = Math.max(minRatio, ratio - 0.15); renderer.setPixelRatio(ratio); resize(); slowT = 0; }
+      else if (fastT > 6 && ratio < maxRatio) { ratio = Math.min(maxRatio, ratio + 0.1); renderer.setPixelRatio(ratio); resize(); fastT = 0; }
     },
   };
 }

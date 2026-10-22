@@ -150,10 +150,12 @@ function brighten(group) {
   roomLight.intensity *= BRIGHT.room; roomLight.decay = BRIGHT.decay;
   const on = roomLight.intensity;
   const hemi = new THREE.HemisphereLight('#9aa0b8', '#4a3a2c', BRIGHT.ambient); group.add(hemi);
+  const oldHemi = group.parent?.children.find((o) => o.isHemisphereLight); if (oldHemi) oldHemi.parent.remove(oldHemi); // 灰盒原本的環境光（很暗）拿掉，少一盞燈
   // 每一格看房間燈有沒有被關掉（不加新的燈、不切換 visible，只改強度，畫面不會重新編譯而卡一下）
   const tg = new THREE.BufferGeometry(); tg.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 0, 0, 0, 0, 0, 0], 3));
   const tick = new THREE.Mesh(tg, new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false })); tick.frustumCulled = false;
-  tick.onBeforeRender = () => { hemi.intensity = roomLight.intensity > on * 0.05 ? BRIGHT.ambient : 0; };
+  const lit = [new THREE.Color('#9aa0b8'), new THREE.Color('#4a3a2c')], dim = [new THREE.Color('#334'), new THREE.Color('#110d0a')]; // 熄燈時換回灰盒原本那盞很暗的環境光
+  tick.onBeforeRender = () => { const on2 = roomLight.intensity > on * 0.05, c = on2 ? lit : dim; hemi.intensity = on2 ? BRIGHT.ambient : 0.35; hemi.color.copy(c[0]); hemi.groundColor.copy(c[1]); };
   group.add(tick);
 }
 

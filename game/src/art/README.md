@@ -63,8 +63,12 @@ c.talk(秒數); c.setMood('calm' | 'smile' | 'scared');
 
 ## 怎麼重新烘焙（帳號二）
 1. 在 `prototype/` 開伺服器，用瀏覽器開 `bake.html`（加 `window.JOB = { key, tex }`，用 Playwright 跑，見帳號二的工作紀錄），存成 `<代號>_raw.glb`。
-2. `gltfpack -i <代號>_raw.glb -o game/models/chars/<代號>.glb -cc -kn -km -kv -vt 16 -vp 16`（不要加 -si，簡化形狀會讓衣服變形；-vt／-vp 16 保留精度，少了襯衫會花掉、眼鏡會碎）。
-3. 在儲存庫根目錄開伺服器，開 `prototype/avatars.html#yuexi,vaughn` 檢查。
+2. 減面（順暢度，2026-10-22）：`node prototype/bake-slim.mjs <代號>_raw.glb <代號>_slim.glb '<規則>'`（要先 `npm install @gltf-transform/core@4 @gltf-transform/functions@4 @gltf-transform/extensions@4 meshoptimizer`）。
+   規則：`{"Teeth":0.2,"Nails":0.3,"Skin_Arm":0.45,"Skin_Leg":0.45,"Skin_Body":0.5,"Transparency$|^hair$":[0.4,0.01,false],"^shoes$":[0.4,0.006,false],"^cloth$":[0.5,0.004,false]}`
+   只減皮膚、細髮絲、鞋子、制服；**袍子（robe）不減**（滾邊的顏色會花掉）、臉不減（表情會壞）。
+3. `gltfpack -i <代號>_slim.glb -o game/models/chars/<代號>.glb -cc -kn -km -kv -vt 16 -vp 16`（不要加 -si，整個模型一起簡化會讓衣服變形；-vt／-vp 16 保留精度，少了襯衫會花掉、眼鏡會碎）。
+   法杖（`game/models/staff/`）減面後用 `-cc -kn -km -noq` 打包（`staff.mjs` 會改頂點，不能壓成整數座標）。
+4. 在儲存庫根目錄開伺服器，開 `prototype/avatars.html#yuexi,vaughn` 檢查；選角色的頭像用 `prototype/thumbs.html` 重新拍。
 
 ## 需要帳號一幫忙的（`tools/`、`game/src/world/` 是帳號一的）
 1. **build 要複製模型**：`tools/build.mjs` 的「2. 網頁與素材」加一行

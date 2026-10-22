@@ -361,3 +361,56 @@ body:has(#view:not([hidden])) #age-corner, body:has(#s-age:not([hidden])) #age-c
 .age-mark { display: flex; align-items: center; justify-content: center; }
 .age-mark sup { align-self: flex-start; margin-top: 22%; }
 @media (max-height: 500px) { #s-age .crest, #s-age .tagline { display: none; } #s-age .pre { margin: 4px 0; font-size: 14px; } }
+
+/* ---- 魔法學院風格的文字與介面（2026-10-22 製作人：文字部分做得有魔法學院的感覺） ----
+   字型：標題用 Cinzel（羅馬碑文風格的英文）＋思源宋體；劇情、紙條用霞鶩文楷（像手寫的書信）。
+   顏色：墨黑的底、舊金色的邊框與花紋、羊皮紙色的字。 */
+:root { --gold: #c9a86a; --gold-dim: #6a5434; --parch: #ecdfc4; --ink2: #120e10; --script: 'LXGW WenKai TC', 'Noto Serif TC', serif; --display: 'Cinzel', 'Noto Serif TC', serif; }
+.logo, .stage-info b, .mirror-result b, .code-row b, #a4clock, .panel-head b, #dialog-who, .steps h3 span, h2, h3 { font-family: var(--display); }
+html[lang="en"] .logo, html[lang="en"] h2, html[lang="en"] h3 { letter-spacing: .06em; }
+/* 劇情對話：深色的書頁，金色雙框、四角花紋，說話的人放在上緣的緞帶上 */
+#dialog { background: radial-gradient(ellipse at 50% 0%, rgba(60,44,30,.35), transparent 70%), linear-gradient(180deg, rgba(20,15,14,.95), rgba(10,8,9,.96));
+  border: 1px solid var(--gold-dim); border-radius: 4px; padding: 22px 26px 22px;
+  box-shadow: inset 0 0 0 3px rgba(10,8,9,.95), inset 0 0 0 4px rgba(201,168,106,.35), 0 10px 40px rgba(0,0,0,.7); }
+#dialog::before, #dialog::after { content: "❦"; position: absolute; bottom: 4px; font-size: 14px; color: rgba(201,168,106,.5); }
+#dialog::before { left: 8px; transform: scaleX(-1); } #dialog::after { right: 30px; }
+#dialog-who { position: absolute; top: -13px; left: 22px; margin: 0; padding: 3px 16px; font-size: 14px; letter-spacing: .12em;
+  background: linear-gradient(180deg, #2a1c16, #160f0d); border: 1px solid var(--gold-dim); border-radius: 2px; box-shadow: 0 2px 8px rgba(0,0,0,.6); }
+#dialog-who:empty { display: none; }
+#dialog-text { font-family: var(--script); font-size: 18px; line-height: 1.8; color: var(--parch); }
+#dialog-text.narration { font-style: normal; color: #c8baa0; text-align: center; letter-spacing: .04em; }
+#dialog .more { color: var(--gold); }
+/* 謎題視窗：皮革封面的書，標題兩邊有花紋分隔線 */
+#panel { background: radial-gradient(ellipse at 50% -10%, rgba(80,56,34,.35), transparent 60%), linear-gradient(180deg, #1a1416, #0d0a0c);
+  border: 1px solid var(--gold-dim); border-radius: 4px; padding: 18px 20px 20px;
+  box-shadow: inset 0 0 0 4px #0d0a0c, inset 0 0 0 5px rgba(201,168,106,.4), 0 0 80px rgba(0,0,0,.85); }
+.panel-head { justify-content: center; position: relative; padding-bottom: 8px; margin-bottom: 10px; border-bottom: 1px solid rgba(201,168,106,.25); }
+.panel-head b { color: #f0dcae; letter-spacing: .1em; font-size: 18px; }
+.panel-head b::before, .panel-head b::after { content: "✧"; color: var(--gold); margin: 0 10px; font-size: 13px; }
+#panel-close { position: absolute; right: -6px; top: -6px; background: none; border: none; color: var(--gold); font-size: 18px; }
+#panel-body { font-size: 15px; }
+#panel-body blockquote, .note { font-family: var(--script); }
+#panel-body blockquote { border-left-color: var(--gold); background: rgba(236,223,196,.05); font-style: normal; font-size: 16px; }
+.note { font-style: normal; font-size: 16px; background: linear-gradient(180deg, #efe3c6, #e0cfa6); box-shadow: inset 0 0 30px rgba(120,80,30,.35); border-radius: 2px; }
+#panel-body button, #dev button { font-family: var(--display); }
+/* 底下的按鈕：像刻在石頭上的符文鈕 */
+#actions button, #marks button { background: linear-gradient(180deg, rgba(34,26,22,.88), rgba(14,11,10,.9)); border: 1px solid var(--gold-dim); border-radius: 3px;
+  color: #e9dcc0; letter-spacing: .08em; box-shadow: inset 0 0 0 2px rgba(0,0,0,.6), inset 0 0 0 3px rgba(201,168,106,.18); }
+#actions button.ready { border-color: var(--gold); color: #f8e6b0; box-shadow: inset 0 0 0 2px rgba(0,0,0,.6), 0 0 14px rgba(201,168,106,.45); }
+/* 提示訊息：一條金邊的緞帶 */
+#toast { font-family: var(--script); font-size: 16px; color: var(--parch); background: linear-gradient(90deg, transparent, rgba(16,12,11,.92) 15%, rgba(16,12,11,.92) 85%, transparent);
+  border: none; border-top: 1px solid rgba(201,168,106,.45); border-bottom: 1px solid rgba(201,168,106,.45); border-radius: 0; padding: 10px 48px; }
+#prompt { font-family: var(--script); border-color: var(--gold-dim); color: var(--parch); }
+/* 左上角隊伍、段落名稱 */
+#team { font-family: var(--script); font-size: 13px; color: #e2d4b6; }
+#team .seg { font-family: var(--display); color: #f0dcae; letter-spacing: .12em; font-size: 14px; }
+#team .seg::before { content: "✦ "; color: var(--gold); }
+#chat-log { font-family: var(--script); }
+/* 選項按鈕（分院鏡、劇情選擇） */
+.choice { font-family: var(--script); font-size: 16px; border-color: var(--gold-dim); background: rgba(20,15,14,.8); }
+.choice:hover { border-color: var(--gold); background: rgba(50,36,26,.7); }
+.mirror-q { font-family: var(--script); font-size: 19px; font-style: normal; color: #f0dcae; }
+/* 選單、等待室的一般按鈕 */
+.screen button:not(.chip):not(.age-no), .screen a.primary { font-family: var(--display); letter-spacing: .06em; }
+.pre, #login-body, .sub, .stage-info p { font-family: var(--script); }
+@media (max-height: 500px) { #dialog { padding: 16px 18px 14px; } #dialog-text { font-size: 15px; line-height: 1.6; } #dialog-who { font-size: 12px; top: -11px; } #toast { font-size: 14px; } }

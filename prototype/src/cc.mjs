@@ -10,6 +10,23 @@ import { wearShoes } from './shoes.mjs';
 const KEEP = ['Eyes_Blink', 'Mouth_Smile', 'Cheek_Raise_L', 'Cheek_Raise_R', 'V_Open', 'Mouth_Open',
   'A01_Brow_Inner_Up', 'A18_Eye_Wide_Left', 'A19_Eye_Wide_Right', 'Brow_Drop_Left', 'Brow_Drop_Right', 'Mouth_Frown'];
 
+// 把表情直接加進臉的形狀：face＝{ 表情名稱（結尾符合就算）: 強度 }
+function bakeFace(mesh, face) {
+  const dict = mesh.morphTargetDictionary, geo = mesh.geometry, list = geo.morphAttributes.position;
+  if (!dict || !list) return;
+  const pos = geo.attributes.position;
+  for (const [name, v] of Object.entries(face)) {
+    const key = Object.keys(dict).find((k) => k.split('.').pop() === name); if (key == null) continue;
+    const m = list[dict[key]];
+    for (let i = 0; i < pos.count; i++) {
+      const dx = m.getX(i), dy = m.getY(i), dz = m.getZ(i);
+      if (geo.morphTargetsRelative) pos.setXYZ(i, pos.getX(i) + dx * v, pos.getY(i) + dy * v, pos.getZ(i) + dz * v);
+      else pos.setXYZ(i, pos.getX(i) + (dx - pos.getX(i)) * v, pos.getY(i) + (dy - pos.getY(i)) * v, pos.getZ(i) + (dz - pos.getZ(i)) * v);
+    }
+  }
+  pos.needsUpdate = true;
+}
+
 function pruneMorphs(mesh) {
   const dict = mesh.morphTargetDictionary, geo = mesh.geometry;
   if (!dict || !geo.morphAttributes.position) return;
@@ -150,7 +167,7 @@ export function ccMaterial(m, { hair = '#1e1510' } = {}) {
 /** opts：{ body: 'male' | 'female' | 'elora', house: { main, trim }, hair, hairTip, skin, cloakScale, height（整體縮放）, glasses（艾洛拉的模型附眼鏡，預設不戴）,
  *         hideHair（拿掉原本的頭髮）, headGear（戴在頭上的零件，例如 extras.mjs 的髮髻、帽子；原點是頭的中心、臉朝 +z）,
  *         outfit（要穿的衣服，outfit.mjs 的 spec 陣列）, cloak（要不要程式做的斗篷，穿了衣服通常關掉） } */
-export function loadCC(scene, { body = 'male', house = { main: '#121214', trim: '#b8902e' }, hair = '#1e1510', hairTip = '#4a3426', skin = '#e8bfa2', cloakScale = 1, height = 1, glasses = false, hideHair = false, headGear = null, outfit = null, cloak: wantCloak = true, armDrop = 1.25, shoes = {} } = {}) {
+export function loadCC(scene, { body = 'male', house = { main: '#121214', trim: '#b8902e' }, hair = '#1e1510', hairTip = '#4a3426', skin = '#e8bfa2', cloakScale = 1, height = 1, glasses = false, hideHair = false, headGear = null, outfit = null, cloak: wantCloak = true, armDrop = 1.25, shoes = {}, face = null } = {}) {
   return new Promise((resolve, reject) => {
     new FBXLoader().load(FILES[body], async (o) => {
       o.scale.setScalar(0.01 * height);
@@ -163,6 +180,7 @@ export function loadCC(scene, { body = 'male', house = { main: '#121214', trim: 
       o.traverse((c) => {
         if (!c.isMesh) return;
         if (/Tongue|Boxers|Bra|Underwear/.test(c.name) || (/glasses/i.test(c.name) && !glasses) || (hideHair && HAIR_MESH.test(c.name))) { c.visible = false; return; } // 舌頭看不到、內衣被斗篷蓋住
+        if (face) bakeFace(c, face); // 固定的表情（例如西里爾的冷笑）直接烘進臉的形狀，眨眼、說話照常
         pruneMorphs(c); meshes.push(c);
         c.castShadow = true; c.receiveShadow = true;
         c.frustumCulled = false; // 骨架會轉頭，三.js 算的範圍跟不上，頭髮會被誤判在畫面外而不畫

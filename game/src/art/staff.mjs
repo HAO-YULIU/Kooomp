@@ -5,6 +5,7 @@
 //   staffCast('#9fc4ff')                  // 施咒時呼叫：往前一揮、杖頭發出這個顏色的光
 import * as THREE from 'three';
 import { GLTFLoader } from '../../../prototype/vendor/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from '../../../prototype/vendor/addons/libs/meshopt_decoder.module.js';
 import { decorators } from '../world/art-hooks.mjs';
 
 let base = 'models/staff/';
@@ -12,7 +13,7 @@ export const setStaffBase = (url) => { base = url.endsWith('/') ? url : url + '/
 const hash = (a, b, c) => { const v = Math.sin(a * 127.1 + b * 311.7 + c * 74.7) * 43758.5453; return v - Math.floor(v); };
 
 async function loadNormalized(url) { // 轉正、高 1 公尺、底部在 0
-  const g = await new GLTFLoader().loadAsync(url);
+  const g = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(url); // 法杖減過面（拿在手上每一格都要畫）
   g.scene.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(g.scene), size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
   const out = new THREE.Group();

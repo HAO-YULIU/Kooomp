@@ -10,7 +10,13 @@ export const COSTUMES = {
   // 貝爾蒙特：男生制服，黑色長袍到小腿、金色滾邊、窄袖
   vaughn: { cloak: false, armDrop: 1.15, shoes: { shoe: '#0e0a08', sock: '#16161a', shine: true }, outfit: [{ name: 'boy', noSleeves: true }, { name: 'robe', color: '#17171b', trim: '#b8902e', hem: 0.25, sleeveFlare: 0, openTop: 0.09, openWaist: 0.075, openHem: 0.3 }] },
   // 烏洛波斯：男生制服，墨綠長袍到膝蓋、前面整個合起來（扣到領口）、銀色滾邊、窄袖、立領
-  cyril: { outfit: [{ name: 'boy', noSleeves: true }, { name: 'robe', color: '#163a26', trim: '#9aa2a8', hem: 0.5, flare: 0.08, sleeveFlare: 0, openTop: 0, openWaist: 0, openHem: 0.12 }] },
+  // 烏洛波斯：男生制服，墨綠長袍到膝蓋、前面整個合起來、銀色滾邊、窄袖、立領。
+  // 2026-10-22 製作人：用現有模型改西里爾（有骨架才會眨眼、說話、走路）。沃恩的身體＋西里爾原本的金色短髮、比較蒼白、
+  // 臉固定成瞇眼、眉頭壓低、嘴角單邊上揚的冷笑（face 直接烘進臉的形狀），看起來跟沃恩是不同的人
+  cyril: { cloak: false, armDrop: 1.15, height: 1.01, skin: '#f0d6c6', hairColor: { hair: '#c8b88a', hairTip: '#efe6c8' },
+    face: { A16_Eye_Squint_Left: 0.6, A17_Eye_Squint_Right: 0.6, A02_Brow_Down_Left: 0.45, A03_Brow_Down_Right: 0.25, A38_Mouth_Smile_Left: 0.6, A23_Nose_Sneer_Left: 0.25, A26_Jaw_Forward: 0.2 },
+    shoes: { shoe: '#0e0a08', sock: '#16161a', shine: true },
+    outfit: [{ name: 'boy', noSleeves: true }, { name: 'robe', color: '#163a26', trim: '#9aa2a8', hem: 0.5, flare: 0.08, sleeveFlare: 0, openTop: 0.03, openWaist: 0.02, openHem: 0.12 }] },
   // 鞋子（shoes.mjs）：女生樂福鞋＋過膝襪（艾洛拉白襪、月晞黑襪），男生黑皮鞋；沒寫的人穿預設的深色鞋
   // 老師：前面整個合起來的長袍（裡面沒穿衣服，開口會露出皮膚）
   helga: { cloak: false, armDrop: 1.15, outfit: [{ name: 'robe', color: '#4a4a52', trim: '#c8c2b8', hem: 0.1, sleeveFlare: 0.04, openTop: 0, openWaist: 0, openHem: 0 }] }, // 舍監：灰

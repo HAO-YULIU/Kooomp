@@ -230,21 +230,23 @@ export async function wearOutfit(ctx, spec) {
   const height = (x, y, z, q) => (x - posed[q * 3]) * pnorm[q * 3] + (y - posed[q * 3 + 1]) * pnorm[q * 3 + 1] + (z - posed[q * 3 + 2]) * pnorm[q * 3 + 2];
   for (const g0 of geos) {
     const g = g0.clone(), p = g.attributes.position, cnt = p.count;
-    // 1) 袖子放下：繞衣服的肩膀轉
+    // 1) 袖子放下：繞衣服的肩膀轉（armW：這個點有多像袖子，剪袖子時用；放下來之後的位置分不出袖口和衣襬）
+    const armW = new Float32Array(cnt);
     for (let i = 0; i < cnt; i++) {
       const x = p.getX(i), y = p.getY(i), side = Math.sign(x) || 1, uu = Math.abs(x) - clothSW, vv = y - clothShY;
       if (uu <= 0 || drop <= 0) continue;
       const deg = THREE.MathUtils.radToDeg(Math.atan2(-vv, uu)), armDeg = THREE.MathUtils.radToDeg(clothArm);
       const w = smooth(armDeg + 40, armDeg + 22, deg) * smooth(0, 0.03 * H, uu);
       if (w <= 0) continue;
+      armW[i] = w;
       const an = drop * w, cs = Math.cos(an), sn2 = Math.sin(an);
       p.setX(i, side * (clothSW + uu * cs + vv * sn2)); p.setY(i, clothShY - uu * sn2 + vv * cs);
     }
-    const sleeve = new Uint8Array(cnt); for (let i = 0; i < cnt; i++) sleeve[i] = Math.abs(p.getX(i)) - clothSW > 0.02 * H ? 1 : 0; // 袖子的點
+    const sleeve = new Uint8Array(cnt); for (let i = 0; i < cnt; i++) sleeve[i] = (drop > 0 ? armW[i] > 0.3 : Math.abs(p.getX(i)) - clothSW > 0.02 * H) ? 1 : 0; // 袖子的點（用放下來之前像不像手臂判斷；放下來之後才看寬度的話，比較寬的褲頭會被當成袖子、掛到手上被撐開）
     g.userData.sleeve = sleeve;
     // 外面還要穿大衣時，裡面這件的袖子剪掉（大衣的長袖會蓋住手臂，留著反而會從大衣穿出來）
     if (spec.noSleeves && g.index) {
-      const idx = g.index, keep = [], cut = (k) => Math.abs(p.getX(k)) > clothSW - 0.005 * H && p.getY(k) > clothShY - 0.25 * H; // 剪在肩膀線內側一點，免得留下往旁邊翹的短袖頭
+      const idx = g.index, keep = [], cut = (k) => armW[k] > 0.35 || (Math.abs(p.getX(k)) > clothSW - 0.005 * H && p.getY(k) > clothShY - 0.25 * H); // 袖口垂下來的部分也剪掉（armW）； 剪在肩膀線內側一點，免得留下往旁邊翹的短袖頭
       for (let i = 0; i < idx.count; i += 3) { const x = idx.getX(i), y = idx.getX(i + 1), z = idx.getX(i + 2); if (!(cut(x) || cut(y) || cut(z))) keep.push(x, y, z); }
       g.setIndex(keep);
     }
@@ -270,6 +272,11 @@ export async function wearOutfit(ctx, spec) {
     }
     smoothPush(g, orig);
     for (let i = 0; i < cnt; i++) lift(i, puff * 0.8); // 抹平時被平均掉的地方，再確實推一次
+    // 腰以下（褲子、裙子的上半）照肩寬放大後可能比屁股寬很多，從外袍兩邊露出來：離身體超過 maxOff 的往內收（裙襬本來就要張開，所以只收到大腿中段）
+    const maxOff = spec.maxOff ?? (spec.name === 'boy' ? 0.03 : 0); // 只有褲子預設收（百褶裙要張開）
+    if (maxOff) {
+      for (let i = 0; i < cnt; i++) { const q = Q[i]; if (q < 0 || sleeve[i] || p.getY(i) > bodyHipY + 0.04 || p.getY(i) < bodyHipY - 0.3) continue; const h = height(p.getX(i), p.getY(i), p.getZ(i), q); if (h <= maxOff) continue;
+        const k = h - maxOff; p.setXYZ(i, p.getX(i) - pnorm[q * 3] * k, p.getY(i) - pnorm[q * 3 + 1] * k, p.getZ(i) - pnorm[q * 3 + 2] * k); } }
     for (let i = 0; i < cnt; i++) clothPts.push(p.getX(i), p.getY(i), p.getZ(i));
     g.userData.Q = Q;
     if (skinned) { g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4)); g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4)); }

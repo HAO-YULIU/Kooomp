@@ -7,7 +7,7 @@
 import { setCharacterBase } from '../game/src/art/characters.mjs';
 import { createPreview } from '../game/src/art/preview.mjs';
 import { CHARS, HOUSES } from '../game/src/logic/chars.mjs';
-setCharacterBase('../game/models/chars/');
+setCharacterBase(new URLSearchParams(location.search).get('base') || '../game/models/chars/');
 const pv = createPreview(document.getElementById('c'));
 window.shot = async (key, mode = 'bust') => {
   const hc = HOUSES[CHARS[key].house].color;

@@ -52,7 +52,7 @@ function textPlane(text, w, h, { color = '#d8c9a0', bg = '#2a2016', font = 22 } 
 }
 
 export function createGallery(scene, colliders, { house, solo, lang }) {
-  const root = new THREE.Group(); scene.add(root);
+  const root = new THREE.Group(); root.userData.static = true; scene.add(root); // static：不會移動的場景，world.mjs 只畫玩家附近房間的部分
   const mat = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.7, ...extra });
   const frameMat = mat('#6a5022', { metalness: 0.6, roughness: 0.4 });
 
@@ -148,7 +148,7 @@ export function createGallery(scene, colliders, { house, solo, lang }) {
   const familiar = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 8), new THREE.MeshBasicMaterial({ color: '#9fc4ff', transparent: true, opacity: 0.8 })); scene.add(familiar); // 使魔（一團小光，飛在前方）
 
   // ---- 創辦人的房間：13 位校長＋創辦人；熄燈時眼睛發光、視線指向西北角 ----
-  const founder = new THREE.Group(); scene.add(founder);
+  const founder = new THREE.Group(); founder.userData.static = true; scene.add(founder);
   const NW = new THREE.Vector3(-6.8, 3, -79.8);
   const rays = new THREE.Group(); rays.visible = false; founder.add(rays);
   const rayMat = new THREE.MeshBasicMaterial({ color: '#ffd060', transparent: true, opacity: 0.7 });

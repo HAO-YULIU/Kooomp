@@ -21,8 +21,11 @@ const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 const cache = new Map(); // 同一個角色只下載一次，之後複製
 
 // 烘焙時材質只能存成一般的 PBR，載入後換回原本的效果
+const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
 function restoreMaterial(m) {
   const name = m.name || '';
+  if (/Skin_/.test(name) && isTouch) // 手機：皮膚用一般材質（邊緣透紅的效果很吃手機的效能）
+    return new THREE.MeshStandardMaterial({ name, color: '#ffffff', vertexColors: true, roughness: 0.6, normalMap: m.normalMap, normalScale: new THREE.Vector2(0.12, 0.12) });
   if (/Skin_/.test(name)) { // 皮膚：顏色在頂點上，邊緣透一點紅
     return new THREE.MeshPhysicalMaterial({ name, color: '#ffffff', vertexColors: true, roughness: 0.55, normalMap: m.normalMap, normalScale: new THREE.Vector2(0.12, 0.12),
       sheen: 0.35, sheenColor: new THREE.Color('#ff9a85'), sheenRoughness: 0.5 });

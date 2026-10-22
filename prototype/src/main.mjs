@@ -9,7 +9,7 @@ import { joinWandLink, makeCode } from './link.mjs';
 import * as sfx from './audio.mjs';
 import { loadCC } from './cc.mjs';
 import { COSTUMES } from './costumes.mjs';
-import { loadCyril } from './cyril.mjs';
+import { loadCyril, loadCyrilCC } from './cyril.mjs';
 import { loadWarden } from './warden.mjs';
 import { loadMoonStaff, loadDragonStaff } from './staffs.mjs';
 
@@ -48,7 +48,7 @@ placeNPC('月晞', loadCC(scene, { body: 'female', house: { main: '#2a0c10', tri
 placeNPC('沃恩', loadCC(scene, { body: 'male', house: { main: '#121214', trim: '#b8902e' }, hair: '#1e1510', hairTip: '#4a3426', skin: '#e8bfa2', ...COSTUMES.vaughn }),
   new THREE.Vector3(4.4, 0, -5.4), -0.35, '和沃恩說話');
 // 西里爾：烏洛波斯（墨綠＋銀），站在後面的窗邊，離大家有點距離
-placeNPC('西里爾', loadCyril(scene, COSTUMES.cyril), new THREE.Vector3(-5.2, 0, 5.2), 2.4, '和西里爾說話');
+placeNPC('西里爾', loadCyrilCC(scene, COSTUMES.cyril), new THREE.Vector3(-5.2, 0, 5.2), 2.4, '和西里爾說話');
 // 守夜人：顯影咒之後的驚嚇，出現在玩家面前的就是他
 let warden = null;
 loadWarden(scene).then((w) => { warden = w; room.setScareFigure(w.root, '#4dff7a'); }).catch((e) => console.warn('守夜人模型載入失敗', e));

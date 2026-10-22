@@ -33,7 +33,7 @@ function buildWall(group, colliders, { axis, at, from, to, h }, gaps) {
 }
 
 export function buildWorld(scene, { rooms, doors, things }, { lowQuality = false } = {}) {
-  const group = new THREE.Group(); scene.add(group);
+  const group = new THREE.Group(); group.userData.static = true; scene.add(group);
   const colliders = [];
   const doorState = new Map(); // id → { mesh, collider, open }
   const thingMeshes = new Map(); // id → mesh

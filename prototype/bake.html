@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { loadCC } from './src/cc.mjs';
 import { COSTUMES } from './src/costumes.mjs';
 import { loadHairSet } from './src/hairbank.mjs';
-import { loadCyril } from './src/cyril.mjs';
+import { loadCyril, loadCyrilCC } from './src/cyril.mjs';
 import { SUPPORT } from './src/support.mjs';
 import { GLTFExporter } from './bake/GLTFExporter.js';
 const J = window.JOB;
@@ -19,7 +19,7 @@ const CFG = {
     headGear: await loadHairSet([{ from: 'elora', parts: ['Scalp'], hair: '#6a655c', hairTip: '#c8c2b8' }, { from: 'elora', parts: ['glasses'] }]) }),
   knox: async () => loadCC(scene, { body: 'elora', house: { main: '#1a2a20', trim: '#7a6a3a' }, hair: '#3a1610', hairTip: '#6a2a1a', skin: '#ecc8b0', height: 0.93, cloakScale: 0.92, hideHair: true, ...COSTUMES.knox,
     headGear: await loadHairSet([{ from: 'female', parts: ['Double_high', 'Air_bangs'], hair: '#3a1610', hairTip: '#6a2a1a' }]) }),
-  cyril: async () => loadCyril(scene, COSTUMES.cyril),
+  cyril: async () => loadCyrilCC(scene, COSTUMES.cyril),
   moray: async () => loadCyril(scene, { house: { main: '#0c0c10', trim: '#9aa0a8' }, hair: '#22201e', hairTip: '#8a857c', iris: '#5a6a62', skin: '#e8c8b2', height: 1.88 }),
   aldric: async () => SUPPORT.aldric(scene),
 };

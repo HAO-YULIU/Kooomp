@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { loadCC } from './cc.mjs';
 import { COSTUMES } from './costumes.mjs';
-import { loadCyril } from './cyril.mjs';
+import { loadCyril, loadCyrilCC } from './cyril.mjs';
 import { loadWarden } from './warden.mjs';
 import { loadHairSet } from './hairbank.mjs';
 import { SUPPORT } from './support.mjs';
@@ -17,7 +17,7 @@ const CAST = [
   { name: '艾洛拉', en: 'Elora・艾爾德林', desc: '主角。開朗溫柔的大姊姊，一直戴著手套。模型附的眼鏡沒有戴。', load: (s) => loadCC(s, { body: 'elora', house: HOUSES.eldrin, hair: '#9a7444', hairTip: '#dcc08a', skin: '#f2d2bd', height: 0.9, cloakScale: 0.9, ...COSTUMES.elora }) },
   { name: '月晞', en: 'Yuexi・格里莫瓦', desc: '主角。東方交換生，安靜、觀察力強。', load: (s) => loadCC(s, { body: 'female', house: HOUSES.grimoire, hair: '#0d0a0a', hairTip: '#2a2226', skin: '#efcdb4', cloakScale: 0.92, ...COSTUMES.yuexi }) },
   { name: '沃恩', en: 'Vaughn・貝爾蒙特', desc: '主角。熱血衝動的獵人世家子弟。', load: (s) => loadCC(s, { body: 'male', house: HOUSES.belmont, hair: '#1e1510', hairTip: '#4a3426', skin: '#e8bfa2', ...COSTUMES.vaughn }) },
-  { name: '西里爾', en: 'Cyril・烏洛波斯', desc: '主角。嘴毒的銜尾會之子。穿制服＋墨綠大衣。模型沒有骨架和表情，不會眨眼、說話。', load: (s) => loadCyril(s, COSTUMES.cyril) },
+  { name: '西里爾', en: 'Cyril・烏洛波斯', desc: '主角。嘴毒的銜尾會之子。穿制服＋墨綠長袍。沃恩的身體換上原本的金髮、固定的冷笑表情（會眨眼、說話、走路）。', load: (s) => loadCyrilCC(s, COSTUMES.cyril) },
   { name: '守夜人 葛雷', en: 'Greer the Night Warden', desc: '第一章的追逐者。駝背、提著綠色的燈。有 Mixamo 的四個動作，按「換動作」看。原檔貼圖沒有附上，全部用程式上色。', load: (s) => loadWarden(s) },
   { name: '校長 奧德里克', en: 'Headmaster Aldric Milner', desc: '沃恩的臉，白髮、長白鬍子、紫金色長袍。', load: (s) => SUPPORT.aldric(s) },
   { name: '副校長 塞巴斯汀', en: 'Vice-Principal Sebastian Moray', desc: '西里爾的父親，用西里爾的模型改的：更高、深色頭髮夾著灰白、黑銀長袍。', load: (s) => loadCyril(s, { house: { main: '#0c0c10', trim: '#9aa0a8' }, hair: '#22201e', hairTip: '#8a857c', iris: '#5a6a62', skin: '#e8c8b2', height: 1.88 }) },

@@ -9,7 +9,7 @@ export const cellAt = (x, z) => [Math.floor((x - MAZE.x0) / MAZE.cell), Math.flo
 export const cellCenter = (c, r) => ({ x: MAZE.x0 + (c + 0.5) * MAZE.cell, z: MAZE.z0 + (r + 0.5) * MAZE.cell });
 
 export function createLibrary(scene, colliders) {
-  const root = new THREE.Group(); scene.add(root);
+  const root = new THREE.Group(); root.userData.static = true; scene.add(root); // static：不會移動的場景，world.mjs 只畫玩家附近房間的部分
   const shelfMat = new THREE.MeshStandardMaterial({ color: '#3b2716', roughness: 0.85 });
   const bookCols = ['#5a1a14', '#1e3a2a', '#2a2a4a', '#6a5a2a', '#3a1a3a'].map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.8 }));
   const veinMat = new THREE.MeshBasicMaterial({ color: '#050505' });

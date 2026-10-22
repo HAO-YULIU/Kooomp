@@ -12,7 +12,7 @@ function runeTexture(ch) {
 }
 
 export function createAct4Scene(scene) {
-  const root = new THREE.Group(); scene.add(root);
+  const root = new THREE.Group(); root.userData.static = true; scene.add(root); // static：不會移動的場景，world.mjs 只畫玩家附近房間的部分
   // ---- 屋頂的石板 ----
   const tiles = [];
   ROOF.forEach((row, r) => [...row].forEach((ch, c) => {
