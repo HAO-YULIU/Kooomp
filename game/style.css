@@ -346,3 +346,18 @@ html, body { height: 100dvh; }
   .steps > li { padding: 2px 8px 4px; } .chars button b { font-size: 13px; } .chars button small { font-size: 10px; }
   .crest { margin: 0 0 4px; } .crest i { width: 26px; height: 26px; font-size: 12px; } .tagline { margin-bottom: 2px; font-size: 11px; }
 }
+/* 年齡限制（2026-10-22 製作人） */
+.age-mark { width: 84px; height: 84px; margin: 6px auto 0; border-radius: 50%; display: grid; place-items: center; font-size: 34px; font-weight: 700; color: #fff;
+  background: radial-gradient(circle at 35% 30%, #e0483a, #8a1a12); border: 3px solid #f3d98e; box-shadow: 0 0 24px rgba(196,58,47,.6); line-height: 1; }
+.age-mark sup { font-size: 20px; }
+#s-age .warn { text-align: center; }
+.age-tags { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 6px 0 4px; }
+.age-tags span { padding: 3px 10px; border-radius: 999px; border: 1px solid #7a3428; color: #ffb3a6; font-size: 12.5px; background: rgba(120,20,14,.25); }
+.age-no { display: block; margin: 10px auto 0; background: none; border: none; color: var(--dim); font-size: 13px; text-decoration: underline; }
+.age-bye { text-align: center; color: #d6cbbb; line-height: 1.7; margin-top: 14px; }
+#age-corner { position: fixed; top: 8px; left: 8px; z-index: 5; padding: 2px 8px; border-radius: 4px; font-size: 11px; color: #fff; background: rgba(160,30,20,.85); border: 1px solid #f3d98e; pointer-events: none; }
+body:has(#view:not([hidden])) #age-corner, body:has(#s-age:not([hidden])) #age-corner { display: none; }
+@media (max-height: 500px) { .age-mark { width: 56px; height: 56px; font-size: 22px; } .age-mark sup { font-size: 13px; } #s-age h2 { margin: 6px 0 2px; } }
+.age-mark { display: flex; align-items: center; justify-content: center; }
+.age-mark sup { align-self: flex-start; margin-top: 22%; }
+@media (max-height: 500px) { #s-age .crest, #s-age .tagline { display: none; } #s-age .pre { margin: 4px 0; font-size: 14px; } }

@@ -43,7 +43,7 @@ export function createPreview(canvas) {
   const ringTex = new THREE.CanvasTexture(ringCanvas); ringTex.colorSpace = THREE.SRGBColorSpace;
   const ringMat = new THREE.MeshBasicMaterial({ map: ringTex, transparent: true, color: '#9fc4ff', blending: THREE.AdditiveBlending, depthWrite: false });
   const ring = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 2.2), ringMat); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.005; scene.add(ring);
-  const glow = new THREE.PointLight('#9fc4ff', 1.6, 2.5, 2); glow.position.set(0, 0.15, 0); scene.add(glow);
+  const glow = new THREE.PointLight('#9fc4ff', 0.8, 2.5, 2); glow.position.set(0, 0.04, 0.6); scene.add(glow);
   // 飄浮的光點
   const N = 60, dots = new Float32Array(N * 3), seeds = [];
   for (let i = 0; i < N; i++) seeds.push({ a: Math.random() * Math.PI * 2, r: 0.4 + Math.random() * 0.8, y: Math.random() * 2, s: 0.1 + Math.random() * 0.25 });

@@ -166,18 +166,46 @@ export function buildRobe(B, spec = {}) {
 
   // ---------- 一圈一圈的輪廓（腰以下的袍子、立領共用） ----------
   const K = 48;
+  // 沒有骨架的低面數模型點很稀：在每個三角形上多取幾個點（帶著最近的節點，用來判斷是哪個部位）
+  let samples = null;
+  if (!skinned) {
+    samples = [];
+    for (let t = 0; t < TRI.length; t += 3) {
+      const A = wid[TRI[t]], Bn = wid[TRI[t + 1]], C = wid[TRI[t + 2]];
+      for (let a = 0; a <= 4; a++) for (let b = 0; a + b <= 4; b++) { const u = a / 4, v = b / 4, w0 = 1 - u - v;
+        samples.push(PX(A) * w0 + PX(Bn) * u + PX(C) * v, PY(A) * w0 + PY(Bn) * u + PY(C) * v, PZ(A) * w0 + PZ(Bn) * u + PZ(C) * v, w0 >= u && w0 >= v ? A : u >= v ? Bn : C); }
+    }
+  }
   const profile = (y0, y1, filter) => { // y0～y1 之間的身體節點，每個角度最遠多遠（角度 0＝正前方）
     const r = new Float32Array(K).fill(-1);
-    for (let w = 0; w < W; w++) {
-      const y = PY(w); if (y < y0 || y > y1 || !filter(w)) continue;
-      const dx = PX(w) - cx, dz = PZ(w) - cz, a = Math.atan2(dx, dz), k = ((Math.round((a / (Math.PI * 2)) * K) % K) + K) % K, d = Math.hypot(dx, dz);
+    const add = (x, y, z, w) => {
+      if (y < y0 || y > y1 || !filter(w)) return;
+      const dx = x - cx, dz = z - cz, a = Math.atan2(dx, dz), k = ((Math.round((a / (Math.PI * 2)) * K) % K) + K) % K, d = Math.hypot(dx, dz);
       if (d > r[k]) r[k] = d;
+    };
+    if (samples) for (let i = 0; i < samples.length; i += 4) add(samples[i], samples[i + 1], samples[i + 2], samples[i + 3]);
+    else for (let w = 0; w < W; w++) add(PX(w), PY(w), PZ(w), w);
+    // 空的角度用旁邊補。沒有骨架的低面數模型點很稀，空的很多：用兩邊最近、有量到的角度內插（取最大值會撐成大圓筒）
+    const known = Uint8Array.from(r, (v) => (v >= 0 ? 1 : 0));
+    if (!skinned && r.some((v) => v >= 0)) {
+      const t = r.slice();
+      for (let k = 0; k < K; k++) if (r[k] < 0) {
+        let a = 1; while (r[(k - a + K) % K] < 0) a++; let b = 1; while (r[(k + b) % K] < 0) b++;
+        // 兩邊量到的點連成直線（弦），這個角度的射線打到那條線的距離（用半徑內插會在空的那一側鼓成大圓弧）
+        const ang = (kk) => (kk / K) * Math.PI * 2, ka = k - a, kb = k + b, ra = r[(ka + K) % K], rb = r[kb % K];
+        const P1 = [Math.sin(ang(ka)) * ra, Math.cos(ang(ka)) * ra], P2 = [Math.sin(ang(kb)) * rb, Math.cos(ang(kb)) * rb], D = [Math.sin(ang(k)), Math.cos(ang(k))];
+        const ex = P2[0] - P1[0], ez = P2[1] - P1[1], den = D[0] * ez - D[1] * ex;
+        const hit = Math.abs(den) > 1e-6 ? (P1[0] * ez - P1[1] * ex) / den : -1;
+        t[k] = hit > 0 ? Math.min(hit, Math.max(ra, rb)) : Math.min(ra, rb) * 0.3;
+      }
+      r.set(t);
     }
-    // 空的角度用旁邊補，再稍微抹平（取大的）
     for (let pass = 0; pass < K; pass++) { let any = false; for (let k = 0; k < K; k++) if (r[k] < 0) { const a = r[(k + K - 1) % K], b = r[(k + 1) % K]; if (a >= 0 || b >= 0) { r[k] = Math.max(a, b); any = true; } } if (!any) break; }
     for (let pass = 0; pass < 2; pass++) { const t = r.slice(); for (let k = 0; k < K; k++) t[k] = Math.max(r[k], (r[(k + K - 1) % K] + r[k] * 2 + r[(k + 1) % K]) / 4); r.set(t); }
-    return r;
+    r.known = known; return r;
   };
+  // 沒有骨架的低面數模型：輪廓角角的，沿著一圈再抹圓（寬的平均，但不往裡面縮超過 6 公釐）
+  const roundOut = (r) => { if (skinned) return r; let x = r; for (let it = 0; it < 3; it++) { const t = new Float32Array(K); for (let k = 0; k < K; k++) { let s2 = 0, w2 = 0; for (let d = -4; d <= 4; d++) { const w = 5 - Math.abs(d); s2 += x[(k + d + K) % K] * w; w2 += w; } t[k] = Math.max(s2 / w2, r[k] - 0.006); } x = t; } x.known = r.known; return x; };
   const at = (r, a) => { const f = (((a / (Math.PI * 2)) * K) % K + K) % K, k0 = Math.floor(f), t = f - k0; return r[k0] * (1 - t) + r[(k0 + 1) % K] * t; };
   // 一圈圈接成布：rings＝[{ y, r（輪廓）, half（前面開口的半角）, c（顏色） }]
   const tube = (rings, weights, segs = 40) => tubeAt(cx, cz, rings, weights, segs);
@@ -197,13 +225,18 @@ export function buildRobe(B, spec = {}) {
   };
 
   // ---------- 沒有骨架：上半身也一圈一圈量；手臂沿著肩膀→手肘→手腕量成管子 ----------
+  // 沒有骨架：垂下來的手臂貼著身體，量軀幹的輪廓時把離手臂（肩膀→手肘→手腕）5.5 公分內的點拿掉，不然上半身會被撐成箱子
+  const segD = (p, a, b) => { const ab = b.clone().sub(a), t = THREE.MathUtils.clamp(p.clone().sub(a).dot(ab) / ab.lengthSq(), 0, 1); return p.distanceTo(a.clone().addScaledVector(ab, t)); };
+  const offArm = (w) => { if (skinned || !B.arms) return true; const p = new THREE.Vector3(PX(w), PY(w), PZ(w));
+    for (const S3 of B.arms) { const hand = S3[2].clone().addScaledVector(S3[2].clone().sub(S3[1]).normalize(), 0.16); if (segD(p, S3[0].clone().setY(S3[0].y - 0.04), S3[1]) < 0.055 || segD(p, S3[1], S3[2]) < 0.05 || segD(p, S3[2], hand) < 0.06) return false; }
+    return true; };
   if (!skinned) {
     const torsoRings = [];
     for (let y = shellBot; y <= shellTop + 1e-6; y += 0.02) {
-      const r = profile(y - 0.015, y + 0.015, (w) => region[w] === 0).map((v) => (v > 0 ? v + off : 0.12));
+      const r = roundOut(profile(y - 0.03, y + 0.03, (w) => offArm(w))).map((v) => (v > 0 ? v + off : 0.12));
       torsoRings.push({ y, r, half: Math.atan2(openW(y), r[0] || 0.12), c: color });
     }
-    for (let it = 0; it < 2; it++) for (let j = 1; j < torsoRings.length - 1; j++) { const a = torsoRings[j - 1].r, b = torsoRings[j].r, c = torsoRings[j + 1].r; for (let k = 0; k < K; k++) b[k] = Math.max(b[k], (a[k] + b[k] * 2 + c[k]) / 4); }
+    for (let it = 0; it < 6; it++) for (let j = 1; j < torsoRings.length - 1; j++) { const a = torsoRings[j - 1].r, b = torsoRings[j].r, c = torsoRings[j + 1].r; for (let k = 0; k < K; k++) b[k] = Math.max(b[k], (a[k] + b[k] * 2 + c[k]) / 4); }
     tube(torsoRings, rigid(0));
     const segsA = 20;
     for (const side of [0, 1]) {
@@ -221,7 +254,7 @@ export function buildRobe(B, spec = {}) {
           const k = ((Math.round((Math.atan2(y, x) / (Math.PI * 2)) * segsA) % segsA) + segsA) % segsA; if (rad > r[k]) r[k] = rad;
         }
         let mx = 0; for (const v of r) mx = Math.max(mx, v); for (let k = 0; k < segsA; k++) if (r[k] < 0) r[k] = mx > 0 ? mx : 0.045;
-        const mean = Math.min(0.055, r.reduce((a, b) => a + b, 0) / segsA); for (let k = 0; k < segsA; k++) r[k] = Math.min(0.065, Math.max(r[k] * 0.4 + mean * 0.6, mean * 0.9)); // 手臂最粗 6.5 公分（半徑）
+        const mean = Math.min(0.045, r.reduce((a, b) => a + b, 0) / segsA); for (let k = 0; k < segsA; k++) r[k] = Math.min(0.05, Math.max(r[k] * 0.3 + mean * 0.7, mean * 0.9)); // 手臂最粗 5 公分（半徑），截面接近圓的
         return { c, u, vv, r };
       });
       for (let it = 0; it < 4; it++) for (let j = 1; j < frames.length - 1; j++) for (let k = 0; k < segsA; k++) frames[j].r[k] = (frames[j - 1].r[k] + frames[j].r[k] * 2 + frames[j + 1].r[k]) / 4;
@@ -230,7 +263,7 @@ export function buildRobe(B, spec = {}) {
         const flareNow = sleeveFlare * sm(0.22, 0.0, c.distanceTo(Sx[2])), cuff = j >= frames.length - 2;
         const row = [];
         for (let k = 0; k <= segsA; k++) {
-          const a = (k / segsA) * Math.PI * 2, rr = r[k % segsA] + off + flareNow;
+          const a = (k / segsA) * Math.PI * 2, rr = r[k % segsA] + off * 0.5 + flareNow; // 袖子貼一點（太鬆會像兩根柱子）
           const p = c.clone().addScaledVector(u, Math.cos(a) * rr).addScaledVector(vv, Math.sin(a) * rr);
           row.push(vert(p.x, p.y, p.z, cuff ? trim : color, rigid(0)));
         }
@@ -241,26 +274,26 @@ export function buildRobe(B, spec = {}) {
   }
 
   // ---------- 腰以下 ----------
-  const notArm = (w) => region[w] === 0 || region[w] === 3;
+  const notArm = (w) => (skinned ? region[w] === 0 || region[w] === 3 : offArm(w)); // 沒有骨架的模型分區常常分錯，只看離手臂多遠
   const topY = hipY + 0.08, step = 0.02, rings = []; // 從腰帶下面開始：接縫藏在腰帶後面
-  let last = null, i = 0;
+  let last = null, lastKnown = null, i = 0;
   for (let y = topY; y >= hemY - 1e-6; y -= step, i++) {
-    const body = profile(y - 0.02, y + 0.02, notArm);
+    const body = roundOut(profile(y - 0.02, y + 0.02, notArm));
     const r = new Float32Array(K);
     for (let k = 0; k < K; k++) {
       let v = body[k] > 0 ? body[k] + off * Math.min(1, 0.5 + i * 0.25) + 0.006 * Math.min(1, i / 2) : (last ? last[k] : 0.15); // 最上面兩圈收在上半身裡面（腰帶後面），再放出來
-      if (last) v = Math.max(v, last[k] + flare * step); // 往下只會變寬
+      if (last && (skinned || lastKnown[k])) v = Math.max(v, last[k] + flare * step); // 往下只會變寬（上一圈那個方向是補出來的就不算）
       r[k] = v;
     }
     const belt = false, hem = y - step < hemY;
     const frontR = r[0] || 0.15, half = Math.max(Math.atan2(openWaist, frontR), openHem * sm(topY, hemY, y));
     rings.push({ y, r, half, c: belt || hem ? trim : color });
-    last = r;
+    lastKnown = last && !skinned ? Uint8Array.from(body.known ?? [], (v, k) => v || lastKnown[k]) : (body.known ?? null); last = r;
   }
   tube(rings, rigid(hipBone));
   // 腰帶：腰上一條帶子（貼著上半身）
   if (spec.belt !== false) {
-    const bw0 = profile(hipY + 0.05, hipY + 0.09, (w) => region[w] === 0).map((v) => v + off + 0.012);
+    const bw0 = roundOut(profile(hipY + 0.04, hipY + 0.1, (w) => (skinned ? region[w] === 0 : offArm(w)))).map((v) => v + off + 0.012);
     const half = Math.atan2(openWaist, bw0[0] || 0.12);
     tube([{ y: hipY + 0.095, r: bw0, half, c: trim }, { y: hipY + 0.06, r: bw0.map((v) => v + 0.002), half, c: trim }], rigid(hipBone), 40);
   }

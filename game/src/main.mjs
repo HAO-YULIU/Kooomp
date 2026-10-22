@@ -26,9 +26,13 @@ let toastTimer;
 function toast(text) { const el = $('toast'); el.textContent = text; el.classList.add('on'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('on'), 2600); }
 
 // ---------- 18+ ----------
+// 每次打開遊戲（新的分頁）都要再確認一次年齡（2026-10-22 製作人：要提示年齡限制）
 const AGE_KEY = 'ml_age_ok';
-const ageOk = () => { try { return localStorage.getItem(AGE_KEY) === '1'; } catch { return false; } };
-$('age-ok').onclick = () => { try { localStorage.setItem(AGE_KEY, '1'); } catch { /* 無痕模式 */ } boot(); };
+const ageOk = () => { try { return sessionStorage.getItem(AGE_KEY) === '1'; } catch { return false; } };
+$('age-ok').onclick = () => { try { sessionStorage.setItem(AGE_KEY, '1'); } catch { /* 無痕模式 */ } boot(); };
+$('age-no').onclick = () => { $('age-bye').hidden = false; $('age-ok').hidden = true; $('age-no').hidden = true; };
+const ageTags = () => { $('age-tags').innerHTML = ''; for (const x of t('age_tags').split('|')) $('age-tags').append(Object.assign(document.createElement('span'), { textContent: x })); };
+ageTags(); for (const b of document.querySelectorAll('[data-lang]')) b.addEventListener('click', ageTags);
 if (ageOk() && !params.has('age')) boot(); else show('s-age');
 
 // ---------- 登入 ----------

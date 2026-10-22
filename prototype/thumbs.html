@@ -14,7 +14,7 @@ window.shot = async (key, mode = 'bust') => {
   document.body.style.background = `radial-gradient(circle at 50% 35%, color-mix(in srgb, ${hc} 30%, #1a1418), #07060a 75%)`;
   await pv.show(key, hc);
   await new Promise((r) => { const f = () => (pv.ready() ? r() : setTimeout(f, 100)); f(); });
-  pv.setSpin(0.35);
+  pv.setSpin(window.SPIN ?? 0.35);
   if (mode === 'bust') { pv.camera.fov = 22; const y = pv.headY(); pv.camera.position.set(-0.25, y - 0.05, -2.3); pv.camera.lookAt(0, y - 0.2, 0); pv.camera.updateProjectionMatrix(); }
   await new Promise((r) => setTimeout(r, 1500));
   return true;
