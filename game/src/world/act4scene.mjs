@@ -1,6 +1,7 @@
 // 第四幕的特別場景（灰盒）：屋頂的符文石板（P29）、機械室的大齒輪與鐘擺、蝕巢的黑根、屋頂的月亮。
 import * as THREE from 'three';
 import { ROOF, ROOF_AT } from '../data/act4-ch1.mjs';
+import { bloodPool, bloodSplat } from '../art/gore.mjs';
 
 function runeTexture(ch) {
   const c = document.createElement('canvas'); c.width = c.height = 128;
@@ -44,6 +45,11 @@ export function createAct4Scene(scene) {
     const m = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.16, len, 5), rootMat);
     m.position.set(166 + Math.random() * 6.5, Math.random() * 3.5, -1.5 + Math.random() * 7); m.rotation.set(Math.random() * 2, Math.random() * 3, Math.random() * 2); root.add(m);
   }
+  // 蝕巢地上的血：被拖進來的人留下的（帳號二）
+  bloodPool(root, 169.5, 2, 1.3, { seed: 21 }); bloodPool(root, 167.2, -0.6, 0.6, { seed: 22 });
+  bloodSplat(root, 172.82, 1.4, 3.5, { size: 1.3, name: 'drip', normal: [-1, 0, 0], spin: Math.PI });
+  bloodSplat(root, 170.5, 1.1, -1.82, { size: 1.0, name: 'drip', normal: [0, 0, 1], spin: Math.PI });
+  bloodSplat(root, 166.4, 0, 4.4, { size: 1.2, name: 'spray', spin: 1.3 });
   let t = 0;
   return {
     frame(dt, zone) {

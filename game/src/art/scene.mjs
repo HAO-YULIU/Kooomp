@@ -7,6 +7,7 @@ import { decorators } from '../world/art-hooks.mjs';
 import { DOORS } from '../data/world-ch1.mjs';
 import * as T from './textures.mjs';
 import * as P from './props.mjs';
+import { dressRoom, dressRoof, dressDock } from './dress.mjs';
 
 // ---------- 材質 ----------
 const M = {};
@@ -197,10 +198,17 @@ function fireplace(kit, x, z, ry) { // 背靠牆，ry＝面向
   P(0.9, 0.1, 0.3, MAT.ember(), 0, 0.08, 0.42); // 炭火（爐口前面一點，看得到）
   for (let i = 0; i < 3; i++) P(0.16, 0.34 - (i % 2) * 0.1, 0.12, MAT.flame(), -0.25 + i * 0.25, 0.3, 0.4);
 }
-function armchair(kit, color, x, z, ry) {
-  const s = Math.sin(ry), c = Math.cos(ry), P = (w, h, d, mat, dx, y, dz) => kit.box(w, h, d, mat, x + dx * c + dz * s, y, z - dx * s + dz * c, ry);
-  const cl = MAT.cloth(color);
-  P(0.8, 0.42, 0.75, cl, 0, 0.21, 0); P(0.8, 0.6, 0.15, cl, 0, 0.72, 0.3); P(0.14, 0.28, 0.7, cl, -0.36, 0.52, 0); P(0.14, 0.28, 0.7, cl, 0.36, 0.52, 0);
+function armchair(kit, color, x, z, ry) { // 扶手椅：木腳、坐墊、高椅背（上緣圓的）、捲起來的扶手、釘扣
+  const s = Math.sin(ry), c = Math.cos(ry), W = (dx, dz) => [x + dx * c + dz * s, z - dx * s + dz * c];
+  const P = (w, h, d, mat, dx, y, dz) => { const [px, pz] = W(dx, dz); kit.box(w, h, d, mat, px, y, pz, ry); };
+  const A = (geo, mat, dx, y, dz, rx = 0, rz = 0) => { const [px, pz] = W(dx, dz); kit.add(geo, mat, px, y, pz, ry, rx, rz); };
+  const cl = MAT.velvet(color), dark = std('velvetDark' + color, { color: new THREE.Color(color).multiplyScalar(0.6), roughness: 0.9 }), wd = MAT.darkWood(), b = MAT.brass();
+  for (const sx of [-0.32, 0.32]) for (const sz of [-0.28, 0.28]) A(new THREE.CylinderGeometry(0.03, 0.022, 0.16, 6), wd, sx, 0.08, sz);
+  P(0.78, 0.2, 0.72, dark, 0, 0.26, 0.02); // 底座
+  A(new THREE.BoxGeometry(0.6, 0.12, 0.6, 2, 1, 2), cl, 0, 0.42, -0.02); // 坐墊
+  P(0.74, 0.72, 0.16, cl, 0, 0.78, 0.3); A(new THREE.CylinderGeometry(0.08, 0.08, 0.74, 10), cl, 0, 1.14, 0.3, 0, Math.PI / 2); // 椅背＋上緣
+  for (const sx of [-1, 1]) { P(0.12, 0.26, 0.66, cl, sx * 0.36, 0.48, 0.0); A(new THREE.CylinderGeometry(0.075, 0.075, 0.7, 10), cl, sx * 0.37, 0.62, 0.0, Math.PI / 2); } // 扶手（捲起來）
+  for (let i = 0; i < 6; i++) A(new THREE.SphereGeometry(0.015, 5, 4), b, -0.25 + (i % 3) * 0.25, 0.68 + Math.floor(i / 3) * 0.24, 0.215); // 釘扣
 }
 function bookshelf(kit, x, z, ry, w = 1.8, h = 2.4) { // 背靠牆，正面朝 ry 的方向（dz 正的＝房間那一邊）
   const s = Math.sin(ry), c = Math.cos(ry), P = (bw, bh, bd, mat, dx, y, dz) => kit.box(bw, bh, bd, mat, x + dx * c + dz * s, y, z - dx * s + dz * c, ry);
@@ -444,6 +452,10 @@ decorators.room.push(safe(({ room, group }) => {
   if (st) cladding(group, room, st);
   ROOM_DECOR[room.id]?.(room, group);
   DETAILS[room.id]?.(room, group);
+  const lib = { Kit, MAT, std, glow, candles, bookshelf, armchair, banner, P };
+  dressRoom(room, group, lib); // 沿著牆再多擺一些家具、牆上的東西（dress.mjs）
+  if (room.id === 'a4_roof') dressRoof(room, group, lib); // 屋頂看起來要像露天
+  if (room.id === 'dock') dressDock(room, group, lib); // 碼頭：小船、湖上的燈和霧
 }));
 
 // ---------- 門：木門＋鐵條，跟著灰盒門板一起開關；門框一直都在 ----------

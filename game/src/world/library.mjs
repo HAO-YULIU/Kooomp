@@ -2,6 +2,7 @@
 // 書架的位置由「伺服器時間」算出來（每 30 秒換一次），所有人看到的一樣，不用傳訊息。
 import * as THREE from 'three';
 import { MAZE, mazeLayout } from '../data/library-ch1.mjs';
+import { bloodTrail, bloodPool, buildSenior, bloodSplat } from '../art/gore.mjs';
 
 export const mazePhase = (serverNow) => Math.floor(serverNow / 1000 / MAZE.period);
 export const mazeDark = (serverNow) => (serverNow / 1000) % MAZE.period > MAZE.period - MAZE.dark; // 換位置前熄燈
@@ -53,18 +54,18 @@ export function createLibrary(scene, colliders) {
     return [MAZE.entry[0], MAZE.entry[1]];
   }
 
-  // ---- 入口大廳：拖行的血跡（到高年級生的屍體） ----
-  const blood = new THREE.MeshBasicMaterial({ color: '#4a0606', transparent: true, opacity: 0.85 });
-  for (let i = 0; i < 14; i++) {
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(0.5 + Math.random() * 0.3, 0.7), blood);
-    m.rotation.x = -Math.PI / 2; m.rotation.z = Math.random() * 0.4; m.position.set(108 + i * 0.3, 0.015, 13 - i * 0.7); root.add(m);
-  }
-  // 高年級生：下半身結晶化（黑色尖刺），上半身被啃過（露出的肋骨）
-  const body = new THREE.Group(); body.position.set(112, 0, 4); root.add(body);
-  for (let i = 0; i < 9; i++) { const s = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.6 + Math.random() * 0.6, 5), new THREE.MeshStandardMaterial({ color: '#0d0d18', emissive: '#08081a', roughness: 0.2, metalness: 0.6 })); s.position.set(-0.6 + Math.random() * 0.6, 0.3, -0.3 + Math.random() * 0.6); s.rotation.z = Math.random() - 0.5; body.add(s); }
-  for (let i = 0; i < 6; i++) { const rib = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.025, 6, 12, Math.PI), new THREE.MeshStandardMaterial({ color: '#d8cfc0' })); rib.position.set(0.3 + i * 0.09, 0.3, 0); rib.rotation.y = Math.PI / 2; body.add(rib); }
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.25, 0.5), new THREE.MeshStandardMaterial({ color: '#5a0a0a', roughness: 0.4 })); torso.position.set(0.5, 0.15, 0); body.add(torso);
-  const lantern = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.3, 8), new THREE.MeshBasicMaterial({ color: '#ffcf70' })); lantern.position.set(0.9, 0.2, 0.3); body.add(lantern);
+  // ---- 入口大廳：拖行的血跡（到高年級生的屍體）。美術在 art/gore.mjs（帳號二） ----
+  // 他從樓梯那邊爬過來：一路拖著血，最後趴在地上、手裡還握著提燈
+  bloodTrail(root, { x: 107.6, z: 13.8 }, { x: 110.6, z: 4.6 }, { width: 1.0, seed: 7, hands: 3 });
+  bloodPool(root, 111.4, 4.1, 1.05, { seed: 3 });
+  bloodPool(root, 108.2, 11.2, 0.35, { seed: 5 }); // 中途停下來喘的地方
+  // 噴濺：被拖走之前在這裡被咬（地上一大片噴開的、樓梯邊的牆上往下流的）
+  bloodSplat(root, 107.2, 0, 14.2, { size: 1.6, name: 'spray', spin: 0.6 });
+  bloodSplat(root, 113.3, 0, 3.2, { size: 1.1, name: 'spray', spin: 2.1 });
+  bloodSplat(root, 100.18, 1.6, 13.4, { size: 1.4, name: 'drip', normal: [1, 0, 0], spin: Math.PI });
+  bloodSplat(root, 106.1, 1.2, 14.82, { size: 1.0, name: 'drip', normal: [0, 0, -1], spin: Math.PI });
+  let lantern = null, lanternTaken = false;
+  buildSenior(root, 112, 4).then((r) => { lantern = r.lantern; if (lanternTaken) lantern.visible = false; }).catch((e) => console.warn('屍體的模型載入失敗', e));
 
   // ---- 暗室的石板：摸到才會微微發光（由 act3.mjs 控制） ----
   const tiles = [];
@@ -76,6 +77,6 @@ export function createLibrary(scene, colliders) {
   return {
     setPhase, nearestFree, blocked,
     lightTile(i, on) { if (tiles[i]) tiles[i].material.color.set(on ? '#7aa0ff' : '#0a0a12'); },
-    takeLantern() { lantern.visible = false; },
+    takeLantern() { lanternTaken = true; if (lantern) lantern.visible = false; },
   };
 }

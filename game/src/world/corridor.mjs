@@ -4,7 +4,8 @@
 import * as THREE from 'three';
 import { GALLERY_NAMES, HEADMASTERS } from '../data/story-ch1.mjs';
 import { THINGS } from '../data/world-ch1.mjs';
-import { paintPortrait } from '../art/portraits.mjs'; // 帳號二：油畫風格的畫像（種類、異常的差別跟原本一樣）
+import { paintPortrait } from '../art/portraits.mjs';
+import * as ART from '../art/textures.mjs'; // 帳號二：油畫風格的畫像（種類、異常的差別跟原本一樣）
 
 // X：牆的內側（灰盒的牆有 0.3 公尺厚）；END：盡頭假牆的位置（「走廊變長」時往後退）
 const X = 2.5 - 0.16, NORMAL_END = -56, LONG_END = -62;
@@ -87,8 +88,19 @@ export function createGallery(scene, colliders, { house, solo, lang }) {
   });
 
   // ---- 地毯（箭頭指向北邊） ----
-  const cc = document.createElement('canvas'); cc.width = 64; cc.height = 64;
-  { const g = cc.getContext('2d'); g.fillStyle = '#4a0f12'; g.fillRect(0, 0, 64, 64); g.fillStyle = '#8a6a2a'; g.beginPath(); g.moveTo(32, 10); g.lineTo(50, 34); g.lineTo(14, 34); g.fill(); g.fillRect(28, 34, 8, 20); }
+  // 2026-10-22 製作人：原本的箭頭像指示牌。改成深紅底、兩邊金邊、中間一朵朝北的百合花紋（花紋有方向，「地毯反了」的異常一樣看得出來）
+  const cc = document.createElement('canvas'); cc.width = 128; cc.height = 128;
+  { const g = cc.getContext('2d'), gold = '#a8823a';
+    g.fillStyle = '#3e0c10'; g.fillRect(0, 0, 128, 128);
+    for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(${Math.random() < 0.5 ? '0,0,0' : '120,30,30'},0.12)`; g.fillRect(Math.random() * 128, Math.random() * 128, 2, 2); } // 絨毛
+    g.fillStyle = '#2a0608'; g.fillRect(0, 0, 18, 128); g.fillRect(110, 0, 18, 128);
+    g.fillStyle = gold; for (const x of [12, 16, 110, 114]) g.fillRect(x, 0, 2, 128);
+    for (const x of [6, 122]) for (const y of [16, 48, 80, 112]) { g.beginPath(); g.moveTo(x, y - 5); g.lineTo(x + 3, y); g.lineTo(x, y + 5); g.lineTo(x - 3, y); g.fill(); }
+    g.save(); g.translate(64, 64); g.fillStyle = gold; // 百合花：中間的花瓣往上（北）、兩邊捲下來、下面一條橫帶
+    g.beginPath(); g.moveTo(0, -34); g.bezierCurveTo(11, -20, 9, -4, 0, 6); g.bezierCurveTo(-9, -4, -11, -20, 0, -34); g.fill();
+    for (const sx of [-1, 1]) { g.beginPath(); g.moveTo(sx * 3, 2); g.bezierCurveTo(sx * 26, -6, sx * 30, -24, sx * 16, -22); g.bezierCurveTo(sx * 24, -12, sx * 16, 0, sx * 4, 8); g.fill(); }
+    g.fillRect(-14, 8, 28, 5); g.beginPath(); g.moveTo(-5, 13); g.lineTo(5, 13); g.lineTo(0, 30); g.fill();
+    g.restore(); }
   const carpetTex = tex(cc); carpetTex.wrapS = carpetTex.wrapT = THREE.RepeatWrapping; carpetTex.center.set(0.5, 0.5);
   const carpet = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 42), new THREE.MeshStandardMaterial({ map: carpetTex, roughness: 1 }));
   carpet.rotation.x = -Math.PI / 2; carpet.position.set(0, 0.01, -41); root.add(carpet);
@@ -116,9 +128,27 @@ export function createGallery(scene, colliders, { house, solo, lang }) {
 
   // ---- 盡頭的假牆與門（每一趟的終點）；解開 P09 後拿掉 ----
   const endWall = new THREE.Group(); root.add(endWall);
-  endWall.add(at(new THREE.Mesh(new THREE.BoxGeometry(5, 6, 0.3), mat('#57524c')), 0, 3, 0));
-  const loopDoor = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.6, 0.1), mat('#2e1d12')); loopDoor.position.set(0, 1.3, 0.2); endWall.add(loopDoor);
-  const handle = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), mat('#b8902e', { metalness: 1 })); handle.position.set(0.8, 1.2, 0.28); endWall.add(handle);
+  // 2026-10-22 製作人：盡頭原本是一片米色的牆＋一塊門板。改成跟走廊一樣的壁紙、護牆板，門有門框、拱頂、雕花門板
+  const paper = ART.tile(ART.wallpaper('#2a1214', '#5a4020'), 5, 6), panel = ART.tile(ART.panelling('#3a2616'), 2.5, 1);
+  const wood = mat('#2a1a10', { map: ART.tile(ART.planks('#3a2414'), 0.5, 0.5), roughness: 0.6 }), dark = mat('#1a100a', { roughness: 0.55 });
+  endWall.add(at(new THREE.Mesh(new THREE.BoxGeometry(5, 6, 0.3), [dark, dark, dark, dark, mat('#ffffff', { map: paper, roughness: 0.85 }), dark]), 0, 3, 0));
+  endWall.add(at(new THREE.Mesh(new THREE.PlaneGeometry(5, 1.2), mat('#ffffff', { map: panel })), 0, 0.6, 0.155)); // 護牆板
+  for (const [w, h, y] of [[5, 0.07, 1.2], [5, 0.14, 0.07], [5, 0.18, 5.9]]) endWall.add(at(new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.06), dark), 0, y, 0.18));
+  const frameM = mat('#2a1a10', { roughness: 0.5 });
+  for (const sx of [-1, 1]) endWall.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.22, 2.8, 0.18), frameM), sx * 1.21, 1.4, 0.2));
+  const arch = new THREE.Mesh(new THREE.TorusGeometry(1.21, 0.11, 6, 20, Math.PI), frameM); arch.position.set(0, 2.8, 0.2); endWall.add(arch);
+  const tympanum = new THREE.Mesh(new THREE.CircleGeometry(1.1, 20, 0, Math.PI), mat('#1a1008', { roughness: 0.8 })); tympanum.position.set(0, 2.8, 0.17); endWall.add(tympanum);
+  const loopDoor = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.6, 0.1), wood); loopDoor.position.set(0, 1.3, 0.2); endWall.add(loopDoor);
+  for (const sx of [-0.55, 0.55]) for (const [y, h] of [[1.85, 1.0], [0.6, 0.8]]) { // 門板上的四塊雕花框
+    const pn = new THREE.Mesh(new THREE.BoxGeometry(0.85, h, 0.03), dark); pn.position.set(sx, y, 0.265); endWall.add(pn);
+    const inner = new THREE.Mesh(new THREE.BoxGeometry(0.7, h - 0.15, 0.03), wood); inner.position.set(sx, y, 0.28); endWall.add(inner);
+  }
+  const midRail = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2.5, 0.04), dark); midRail.position.set(0, 1.3, 0.27); endWall.add(midRail);
+  for (const y of [0.5, 2.1]) { const hinge = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.05, 0.03), mat('#2a2a2e', { metalness: 0.8, roughness: 0.4 })); hinge.position.set(-0.95, y, 0.27); endWall.add(hinge); }
+  const handle = new THREE.Group(); handle.position.set(0.8, 1.2, 0.28); endWall.add(handle); // 黃銅門把（「門把換邊」的異常會移動它）
+  { const br = mat('#b8902e', { metalness: 1, roughness: 0.3 }); const plate = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.28, 0.02), br); handle.add(plate);
+    const knob = new THREE.Mesh(new THREE.SphereGeometry(0.055, 12, 8), br); knob.position.z = 0.05; handle.add(knob);
+    const hole = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.04, 0.01), mat('#050505')); hole.position.set(0, -0.09, 0.012); handle.add(hole); }
   const endCol = { minX: -X, maxX: X, minZ: 0, maxZ: 0 }; colliders.push(endCol);
   const loopThing = THINGS.find((t) => t.id === 'loop_door');
   let endZ = NORMAL_END;
