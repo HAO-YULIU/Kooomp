@@ -77,11 +77,11 @@ export class Room extends DurableObject {
       for (const old of this.ctx.getWebSockets(uid)) { try { old.close(4000, 'replaced'); } catch { /* 已關閉 */ } }
       const pair = new WebSocketPair();
       this.ctx.acceptWebSocket(pair[1], [uid]);
-      pair[1].serializeAttachment({ uid, uiLang });
+      pair[1].serializeAttachment({ uid, uiLang, dev: req.headers.get('x-dev') === '1' });
       if (!r.members[r.sim]?.online) r.sim = uid;
       await this.save();
       if (r.phase === 'playing') this.syncProfiles([uid]);
-      this.send(pair[1], { t: 'hello', you: uid });
+      this.send(pair[1], { t: 'hello', you: uid, dev: this.env.DEV_AUTH === '1' || req.headers.get('x-dev') === '1' }); // dev：畫面要不要顯示開發者工具
       this.send(pair[1], { t: 'notes', notes: r.notes?.[uid] ?? {} });
       this.broadcastState();
       return new Response(null, { status: 101, webSocket: pair[0], headers: { 'sec-websocket-protocol': 'milner' } });
@@ -198,6 +198,7 @@ export class Room extends DurableObject {
     if (!me) return;
     const reply = (m) => this.send(ws, { ...m, id: msg.id });
     const err = (error) => reply({ t: 'error', error });
+    const isDev = this.env.DEV_AUTH === '1' || !!a.dev; // 開發者：本機、製作人的測試登入、大廳管理員
 
     switch (msg.t) {
       // ----- 即時：位置、聊天、標記（不存） -----
@@ -276,14 +277,15 @@ export class Room extends DurableObject {
         if (def.seg === 'act4' && (r.act4?.lost || r.captured[uid])) return err(r.act4?.lost ? 'lost' : 'captured');
         if (!def.seg && (RESCUE_IDS.includes(pid) || SELF_IDS.includes(pid))) return err('bad_puzzle'); // 救援題用 rescue／selfrescue
         if (def.seg && SEGMENTS.indexOf(def.seg) > SEGMENTS.indexOf(r.segment)) return err('not_yet');
-        if (def.gather && r.order.some((u) => r.members[u].online && r.members[u].zone !== def.gather)) return err('gather_first');
-        if (def.needs && !r.items?.[def.needs]) return err('need_item');
+        const devSolve = !!msg.devSolve && isDev; // 開發者：直接解開（不判斷答案）
+        if (!devSolve && def.gather && r.order.some((u) => r.members[u].online && r.members[u].zone !== def.gather)) return err('gather_first');
+        if (!devSolve && def.needs && !r.items?.[def.needs]) return err('need_item');
         if (pid === 'P22' && me.char !== 'cyril') return err('not_yours'); // 西里爾的抉擇只有扮演西里爾的人能做
         const coolKey = `${pid}:${uid}`;
         if ((r.cool[coolKey] ?? 0) > Date.now()) return reply({ t: 'error', error: 'cooldown', wait: r.cool[coolKey] - Date.now() });
         const state = (r.puz[pid] ??= {});
         // 異常長廊（多人）：每個人的決定是一票，過半數同意才算數（2 人要兩票、3 人兩票、4 人三票）
-        if (def.kind === 'corridor' && r.mode === 'multi') {
+        if (def.kind === 'corridor' && r.mode === 'multi' && !devSolve) {
           if (+msg.value?.loop !== (state.n ?? 0)) return reply({ t: 'error', error: 'bad_value', reply: { loop: state.n ?? 0 } });
           const choice = msg.value?.choice === 'back' ? 'back' : 'forward';
           state.votes = { ...(state.votes?.loop === state.n ? state.votes : { loop: state.n ?? 0 }), [uid]: choice };
@@ -298,12 +300,12 @@ export class Room extends DurableObject {
           }
           state.votes = null; // 決定了：照多數的選擇判斷
         }
-        const res = judge(pid, msg.value, {
+        const res = devSolve ? { solved: true, reveal: def.reveal ?? (def.kind === 'hourglass' ? def.ans : undefined) } : judge(pid, msg.value, {
           seed: r.seed, lang: r.lang, house: CHARS[me.char], solo: r.mode === 'solo', aiHouses: this.aiHouses(), state, key: state.key ?? pid, uid,
         });
         if (res.error) { await this.save(); return reply({ t: 'error', error: res.error, ...(res.reply ? { reply: res.reply } : {}) }); }
         // 異常長廊：全隊同一條長廊，誰做決定都算；結果告訴所有人（大家一起被送回長廊起點）
-        if (def.kind === 'corridor') this.broadcast({ t: 'corridor', by: uid, ...res.reply }, (u) => u !== uid);
+        if (def.kind === 'corridor' && !devSolve) this.broadcast({ t: 'corridor', by: uid, ...res.reply }, (u) => u !== uid);
         if (res.solved) {
           r.solved[pid] = { by: uid, at: Date.now() };
           if (res.flag) r.flags[pid] = res.flag;
@@ -404,8 +406,10 @@ export class Room extends DurableObject {
         return reply({ t: 'ok' });
       }
       case 'ping': return reply({ t: 'pong' });
-      case 'dev': { // 測試用：直接跳到某一段（本機，或製作人的測試登入）
-        if (this.env.DEV_AUTH !== '1' && !uid.startsWith('test-')) return err('bad_args'); // 製作人的測試帳號也可以跳段
+      case 'dev': { // 測試用：直接跳到某一段、看答案（本機、製作人的測試登入、大廳管理員）
+        if (!isDev) return err('bad_args');
+        if (msg.list) return reply({ t: 'ok', list: Object.entries(PUZZLES).filter(([, d]) => d.seg).map(([pid, d]) => ({ pid, seg: d.seg, kind: d.kind, solo: d.solo, multi: d.multi })) });
+        if (msg.answer) { const d = PUZZLES[String(msg.answer)]; return d ? reply({ t: 'ok', ans: d.ans ?? null, kind: d.kind, reveal: d.reveal ?? null }) : err('bad_puzzle'); }
         if (msg.seed && this.env.DEV_AUTH === '1') return reply({ t: 'ok', seed: r.seed }); // 只有本機測試：救援題的答案要用種子算
         if (msg.deadline && r.act4) { r.act4.deadline = Date.now() + Math.max(0, +msg.deadline); this.ctx.storage.setAlarm(r.act4.deadline); } // 測試：倒數快轉
         else if (SEGMENTS.includes(msg.segment)) this.enterSegment(msg.segment); else return err('bad_args');

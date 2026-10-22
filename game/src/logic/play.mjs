@@ -1,9 +1,11 @@
 // 遊戲進行中：場景、劇情、謎題、赫爾嘉夫人、電腦同伴、筆記本。由 main.mjs 在遊戲開始時呼叫 startPlay()。
 import { createWorld, patrolAt, helgaSees } from '../world/world.mjs';
 import { createSender, createReceiver } from '../net/sync.mjs';
-import { say, talking, advanceDialog, setPauseHandler, panelOpen, openPanel, closePanel, el, L, LP, setPuzzleLang } from '../ui/overlay.mjs';
+import { say, talking, advanceDialog, setPauseHandler, panelOpen, openPanel, closePanel, el, L, LP, setPuzzleLang, setPanelHooks } from '../ui/overlay.mjs';
 import { openPuzzle } from '../ui/puzzles.mjs';
 import { openWand } from '../ui/wand.mjs';
+import { openTutorial, tutorialSeen } from '../ui/tutorial.mjs';
+import { createDevTools } from '../ui/devtools.mjs';
 import { setStaff, staffCast } from '../art/index.mjs';
 import { t, getLang } from './i18n.mjs';
 import { CHARS, HOUSES } from './chars.mjs';
@@ -18,7 +20,8 @@ import { createAct4 } from './act4.mjs';
 const $ = (id) => document.getElementById(id);
 const HOUR_PID = { P03: 'eldrin', P04: 'grimoire', P05: 'belmont', P06: 'ouroboros' };
 
-export function startPlay({ conn, getState, myUid, toast, dev }) {
+export function startPlay({ conn, getState, myUid, toast, dev, devUser }) {
+  let devtools = null; // 開發者測試工具（下面建立）
   const world = createWorld($('view'), getLang());
   const sender = createSender((m) => { conn.send(m); if (window.__ml) window.__ml.sent++; });
   const receiver = createReceiver();
@@ -41,6 +44,22 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
   let segment = null;
 
   setPauseHandler((p) => { world.controls.setEnabled(!p); });
+  // 謎題連進場景（2026-10-22 製作人）：調查打開的視窗，鏡頭滑到那個東西前面、視窗靠右；
+  // 在視窗裡每次操作，場景裡那個東西閃一下藍光；答錯紅光；解開金光、光點往上飄，鎖住的門轉開
+  let focusNext = null, focused = null, lastFx = 0;
+  setPanelHooks({
+    open() { $('panel').dataset.skin = skinOf(focusNext); if (!focusNext) return; focused = focusNext; world.focus(focused); document.body.classList.add('focus'); },
+    close() { if (!focused) return; focused = null; world.unfocus(); document.body.classList.remove('focus'); },
+  });
+  const panelFx = (kind) => { if (focused) world.fx(focused, kind); };
+  // 視窗外觀跟著東西：紙（傳聞、筆記、書）、石頭（門鎖、符文、石像、井）、黃銅（天平、沙漏、齒輪、星盤）、玻璃（窗、水晶、鏡子）
+  const SKINS = [['stone', /lock|door|rune|statue|braille|well|tiles|gate|mark|painting|plaque|roots|nest/], ['brass', /scale|hourglass|gear|pendulum|disk|lamp|pass|roof|sign/],
+    ['glass', /window|crystal|mirror|ball|vial/], ['paper', /note|letter|roster|notice|book|seat|chart|desk|sketch|eastern|badge|senior|cat|ladder/]];
+  const skinOf = (th) => (th ? (SKINS.find(([, re]) => re.test(th.id))?.[0] ?? '') : '');
+  for (const ev of ['click', 'input']) $('panel-body').addEventListener(ev, (e) => {
+    if (!focused || !(e.target.closest('button, input, select, canvas, .rune'))) return;
+    const now = performance.now(); if (now - lastFx < 250) return; lastFx = now; panelFx('input');
+  });
   const act2 = createAct2({ world, conn, toast, play, S, house: myHouse(), solo: S().mode === 'solo', lang: getLang() });
   $('btn-familiar').hidden = S().mode !== 'solo';
   const act3 = createAct3({ world, conn, toast, say, S, myChar: () => me()?.char, solvedByMe: (pid, r) => { onSolved(pid, myUid, r.reveal); toast(t('solved', { pid })); }, serverNow: () => Date.now() + clockOffset });
@@ -76,6 +95,7 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
 
   // ---- 狀態更新（由 main 轉來） ----
   function onState(st, before) {
+    devtools?.refresh();
     clockOffset = (st.now ?? Date.now()) - Date.now();
     const people = st.members.filter((m) => m.uid !== myUid).map((m) => ({ key: m.uid, label: m.name, char: m.char }));
     for (const c of aiChars()) people.push({ key: `ai:${c}`, label: CHARS[c][getLang()], char: c });
@@ -88,6 +108,7 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
 
   function onSolved(pid, by, reveal) {
     const st = S();
+    if (!st.solved.includes(pid) && !focused) { const th = Object.values(THINGS_BY_ID).find((x) => x.puzzle === pid && x.room === world.zone()); if (th) world.fx(th, 'solved'); } // 隊友解開：同一個房間看得到金光
     if (!st.solved.includes(pid)) st.solved.push(pid);
     if (reveal) notes[pid] = reveal;
     updateDoors();
@@ -102,6 +123,7 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
     if (panelOpen()) return;
     const tg = world.target();
     if (!tg) return;
+    focusNext = tg; setTimeout(() => { focusNext = null; }); // 這次調查打開的視窗，鏡頭看著這個東西
     if (act2.interact(tg) || act3.interact(tg) || act4.interact(tg)) return;
     if (tg.kind === 'plaques') return openPanel(L(tg.label), (body) => body.append(el('ul', { class: 'plaques' }, ...HEADMASTERS.map((h) => el('li', { text: L(h) })))));
     if (tg.kind === 'prop' && tg.text) return say([[null, tg.text.zh, tg.text.en]]);
@@ -117,7 +139,7 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
         conn, state: S(), notes, heard, revealed, toast, getLang, lib: act3.lib, solo: S().mode === 'solo',
         items: () => S().items ?? [], myHouse, aiHouse: (h) => S().mode !== 'solo' && !!S().ai?.includes(h), myChar: () => me()?.char, noise: () => conn.send({ t: 'noise', p: world.me().p }),
         near: (id, r) => { const th = THINGS_BY_ID[id]; const p = world.controls.state.pos; return !!th && Math.hypot(p.x - th.x, p.z - th.z) <= r; },
-        onSolved: (pid, r) => onSolved(pid, myUid, r.reveal),
+        onSolved: (pid, r) => onSolved(pid, myUid, r.reveal), fx: panelFx,
       });
     }
   }
@@ -167,6 +189,17 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
   });
   addEventListener('keyup', (e) => { if (e.code === 'KeyQ') holding = false; });
   $('btn-inspect').onclick = interact;
+  // 開發者測試工具（右上角 🛠）
+  devtools = devUser ? createDevTools({ conn, world, S, things: THINGS, toast, onSolved: (pid, r) => onSolved(pid, myUid, r.reveal) }) : null;
+  // 設定：亮度、重看入學指南
+  const touch = document.body.classList.contains('touch');
+  $('btn-settings').onclick = () => openPanel(t('settings'), (body) => {
+    const val = el('b', { text: `${Math.round(world.brightness * 100)}%` });
+    const slider = el('input', { type: 'range', min: '0.6', max: '1.8', step: '0.05', value: String(world.brightness), class: 'bright' });
+    slider.oninput = () => { world.setBrightness(+slider.value); val.textContent = `${Math.round(+slider.value * 100)}%`; };
+    body.append(el('div', { class: 'row' }, el('span', { text: t('brightness') }), slider, val),
+      el('button', { text: t('replay_tut'), onclick: () => { closePanel(); openTutorial({ touch }); } }));
+  });
   $('btn-wand').onclick = castWand;
   $('btn-notebook').onclick = notebook;
   $('btn-familiar').onclick = () => act2.toggleFamiliar();
@@ -227,5 +260,7 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
     onAct4: (msg) => act4.onMessage(msg),
     zoneName: (z) => L(ROOMS.find((r) => r.id === z)?.name) || z,
     setNotes(n) { Object.assign(notes, n); },
+    // 第一次進遊戲：載入完自動打開入學指南（劇情對話先等它關掉）
+    tutorial() { if (!tutorialSeen()) openTutorial({ touch }); },
   };
 }

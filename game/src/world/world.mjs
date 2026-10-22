@@ -95,7 +95,10 @@ export function createWorld(canvas, lang = 'zh') {
   let ratio = maxRatio, slowT = 0, fastT = 0;
   renderer.setPixelRatio(ratio);
   renderer.shadowMap.enabled = !isTouch;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.2;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  const EXPOSURE = 1.4; // 2026-10-22 製作人：還是有點暗（原本 1.2）；玩家可以在設定裡再調（setBrightness）
+  const savedBright = (() => { try { return +localStorage.getItem('ml_bright') || 1; } catch { return 1; } })();
+  renderer.toneMappingExposure = EXPOSURE * savedBright;
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(70, 1, 0.05, 120);
   scene.add(camera);
@@ -114,9 +117,46 @@ export function createWorld(canvas, lang = 'zh') {
 
   if (new URLSearchParams(location.search).has('dev')) window.__world = { renderer, scene, camera }; // 本機測試：量效能用
   const cullRooms = makeRoomCuller(scene); let compiledCount = -1;
+
+  // ---- 調查時鏡頭靠近（2026-10-22 製作人：謎題要連進場景）----
+  // focus(東西)：鏡頭滑到那個東西前面看著它；謎題視窗靠右，東西在畫面左邊。unfocus() 滑回玩家的眼睛。
+  const F = { on: false, t: 0, from: { p: new THREE.Vector3(), q: new THREE.Quaternion() }, to: { p: new THREE.Vector3(), q: new THREE.Quaternion() }, back: false, center: new THREE.Vector3() };
+  const ease = (x) => x * x * (3 - 2 * x);
+  function focusPose(th) {
+    const [w, h, d] = th.size ?? [0.6, 0.6, 0.6];
+    const C = new THREE.Vector3(th.x, (th.y ?? 0) + h / 2, th.z);
+    const flat = h < Math.max(w, d) * 0.4; // 桌面、星盤這種平放的東西：從斜上方往下看
+    const D = THREE.MathUtils.clamp(Math.max(w, flat ? d : h, d * 0.5) * 0.85 + 0.75, 1.0, 4.6);
+    const s = controls.state, dir = new THREE.Vector3(s.pos.x - C.x, 0, s.pos.z - C.z);
+    if (dir.lengthSq() < 1e-4) dir.set(Math.sin(s.yaw), 0, Math.cos(s.yaw));
+    dir.normalize();
+    const P = C.clone().addScaledVector(dir, D); P.y = flat ? C.y + D * 0.75 : THREE.MathUtils.clamp(C.y + 0.15, 0.9, 2.2);
+    // 不要穿過牆：限制在玩家現在的房間裡
+    const r = ROOMS.find((q) => s.pos.x >= q.x[0] && s.pos.x <= q.x[1] && s.pos.z >= q.z[0] && s.pos.z <= q.z[1]);
+    if (r) { P.x = THREE.MathUtils.clamp(P.x, r.x[0] + 0.3, r.x[1] - 0.3); P.z = THREE.MathUtils.clamp(P.z, r.z[0] + 0.3, r.z[1] - 0.3); P.y = Math.min(P.y, r.h - 0.3); }
+    const m = new THREE.Matrix4().lookAt(P, C, new THREE.Vector3(0, 1, 0));
+    return { p: P, q: new THREE.Quaternion().setFromRotationMatrix(m), c: C };
+  }
+  // 視窗靠右時，把畫面的中心往左移（東西出現在左邊三成的地方）
+  const setShift = (on) => {
+    const w = innerWidth, h = innerHeight, docked = on && w > h;
+    if (docked) { camera.aspect = (w * 1.4) / h; camera.setViewOffset(w * 1.4, h, w * 0.4, 0, w, h); }
+    else { camera.clearViewOffset(); camera.aspect = w / h; }
+    camera.updateProjectionMatrix();
+  };
+  // ---- 謎題的特效：在東西的位置放光圈、光點，房間裡一盞一直存在的燈（平常亮度 0，不會重新編譯）----
+  const fxLight = new THREE.PointLight('#ffd27a', 0, 5, 1.6); scene.add(fxLight);
+  const fxRing = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.5, 48), new THREE.MeshBasicMaterial({ color: '#ffd27a', transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }));
+  fxRing.renderOrder = 6; scene.add(fxRing);
+  const sparkGeo = new THREE.BufferGeometry(), SN = 80, sparkPos = new Float32Array(SN * 3), sparkVel = new Float32Array(SN * 3);
+  sparkGeo.setAttribute('position', new THREE.BufferAttribute(sparkPos, 3));
+  const sparks = new THREE.Points(sparkGeo, new THREE.PointsMaterial({ color: '#ffd27a', size: 0.05, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }));
+  sparks.frustumCulled = false; scene.add(sparks);
+  const FX = { t: 9, dur: 1, kind: null, color: new THREE.Color(), power: 0 };
+  const FX_KIND = { input: ['#9fc4ff', 0.45, 0.6, 8], wrong: ['#ff4a3a', 0.8, 1.6, 0], solved: ['#ffd27a', 2.2, 6, 80], open: ['#c9a86a', 0.7, 1.2, 20] }; // 顏色、秒數、燈的亮度、光點數
   const avatars = new Map(); // uid 或 'ai:角色' → Group
   const marks = [];
-  const resize = () => { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); };
+  const resize = () => { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); if (camera.view?.enabled) setShift?.(true); };
   addEventListener('resize', resize); resize();
 
   let dark = null; // 熄燈前的亮度
@@ -127,6 +167,7 @@ export function createWorld(canvas, lang = 'zh') {
   return {
     controls, camera, scene, world,
     zone() { return world.roomAt(controls.state.pos.x, controls.state.pos.z); },
+    roomOf: (x, z) => ROOMS.find((r) => x >= r.x[0] && x <= r.x[1] && z >= r.z[0] && z <= r.z[1]) ?? null,
     me() { const s = controls.state; return { z: this.zone(), p: [s.pos.x, s.pos.z], v: [vel.x, vel.z], y: s.yaw }; },
     teleport({ x, z, yaw = 0 }) { controls.state.pos.set(x, 1.6, z); controls.state.yaw = yaw; controls.state.pitch = 0; lastPos.copy(controls.state.pos); },
     lookPoint() {
@@ -178,6 +219,33 @@ export function createWorld(canvas, lang = 'zh') {
       helga.visible = !!state;
       if (state) { helga.position.set(state.x, 0, state.z); helga.rotation.y = state.yaw; }
     },
+    brightness: savedBright,
+    setBrightness(v) { this.brightness = v; renderer.toneMappingExposure = EXPOSURE * v; try { localStorage.setItem('ml_bright', String(v)); } catch { /* 無痕模式 */ } },
+    focus(th) {
+      if (!th) return;
+      const pose = focusPose(th); F.center.copy(pose.c);
+      F.from.p.copy(camera.position); F.from.q.copy(camera.quaternion); F.to.p.copy(pose.p); F.to.q.copy(pose.q);
+      F.on = true; F.back = false; F.t = 0; setShift(true); this.fx(null, 'open');
+    },
+    unfocus() {
+      if (!F.on || F.back) return;
+      F.back = true; F.t = 0; F.from.p.copy(camera.position); F.from.q.copy(camera.quaternion); setShift(false);
+    },
+    // 特效：kind＝'input'（每次操作：小藍光）｜'wrong'（答錯：紅光）｜'solved'（解開：金光、光點往上飄）｜'open'（打開時）
+    fx(th, kind) {
+      const k = FX_KIND[kind]; if (!k) return;
+      const C = th ? new THREE.Vector3(th.x, (th.y ?? 0) + (th.size?.[1] ?? 0.6) / 2, th.z) : F.center;
+      FX.t = 0; FX.kind = kind; FX.color.set(k[0]); FX.dur = k[1]; FX.power = k[2];
+      fxLight.color.copy(FX.color); fxLight.position.copy(C).add(new THREE.Vector3(0, 0.3, 0));
+      fxRing.position.copy(C); fxRing.lookAt(camera.position); fxRing.material.color.copy(FX.color); fxRing.scale.setScalar(0.4);
+      sparks.material.color.copy(FX.color);
+      for (let i = 0; i < SN; i++) {
+        const on = i < k[3], a = Math.random() * Math.PI * 2, r = Math.random() * 0.4;
+        sparkPos.set(on ? [C.x + Math.cos(a) * r, C.y - 0.2 + Math.random() * 0.4, C.z + Math.sin(a) * r] : [0, -999, 0], i * 3);
+        sparkVel.set([Math.cos(a) * 0.15, 0.4 + Math.random() * 0.7, Math.sin(a) * 0.15], i * 3);
+      }
+      sparkGeo.attributes.position.needsUpdate = true;
+    },
     tired: false, // 第四幕：跑太久喘不過氣，只能用走的
     frame(dt, peers, myZone) {
       const bx = controls.state.pos.x, bz = controls.state.pos.z;
@@ -189,6 +257,22 @@ export function createWorld(canvas, lang = 'zh') {
       // 場景多了新東西（例如新的一幕蓋好）就先把材質編譯好，走進去時才不會卡一下（先編譯，再藏起遠的房間）
       if (scene.children.length !== compiledCount) { compiledCount = scene.children.length; renderer.compile(scene, camera); }
       world.lightRoom(myZone); cullRooms(myZone);
+      // 鏡頭靠近／滑回來
+      if (F.on) {
+        F.t = Math.min(1, F.t + dt / (F.back ? 0.45 : 0.6)); const k = ease(F.t);
+        if (F.back) { const p = camera.position.clone(), q = camera.quaternion.clone(); camera.position.lerpVectors(F.from.p, p, k); camera.quaternion.slerpQuaternions(F.from.q, q, k); if (F.t >= 1) F.on = false; }
+        else { camera.position.lerpVectors(F.from.p, F.to.p, k); camera.quaternion.slerpQuaternions(F.from.q, F.to.q, k); }
+      }
+      // 特效
+      if (FX.t < FX.dur) {
+        FX.t += dt; const u = Math.min(1, FX.t / FX.dur), fade = 1 - u;
+        fxLight.intensity = FX.power * Math.sin(Math.PI * Math.min(1, u * 1.6)) * (FX.kind === 'wrong' ? (0.6 + 0.4 * Math.sin(FX.t * 40)) : 1);
+        fxRing.material.opacity = 0.8 * fade; fxRing.scale.setScalar(0.4 + u * (FX.kind === 'solved' ? 3 : 1.2));
+        sparks.material.opacity = fade;
+        for (let i = 0; i < SN; i++) { sparkPos[i * 3] += sparkVel[i * 3] * dt; sparkPos[i * 3 + 1] += sparkVel[i * 3 + 1] * dt; sparkPos[i * 3 + 2] += sparkVel[i * 3 + 2] * dt; }
+        sparkGeo.attributes.position.needsUpdate = true;
+        if (FX.t >= FX.dur) { fxLight.intensity = 0; fxRing.material.opacity = 0; sparks.material.opacity = 0; }
+      }
       vel.copy(controls.state.pos).sub(lastPos).divideScalar(Math.max(dt, 1e-3)); vel.y = 0; lastPos.copy(controls.state.pos);
       for (const [uid, p] of peers) {
         const a = avatars.get(uid); if (!a) continue;

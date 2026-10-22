@@ -4,6 +4,7 @@ import { HOUSES, CHARS, charOfHouse } from './logic/chars.mjs';
 import { signIn, lobbyGate, testPanel, isTest, devLogin } from './net/platform.mjs';
 import { createRoom, roomInfo, connectRoom, mySave } from './net/room.mjs';
 import { openSorting } from './ui/sorting.mjs';
+import { DefaultLoadingManager } from 'three';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -31,8 +32,6 @@ const AGE_KEY = 'ml_age_ok';
 const ageOk = () => { try { return sessionStorage.getItem(AGE_KEY) === '1'; } catch { return false; } };
 $('age-ok').onclick = () => { try { sessionStorage.setItem(AGE_KEY, '1'); } catch { /* 無痕模式 */ } boot(); };
 $('age-no').onclick = () => { $('age-bye').hidden = false; $('age-ok').hidden = true; $('age-no').hidden = true; };
-const ageTags = () => { $('age-tags').innerHTML = ''; for (const x of t('age_tags').split('|')) $('age-tags').append(Object.assign(document.createElement('span'), { textContent: x })); };
-ageTags(); for (const b of document.querySelectorAll('[data-lang]')) b.addEventListener('click', ageTags);
 if (ageOk() && !params.has('age')) boot(); else show('s-age');
 
 // ---------- 登入 ----------
@@ -94,7 +93,7 @@ async function showSave() {
 }
 
 // ---------- 房間 ----------
-let conn = null, state = null, myUid = null;
+let conn = null, state = null, myUid = null, devUser = false; // devUser：伺服器說是開發者（顯示 🛠 測試工具）
 function enter(code) {
   state = null;
   conn = connectRoom(code, {
@@ -110,7 +109,7 @@ function enter(code) {
 
 function onMessage(msg) {
   switch (msg.t) {
-    case 'hello': myUid = msg.you; break;
+    case 'hello': myUid = msg.you; devUser = !!msg.dev; break;
     case 'notes': pendingNotes = msg.notes; game?.setNotes(msg.notes); break;
     case 'state': {
       const before = state;
@@ -247,22 +246,58 @@ function setupFullscreen() {
 
 // ---------- 遊戲 ----------
 let game = null, starting = false, pendingNotes = null;
+// 載入畫面：腳本 15%、模型（角色、法杖、守夜人）70%、畫面準備（編譯材質、前幾格）15%
+function loadingScreen() {
+  const el = $('loading'), tips = t('loading_tips').split('|');
+  el.hidden = false; $('loading-text').textContent = t('loading');
+  let tip = Math.floor(Math.random() * tips.length);
+  const showTip = () => { $('loading-tip').textContent = '✧ ' + tips[tip++ % tips.length] + ' ✧'; };
+  showTip(); const tipTimer = setInterval(showTip, 3500);
+  const safety = setTimeout(() => { el.hidden = true; }, 60000); // 萬一出錯，最多 60 秒也會打開，不會一直卡在載入畫面
+  let shown = 0, target = 0.03, models = { done: 0, total: 0 }, stage = 'script';
+  DefaultLoadingManager.onProgress = (_, done, total) => { models = { done, total }; };
+  const anim = setInterval(() => {
+    const m = models.total ? models.done / models.total : 0;
+    target = stage === 'script' ? 0.12 : stage === 'models' ? 0.15 + 0.7 * m : 1;
+    shown += (target - shown) * 0.15; $('loading-bar').style.width = `${(shown * 100).toFixed(1)}%`; $('loading-pct').textContent = `${Math.round(shown * 100)}%`;
+  }, 50);
+  return {
+    scriptsDone() { stage = 'models'; },
+    // 等模型都載完（開始載之後 0.8 秒內沒有新的要載），最多等 30 秒
+    async ready() {
+      const t0 = performance.now(); let idle = 0;
+      while (performance.now() - t0 < 30000) {
+        await new Promise((r) => setTimeout(r, 100));
+        idle = models.total && models.done >= models.total ? idle + 100 : 0;
+        if (idle >= 800 || (!models.total && performance.now() - t0 > 3000)) break;
+      }
+      stage = 'gpu'; $('loading-text').textContent = t('loading_done');
+      await new Promise((r) => setTimeout(r, 700)); // 先畫幾格（材質編譯）再打開
+      clearInterval(anim); clearInterval(tipTimer); clearTimeout(safety); $('loading-bar').style.width = '100%'; $('loading-pct').textContent = '100%';
+      el.classList.add('out'); setTimeout(() => { el.hidden = true; el.classList.remove('out'); }, 600);
+    },
+  };
+}
+
 async function startGame() {
   if (game || starting) return;
   starting = true;
+  const loading = loadingScreen();
   closeStage(); $('backdrop').hidden = true;
   for (const s of screens) $(s).hidden = true;
   setupFullscreen();
   $('view').hidden = false; $('hud').hidden = false; $('dev').hidden = !DEV;
   const { startPlay } = await import('./logic/play.mjs');
+  loading.scriptsDone();
   // 手機：遊戲中強制橫向（Android 全螢幕時會真的鎖住；iPhone 只能蓋提示）
   const orient = await import('../../prototype/src/orient.mjs');
   orient.initOrientation($('rotate'));
   orient.requireOrientation('landscape', { text: t('rotate_landscape') });
-  game = startPlay({ conn, getState: () => state, myUid, toast, dev: DEV });
+  game = startPlay({ conn, getState: () => state, myUid, toast, dev: DEV, devUser: devUser || DEV });
   if (pendingNotes) game.setNotes(pendingNotes);
   game.onState(state, null);
   renderTeam();
+  loading.ready().then(() => game.tutorial());
 }
 function renderTeam() {
   if (!state) return;

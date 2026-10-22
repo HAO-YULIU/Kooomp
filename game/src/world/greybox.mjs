@@ -37,6 +37,7 @@ export function buildWorld(scene, { rooms, doors, things }, { lowQuality = false
   const colliders = [];
   const doorState = new Map(); // id → { mesh, collider, open }
   const thingMeshes = new Map(); // id → mesh
+  let doorsReady = false; // 蓋場景時本來就開著的門直接不見；之後解開才開的門，轉開（看得到門打開）
 
   // 燈只有一盞，跟著玩家換房間（每個房間一盞燈的話，手機會很吃力）；別的房間保持黑暗
   const roomLight = new THREE.PointLight('#ffcf8a', lowQuality ? 30 : 40, 30, 1.6); group.add(roomLight);
@@ -96,10 +97,24 @@ export function buildWorld(scene, { rooms, doors, things }, { lowQuality = false
   function setDoor(id, open) {
     const st = doorState.get(id); if (!st || st.open === open) return;
     st.open = open;
-    st.mesh.visible = !open;
+    if (open && doorsReady) swing(st); else { st.mesh.visible = !open; if (st.pivot) st.pivot.rotation.y = 0; }
     const i = colliders.indexOf(st.collider);
     if (open && i >= 0) colliders.splice(i, 1);
     if (!open && i < 0) colliders.push(st.collider);
+  }
+
+  // 門往房間裡轉開（鉸鏈在門的一邊），1 秒
+  function swing(st) {
+    const d = st.door;
+    if (!st.pivot) {
+      st.pivot = new THREE.Group();
+      st.pivot.position.set(d.axis === 'x' ? d.x - d.w / 2 : d.x, 0, d.axis === 'x' ? d.z : d.z - d.w / 2);
+      group.add(st.pivot); st.pivot.updateMatrixWorld(true); st.pivot.attach(st.mesh);
+    }
+    st.mesh.visible = true;
+    const t0 = performance.now(), to = d.axis === 'x' ? -1.75 : 1.75;
+    const step = () => { const k = Math.min(1, (performance.now() - t0) / 1000); st.pivot.rotation.y = to * (1 - (1 - k) ** 3); if (k < 1 && st.open) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
   }
 
   // ---- 可以調查的東西 ----
@@ -115,6 +130,7 @@ export function buildWorld(scene, { rooms, doors, things }, { lowQuality = false
     for (const f of decorators.thing) f({ thing: t, mesh, group, THREE });
   }
 
+  doorsReady = true;
   const roomAt = (x, z) => rooms.find((r) => x >= r.x[0] && x <= r.x[1] && z >= r.z[0] && z <= r.z[1])?.id ?? null;
   const bounds = {
     minX: Math.min(...rooms.map((r) => r.x[0])), maxX: Math.max(...rooms.map((r) => r.x[1])),

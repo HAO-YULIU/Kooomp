@@ -20,7 +20,7 @@ const CAST = [
   { name: '西里爾', en: 'Cyril・烏洛波斯', desc: '主角。嘴毒的銜尾會之子。穿制服＋墨綠長袍。沃恩的身體換上原本的金髮、固定的冷笑表情（會眨眼、說話、走路）。', load: (s) => loadCyrilCC(s, COSTUMES.cyril) },
   { name: '守夜人 葛雷', en: 'Greer the Night Warden', desc: '第一章的追逐者。駝背、提著綠色的燈。有 Mixamo 的四個動作，按「換動作」看。原檔貼圖沒有附上，全部用程式上色。', load: (s) => loadWarden(s) },
   { name: '校長 奧德里克', en: 'Headmaster Aldric Milner', desc: '沃恩的臉，白髮、長白鬍子、紫金色長袍。', load: (s) => SUPPORT.aldric(s) },
-  { name: '副校長 塞巴斯汀', en: 'Vice-Principal Sebastian Moray', desc: '西里爾的父親，用西里爾的模型改的：更高、深色頭髮夾著灰白、黑銀長袍。', load: (s) => loadCyril(s, { house: { main: '#0c0c10', trim: '#9aa0a8' }, hair: '#22201e', hairTip: '#8a857c', iris: '#5a6a62', skin: '#e8c8b2', height: 1.88 }) },
+  { name: '副校長 塞巴斯汀', en: 'Vice-Principal Sebastian Moray', desc: '西里爾的父親，跟西里爾同一副身體和髮型：更高、深色頭髮夾著灰白、眉頭深鎖、黑銀長袍。', load: (s) => loadCyrilCC(s, COSTUMES.moray) },
   { name: '舍監 赫爾嘉夫人', en: 'Madam Helga', desc: '月晞的臉，換上艾洛拉模型的短捲髮（灰白色）和眼鏡，看不出是同一個人。', load: async (s) => loadCC(s, { body: 'female', house: { main: '#3a3a40', trim: '#e8e4dc' }, hair: '#6a655c', hairTip: '#c8c2b8', skin: '#e8c8b4', cloakScale: 0.98, height: 1.02, hideHair: true, ...COSTUMES.helga,
     headGear: await loadHairSet([{ from: 'elora', parts: ['Scalp'], hair: '#6a655c', hairTip: '#c8c2b8' }, { from: 'elora', parts: ['glasses'] }]) }) },
   { name: '魔藥學教授 薇拉', en: 'Professor Vera Knox', desc: '艾洛拉的臉，換上月晞模型的長髮和空氣瀏海（深紅棕色），看不出是同一個人。', load: async (s) => loadCC(s, { body: 'elora', house: { main: '#1a2a20', trim: '#7a6a3a' }, hair: '#3a1610', hairTip: '#6a2a1a', skin: '#ecc8b0', height: 0.93, cloakScale: 0.92, hideHair: true, ...COSTUMES.knox,

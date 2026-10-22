@@ -23,7 +23,7 @@ export const SCRIPT = {
     ['cyril', '一座會走的鐘，真了不起。你明天要不要也去崇拜一下水壺？', 'A clock that works. Astonishing. Shall we go worship a kettle tomorrow?'],
     ['yuexi', '……', '…'],
     ['elora', '別理他們。來，喝點水，暈船的時候看遠一點會比較好。', 'Ignore them. Here, have some water — it helps to look far away when you’re seasick.'],
-    [null, '（WASD／搖桿移動，滑鼠／右半邊畫面轉視角，E／「調查」查看東西。往大廳走。）', '(Move with WASD / the stick, look with the mouse / right side of the screen, E / “Inspect” to examine things. Head for the hall.)'],
+    [null, '（WASD／搖桿移動，滑鼠／右半邊畫面轉視角，E／「探查」查看東西。往大廳走。）', '(Move with WASD / the stick, look with the mouse / right side of the screen, E / “Inspect” to examine things. Head for the hall.)'],
   ],
   'enter:hall': [
     [null, '大廳中央立著分院鏡。新生們一個一個站到它面前。', 'The Sorting Mirror stands in the middle of the hall. One by one, the first-years step before it.'],

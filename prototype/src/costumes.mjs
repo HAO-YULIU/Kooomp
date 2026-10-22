@@ -18,6 +18,12 @@ export const COSTUMES = {
     shoes: { shoe: '#0e0a08', sock: '#16161a', shine: true },
     outfit: [{ name: 'boy', noSleeves: true }, { name: 'robe', color: '#163a26', trim: '#9aa2a8', hem: 0.5, flare: 0.08, sleeveFlare: 0, openTop: 0.03, openWaist: 0.02, openHem: 0.12 }] },
   // 鞋子（shoes.mjs）：女生樂福鞋＋過膝襪（艾洛拉白襪、月晞黑襪），男生黑皮鞋；沒寫的人穿預設的深色鞋
+  // 副校長塞巴斯汀・莫瑞（西里爾的父親）：跟西里爾同一副身體和髮型（看得出是父子），更高、深色頭髮夾著灰白、
+  // 臉固定成眉頭深鎖、鼻翼微皺的冷峻表情（不笑），黑底銀邊、前面合起來的長袍
+  moray: { cloak: false, armDrop: 1.15, height: 1.06, skin: '#e8c8b2', hairColor: { hair: '#22201e', hairTip: '#8a857c' },
+    face: { A02_Brow_Down_Left: 0.55, A03_Brow_Down_Right: 0.55, A16_Eye_Squint_Left: 0.35, A17_Eye_Squint_Right: 0.35, A23_Nose_Sneer_Left: 0.2, A24_Nose_Sneer_Right: 0.2, Mouth_Frown: 0.25 },
+    shoes: { shoe: '#0a0808', sock: '#141418', shine: true },
+    outfit: [{ name: 'robe', color: '#0c0c10', trim: '#9aa0a8', hem: 0.08, sleeveFlare: 0.06, openTop: 0, openWaist: 0, openHem: 0 }] },
   // 老師：前面整個合起來的長袍（裡面沒穿衣服，開口會露出皮膚）
   helga: { cloak: false, armDrop: 1.15, outfit: [{ name: 'robe', color: '#4a4a52', trim: '#c8c2b8', hem: 0.1, sleeveFlare: 0.04, openTop: 0, openWaist: 0, openHem: 0 }] }, // 舍監：灰
   knox: { cloak: false, armDrop: 1.15, outfit: [{ name: 'robe', color: '#1e3326', trim: '#9a8a4a', hem: 0.1, sleeveFlare: 0.07, openTop: 0, openWaist: 0, openHem: 0 }] }, // 魔藥學教授：墨綠

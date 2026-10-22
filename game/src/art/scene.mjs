@@ -144,7 +144,7 @@ function cladding(group, r, st) {
 // 1. 整個場景加一層柔和的環境光（半球光：上面偏冷、下面偏暖），不會投影，手機也不吃力。
 // 2. 房間燈調亮、照得遠一點（光變暗得慢一點）。
 // 熄燈的劇情（world.setDark：房間燈關掉）時，環境光也跟著關，暗的地方還是暗。
-const BRIGHT = { ambient: 1.6, room: 2.2, decay: 1.1 };
+const BRIGHT = { ambient: 2.3, room: 2.6, decay: 1.0 }; // 2026-10-22 製作人：還是有點暗，再調亮（原本 1.6、2.2、1.1）
 function brighten(group) {
   const roomLight = group.children.find((o) => o.isPointLight); if (!roomLight) return;
   roomLight.intensity *= BRIGHT.room; roomLight.decay = BRIGHT.decay;

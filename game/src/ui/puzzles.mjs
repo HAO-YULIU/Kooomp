@@ -25,8 +25,8 @@ export function openPuzzle(pid, thing, ctx) {
       status.textContent = '…';
       const r = await ctx.conn.request({ t: 'answer', pid, value });
       if (r.t === 'error') { status.textContent = errText(r.error, { s: Math.ceil((r.wait ?? 0) / 1000) }); return r; }
-      if (r.solved) { status.textContent = t('p_solved'); ctx.onSolved(pid, r); setTimeout(closePanel, 900); }
-      else status.textContent = t('wrong');
+      if (r.solved) { status.textContent = t('p_solved'); ctx.fx?.('solved'); ctx.onSolved(pid, r); setTimeout(closePanel, 1400); } // 多停一下，看得到場景裡的金光
+      else { status.textContent = t('wrong'); ctx.fx?.('wrong'); }
       return r;
     };
     if (solved) body.append(el('p', { class: 'p-done', text: t('p_already') }));

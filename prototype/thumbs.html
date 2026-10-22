@@ -10,7 +10,7 @@ import { CHARS, HOUSES } from '../game/src/logic/chars.mjs';
 setCharacterBase(new URLSearchParams(location.search).get('base') || '../game/models/chars/');
 const pv = createPreview(document.getElementById('c'));
 window.shot = async (key, mode = 'bust') => {
-  const hc = HOUSES[CHARS[key].house].color;
+  const hc = CHARS[key] ? HOUSES[CHARS[key].house].color : '#9aa0a8'; // 配角沒有學院色
   document.body.style.background = `radial-gradient(circle at 50% 35%, color-mix(in srgb, ${hc} 30%, #1a1418), #07060a 75%)`;
   await pv.show(key, hc);
   await new Promise((r) => { const f = () => (pv.ready() ? r() : setTimeout(f, 100)); f(); });

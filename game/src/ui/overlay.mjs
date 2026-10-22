@@ -33,9 +33,11 @@ export function advanceDialog() { if (showing) next(); }
 
 // ---------- 謎題視窗 ----------
 let current = null;
+let hooks = { open() {}, close() {} }; // play.mjs：打開時鏡頭靠近調查的東西、關掉時滑回來
+export const setPanelHooks = (h) => { hooks = h; };
 export function openPanel(title, build) {
   closePanel();
-  hold();
+  hold(); hooks.open();
   const panel = $('panel'); panel.hidden = false;
   $('panel-title').textContent = title;
   const body = $('panel-body'); body.innerHTML = '';
@@ -46,7 +48,7 @@ export function openPanel(title, build) {
 export function closePanel() {
   if (!current) return;
   current.onClose?.(); current = null;
-  $('panel').hidden = true; $('panel-body').innerHTML = '';
+  $('panel').hidden = true; $('panel-body').innerHTML = ''; hooks.close();
   release();
 }
 export const panelOpen = () => !!current;
