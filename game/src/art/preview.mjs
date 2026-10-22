@@ -99,6 +99,6 @@ export function createPreview(canvas) {
     camera, renderer, setSpin(a) { spin = a; spinV = 0; drag = { x: 0, s: a }; }, // 烘焙頭像用：固定角度
     ready: () => !!cur && fade >= 1,
     headY() { let y = cur ? new THREE.Box3().setFromObject(cur.root).max.y - 0.13 : 1.5; cur?.root.updateMatrixWorld(true); cur?.root.traverse((o) => { if (o.isBone && /_Head$/.test(o.name)) y = o.getWorldPosition(new THREE.Vector3()).y; }); return y; },
-    dispose() { alive = false; ro.disconnect(); renderer.dispose(); renderer.forceContextLoss(); },
+    dispose() { alive = false; ro.disconnect(); renderer.dispose(); }, // 不要 forceContextLoss：在一些電腦上會讓網頁停住好幾秒
   };
 }

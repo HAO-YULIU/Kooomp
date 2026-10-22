@@ -1,7 +1,7 @@
 // 第一章的 3D 世界：灰盒場景（greybox.mjs）＋第一人稱操作＋隊友、電腦同伴、赫爾嘉夫人、標記、可以調查的東西。
 // 隊友和同伴目前是簡單的人形，正式的角色模型由帳號二做好後換上。
 import * as THREE from 'three';
-import '../art/index.mjs'; // 帳號二的美術掛鉤（守夜人的正式模型），要在蓋場景之前註冊
+import { reactThing, syncSolved, tickRigs } from '../art/index.mjs'; // 帳號二的美術掛鉤（守夜人的正式模型、謎題的場景反應），要在蓋場景之前註冊
 import { loadCharacter } from '../art/characters.mjs';
 import { createControls } from '../../../prototype/src/controls.mjs';
 import { buildWorld } from './greybox.mjs';
@@ -96,6 +96,8 @@ export function createWorld(canvas, lang = 'zh') {
   renderer.setPixelRatio(ratio);
   renderer.shadowMap.enabled = !isTouch;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  // 不要每個材質都同步檢查有沒有編譯錯誤（會逼瀏覽器等編譯完，Windows 電腦上會卡好幾秒）；本機測試（?dev）才檢查
+  renderer.debug.checkShaderErrors = new URLSearchParams(location.search).has('dev');
   const EXPOSURE = 1.4; // 2026-10-22 製作人：還是有點暗（原本 1.2）；玩家可以在設定裡再調（setBrightness）
   const savedBright = (() => { try { return +localStorage.getItem('ml_bright') || 1; } catch { return 1; } })();
   renderer.toneMappingExposure = EXPOSURE * savedBright;
@@ -116,7 +118,7 @@ export function createWorld(canvas, lang = 'zh') {
   helga.visible = false; scene.add(helga);
 
   if (new URLSearchParams(location.search).has('dev')) window.__world = { renderer, scene, camera }; // 本機測試：量效能用
-  const cullRooms = makeRoomCuller(scene); let compiledCount = -1;
+  const cullRooms = makeRoomCuller(scene); let compiledRoots = -1, compiling = null;
 
   // ---- 調查時鏡頭靠近（2026-10-22 製作人：謎題要連進場景）----
   // focus(東西)：鏡頭滑到那個東西前面看著它；謎題視窗靠右，東西在畫面左邊。unfocus() 滑回玩家的眼睛。
@@ -219,11 +221,12 @@ export function createWorld(canvas, lang = 'zh') {
       helga.visible = !!state;
       if (state) { helga.position.set(state.x, 0, state.z); helga.rotation.y = state.yaw; }
     },
+    ready: () => compiling ?? Promise.resolve(), // 材質都編譯好了（載入畫面等它）
     brightness: savedBright,
     setBrightness(v) { this.brightness = v; renderer.toneMappingExposure = EXPOSURE * v; try { localStorage.setItem('ml_bright', String(v)); } catch { /* 無痕模式 */ } },
     focus(th) {
       if (!th) return;
-      const pose = focusPose(th); F.center.copy(pose.c);
+      const pose = focusPose(th); F.center.copy(pose.c); F.thing = th;
       F.from.p.copy(camera.position); F.from.q.copy(camera.quaternion); F.to.p.copy(pose.p); F.to.q.copy(pose.q);
       F.on = true; F.back = false; F.t = 0; setShift(true); this.fx(null, 'open');
     },
@@ -234,6 +237,7 @@ export function createWorld(canvas, lang = 'zh') {
     // 特效：kind＝'input'（每次操作：小藍光）｜'wrong'（答錯：紅光）｜'solved'（解開：金光、光點往上飄）｜'open'（打開時）
     fx(th, kind) {
       const k = FX_KIND[kind]; if (!k) return;
+      if (kind !== 'input') reactThing(th ?? F.thing, kind); // 機關：打開、答錯、解開
       const C = th ? new THREE.Vector3(th.x, (th.y ?? 0) + (th.size?.[1] ?? 0.6) / 2, th.z) : F.center;
       FX.t = 0; FX.kind = kind; FX.color.set(k[0]); FX.dur = k[1]; FX.power = k[2];
       fxLight.color.copy(FX.color); fxLight.position.copy(C).add(new THREE.Vector3(0, 0.3, 0));
@@ -246,6 +250,8 @@ export function createWorld(canvas, lang = 'zh') {
       }
       sparkGeo.attributes.position.needsUpdate = true;
     },
+    react: (th, name, data) => reactThing(th, name, data), // 謎題視窗裡的操作 → 場景裡的機關
+    syncSolved, // 已經解開的題目：機關擺成解開的樣子
     tired: false, // 第四幕：跑太久喘不過氣，只能用走的
     frame(dt, peers, myZone) {
       const bx = controls.state.pos.x, bz = controls.state.pos.z;
@@ -255,7 +261,13 @@ export function createWorld(canvas, lang = 'zh') {
         if (d > max) { controls.state.pos.x = bx + (dx / d) * max; controls.state.pos.z = bz + (dz / d) * max; }
       }
       // 場景多了新東西（例如新的一幕蓋好）就先把材質編譯好，走進去時才不會卡一下（先編譯，再藏起遠的房間）
-      if (scene.children.length !== compiledCount) { compiledCount = scene.children.length; renderer.compile(scene, camera); }
+      // 只在場景的大區塊（userData.static）變多時做一次，而且用非同步的版本：
+      // 同步編譯在 Windows 電腦上會讓網頁停住好幾秒（瀏覽器會說「網頁沒有回應」）；放標記、加角色不重新編譯
+      const roots = scene.children.filter((o) => o.userData.static).length;
+      if (roots !== compiledRoots && !compiling) {
+        compiledRoots = roots;
+        compiling = (renderer.compileAsync ? renderer.compileAsync(scene, camera) : Promise.resolve()).catch(() => {}).finally(() => { compiling = null; });
+      }
       world.lightRoom(myZone); cullRooms(myZone);
       // 鏡頭靠近／滑回來
       if (F.on) {
@@ -263,6 +275,7 @@ export function createWorld(canvas, lang = 'zh') {
         if (F.back) { const p = camera.position.clone(), q = camera.quaternion.clone(); camera.position.lerpVectors(F.from.p, p, k); camera.quaternion.slerpQuaternions(F.from.q, q, k); if (F.t >= 1) F.on = false; }
         else { camera.position.lerpVectors(F.from.p, F.to.p, k); camera.quaternion.slerpQuaternions(F.from.q, F.to.q, k); }
       }
+      tickRigs(dt);
       // 特效
       if (FX.t < FX.dur) {
         FX.t += dt; const u = Math.min(1, FX.t / FX.dur), fade = 1 - u;

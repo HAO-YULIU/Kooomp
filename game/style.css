@@ -474,3 +474,15 @@ body.touch { -webkit-user-select: none; user-select: none; -webkit-touch-callout
 body.touch input, body.touch textarea { -webkit-user-select: text; user-select: text; font-size: max(16px, 1em); } /* 輸入框字小於 16px 時 iPhone 會自動放大 */
 #view, #stick { touch-action: none; }
 button, a, input, select, canvas, .choice { touch-action: manipulation; }
+/* 載入畫面的動畫：只用 transform（電腦忙著蓋學校時也會繼續轉） */
+.loading-circle { position: relative; width: 92px; height: 92px; margin-bottom: 4px; }
+.loading-circle i { position: absolute; inset: 0; border-radius: 50%; border: 2px solid transparent; border-top-color: #f3d98e; border-bottom-color: rgba(201,168,106,.35); animation: spin 1.6s linear infinite; will-change: transform; }
+.loading-circle i + i { inset: 14px; border-top-color: #9fc4ff; border-bottom-color: rgba(159,196,255,.3); animation-duration: 2.4s; animation-direction: reverse; }
+.loading-circle b { position: absolute; inset: 0; display: grid; place-items: center; font-size: 26px; color: #f3d98e; text-shadow: 0 0 14px rgba(243,217,142,.8); animation: pulse 1.6s ease-in-out infinite; will-change: transform; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse { 50% { transform: scale(1.25); } }
+#loading .bar { position: relative; }
+#loading .bar::after { content: ""; position: absolute; top: 0; bottom: 0; width: 30%; background: linear-gradient(90deg, transparent, rgba(255,240,200,.55), transparent); animation: shimmer 1.4s linear infinite; will-change: transform; }
+@keyframes shimmer { from { transform: translateX(-100%); } to { transform: translateX(380%); } }
+#loading.failed .loading-circle i { animation-play-state: paused; border-top-color: #ff6a5a; }
+@media (max-height: 500px) { .loading-circle { width: 60px; height: 60px; } #loading .crest { display: none; } }

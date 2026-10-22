@@ -96,6 +96,7 @@ export function startPlay({ conn, getState, myUid, toast, dev, devUser }) {
   // ---- 狀態更新（由 main 轉來） ----
   function onState(st, before) {
     devtools?.refresh();
+    world.syncSolved(st.solved ?? []);
     clockOffset = (st.now ?? Date.now()) - Date.now();
     const people = st.members.filter((m) => m.uid !== myUid).map((m) => ({ key: m.uid, label: m.name, char: m.char }));
     for (const c of aiChars()) people.push({ key: `ai:${c}`, label: CHARS[c][getLang()], char: c });
@@ -139,7 +140,7 @@ export function startPlay({ conn, getState, myUid, toast, dev, devUser }) {
         conn, state: S(), notes, heard, revealed, toast, getLang, lib: act3.lib, solo: S().mode === 'solo',
         items: () => S().items ?? [], myHouse, aiHouse: (h) => S().mode !== 'solo' && !!S().ai?.includes(h), myChar: () => me()?.char, noise: () => conn.send({ t: 'noise', p: world.me().p }),
         near: (id, r) => { const th = THINGS_BY_ID[id]; const p = world.controls.state.pos; return !!th && Math.hypot(p.x - th.x, p.z - th.z) <= r; },
-        onSolved: (pid, r) => onSolved(pid, myUid, r.reveal), fx: panelFx,
+        onSolved: (pid, r) => onSolved(pid, myUid, r.reveal), fx: panelFx, react: (n, d) => { if (focused) world.react(focused, n, d); },
       });
     }
   }

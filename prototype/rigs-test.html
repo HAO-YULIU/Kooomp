@@ -1,0 +1,30 @@
+<!doctype html><meta charset="utf-8"><title>謎題機關測試</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}</style>
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js" } }</script>
+<!-- 帳號二的測試頁：game/src/art/react.mjs 的謎題機關。從儲存庫根目錄開伺服器。
+     window.look(題號, 東西代號) 鏡頭看著它；window.send(名稱, 資料) 送事件；window.run(秒) 跑動畫並畫一張 -->
+<script type="module">
+import * as THREE from 'three';
+import { reactThing, tickRigs, syncSolved } from '../game/src/art/index.mjs';
+import { setStaff } from '../game/src/art/staff.mjs';
+import { buildWorld } from '../game/src/world/greybox.mjs';
+import { ROOMS, DOORS, THINGS } from '../game/src/data/world-ch1.mjs';
+const renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(innerWidth, innerHeight); document.body.appendChild(renderer.domElement);
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.4;
+const scene = new THREE.Scene(); const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.05, 120); scene.add(camera);
+const world = buildWorld(scene, { rooms: ROOMS, doors: DOORS, things: THINGS });
+setStaff(null);
+const lamp = new THREE.PointLight('#ffd9a0', 2.2, 7, 1.8); camera.add(lamp);
+let cur = null;
+window.look = (pid, id, dist = 2.2, h = 0.4, side = 0) => {
+  cur = THINGS.find((x) => x.puzzle === pid && x.id.startsWith(id)); if (!cur) return 'none';
+  const r = ROOMS.find((q) => cur.x >= q.x[0] && cur.x <= q.x[1] && cur.z >= q.z[0] && cur.z <= q.z[1]); world.lightRoom(r.id);
+  const cx = (r.x[0] + r.x[1]) / 2, cz = (r.z[0] + r.z[1]) / 2; let dx = cx - cur.x, dz = cz - cur.z; let l = Math.hypot(dx, dz); if (l < 0.01) { dx = 0; dz = 1; l = 1; } dx /= l; dz /= l;
+  const C = new THREE.Vector3(cur.x, (cur.y ?? 0) + (cur.size?.[1] ?? 1) * 0.55, cur.z);
+  camera.position.set(cur.x + dx * dist - dz * side, C.y + h, cur.z + dz * dist + dx * side); camera.lookAt(C); return 'ok';
+};
+window.send = (name, data) => reactThing(cur, name, data);
+window.solveAll = (list) => syncSolved(list);
+window.run = (sec = 1) => { const n = Math.round(sec * 30); for (let i = 0; i < n; i++) tickRigs(1 / 30); renderer.render(scene, camera); return true; };
+window.ready = true;
+</script>

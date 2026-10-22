@@ -14,10 +14,13 @@ const ZODIAC = [
   ['sagittarius', '♐', '射手', 'Sagittarius'], ['capricorn', '♑', '摩羯', 'Capricorn'], ['aquarius', '♒', '水瓶', 'Aquarius'], ['pisces', '♓', '雙魚', 'Pisces'],
 ];
 
-// ctx：{ conn, state, notes, heard（聽過的傳聞）, revealed（施過光照咒的東西）, toast, onSolved }
+// 場景反應：視窗裡的操作送給場景裡的機關（art/react.mjs），例如沙漏翻轉、星盤轉環
+let react = () => {};
+// ctx：{ conn, state, notes, heard（聽過的傳聞）, revealed（施過光照咒的東西）, toast, onSolved, react }
 export function openPuzzle(pid, thing, ctx) {
   const builder = BUILD[thing.panel ?? pid];
   if (!builder) return;
+  react = ctx.react ?? (() => {});
   openPanel(L(thing.label), (body, panel) => {
     const solved = ctx.state.solved.includes(pid);
     const status = el('p', { class: 'p-status' });
@@ -50,7 +53,7 @@ function hintBox(pid, ctx) {
 }
 
 const numberInput = (submit, ph = '') => {
-  const inp = el('input', { inputmode: 'numeric', maxlength: '4', placeholder: ph, class: 'num' });
+  const inp = el('input', { inputmode: 'numeric', maxlength: '4', placeholder: ph, class: 'num', oninput: () => react('digits', { v: inp.value }) });
   const go = el('button', { text: t('answer'), onclick: () => submit(inp.value.trim()) });
   inp.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') go.click(); };
   return el('div', { class: 'row' }, inp, go);
@@ -82,7 +85,7 @@ const BUILD = {
       body.append(el('blockquote', { text: t('p03_poem') }));
     }
     const grid = el('div', { class: 'zodiac' });
-    for (const [id, sym, zh, en] of ZODIAC) grid.append(el('button', { onclick: () => submit(id) }, el('b', { text: sym }), el('small', { text: getLang() === 'en' ? en : zh })));
+    ZODIAC.forEach(([id, sym, zh, en], i) => grid.append(el('button', { onclick: () => { react('zodiac', { i }); submit(id); } }, el('b', { text: sym }), el('small', { text: getLang() === 'en' ? en : zh }))));
     body.append(el('p', { text: t('p03_ask') }), grid);
   },
 
@@ -129,6 +132,7 @@ const BUILD = {
           el('button', { class: 'small', text: t('flip'), onclick: () => act('flip', [g]) })));
       }
       clock.textContent = startAt ? t('p06_elapsed') : t('p06_ready');
+      react('sand', { 7: { ...glasses[7] }, 11: { ...glasses[11] } });
     };
     const tick = () => {
       const m = (performance.now() - startAt) / SEC; const d = m - now; now = m;
@@ -139,7 +143,7 @@ const BUILD = {
       if (!startAt) { startAt = performance.now(); now = 0; timer = setInterval(tick, 100); }
       tick();
       const tm = +now.toFixed(2);
-      if (a === 'flip') for (const k of g) { const s = glasses[k]; [s.top, s.bot] = [s.bot, s.top]; }
+      if (a === 'flip') { for (const k of g) { const s = glasses[k]; [s.top, s.bot] = [s.bot, s.top]; } react('flip', { g }); }
       actions.push(a === 'knock' ? { t: tm, a } : { t: tm, a, g });
       draw();
       if (a === 'knock') { clearInterval(timer); finish(); }
@@ -150,7 +154,7 @@ const BUILD = {
       const r = await submit(sent);
       if (!r?.solved) reset();
     };
-    const reset = () => { clearInterval(timer); startAt = 0; now = 0; actions = []; glasses[7] = { top: 0, bot: 7 }; glasses[11] = { top: 0, bot: 11 }; draw(); };
+    const reset = () => { clearInterval(timer); startAt = 0; now = 0; actions = []; glasses[7] = { top: 0, bot: 7 }; glasses[11] = { top: 0, bot: 11 }; react('reset'); draw(); };
     body.append(view, clock,
       el('div', { class: 'row' },
         el('button', { text: t('flip_both'), onclick: () => act('flip', [7, 11]) }),
@@ -167,7 +171,7 @@ const BUILD = {
     const inputs = {};
     for (const [h, codes] of Object.entries(morse)) {
       const lamp = el('span', { class: 'candle' });
-      const play = el('button', { class: 'small', text: t('p07_watch'), onclick: () => blink(lamp, codes) });
+      const play = el('button', { class: 'small', text: t('p07_watch'), onclick: () => blink(lamp, codes, (on) => react('blink', { house: h, on })) });
       inputs[h] = el('input', { inputmode: 'numeric', maxlength: '2', class: 'num', onkeydown: (e) => e.stopPropagation() });
       body.append(el('div', { class: 'row tower' }, el('b', { text: HOUSES[h][getLang()], style: `color:${HOUSES[h].color}` }), lamp, play, inputs[h]));
     }
@@ -199,6 +203,7 @@ const BUILD = {
     const rows = [0, 1, 2, 3].map((i) => {
       const house = el('select', {}, el('option', { value: '', text: '—' }), ...Object.entries(HOUSES).map(([k, v]) => el('option', { value: k, text: v[getLang()] })));
       const hour = el('select', {}, ...Array.from({ length: 12 }, (_, k) => el('option', { value: String(k + 1), text: String(k + 1) })));
+      house.onchange = hour.onchange = () => react('ring', { i, house: house.value, hour: hour.value });
       return { house, hour, row: el('div', { class: 'row' }, el('span', { class: 'ring', text: t(`p08_ring_${i}`) }), house, hour) };
     });
     body.append(...rows.map((r) => r.row),
@@ -268,7 +273,7 @@ const BUILD = {
   // P16：自己翻頁的書
   P16(body, { submit, panel }) {
     const pageEl = el('div', { class: 'flip', text: FLIP_PAGES[0] });
-    let i = 0; const timer = setInterval(() => { i = (i + 1) % FLIP_PAGES.length; pageEl.textContent = FLIP_PAGES[i]; }, 1200);
+    let i = 0; const timer = setInterval(() => { i = (i + 1) % FLIP_PAGES.length; pageEl.textContent = FLIP_PAGES[i]; react('page', { i }); }, 1200);
     panel.onClose = () => clearInterval(timer);
     const inp = el('input', { class: 'num', placeholder: t('page'), onkeydown: (e) => e.stopPropagation() });
     body.append(el('p', { text: t('p16_intro') }), pageEl, el('div', { class: 'row' }, inp, el('button', { text: t('turn_to'), onclick: () => submit(inp.value.trim()) })));
@@ -279,7 +284,7 @@ const BUILD = {
   P17(body, { submit }) {
     const bits = [1, 1, 1, 1, 1, 1];
     const bars = el('div', { class: 'hexagram' });
-    const paint = () => { bars.innerHTML = ''; for (let i = 5; i >= 0; i--) bars.append(el('button', { class: bits[i] ? 'solid' : 'broken', title: String(i + 1), onclick: () => { bits[i] ^= 1; paint(); } }, el('i'), el('i'))); };
+    const paint = () => { bars.innerHTML = ''; for (let i = 5; i >= 0; i--) bars.append(el('button', { class: bits[i] ? 'solid' : 'broken', title: String(i + 1), onclick: () => { bits[i] ^= 1; react('bars', { bits: [...bits] }); paint(); } }, el('i'), el('i'))); };
     paint();
     body.append(el('p', { text: t('p17_drawer') }), bars, el('button', { text: t('answer'), onclick: () => submit(bits.join('')) }));
   },
@@ -288,7 +293,7 @@ const BUILD = {
   P18(body, { submit, items }) {
     const latin = items().includes('chartpage');
     const seq = []; const show = el('div', { class: 'slots runes-in' });
-    const paint = () => { show.textContent = [0, 1, 2, 3, 4, 5].map((i) => RUNES.find((r) => r[1] === seq[i])?.[0] ?? '＿').join(' '); };
+    const paint = () => { show.textContent = [0, 1, 2, 3, 4, 5].map((i) => RUNES.find((r) => r[1] === seq[i])?.[0] ?? '＿').join(' '); react('runes', { seq: seq.map((id) => RUNES.find((r) => r[1] === id)?.[0]) }); };
     paint();
     const ring = el('div', { class: 'runering' }, ...RUNES.map(([g, id]) => el('button', { onclick: () => { if (seq.length < 6) seq.push(id); paint(); } }, el('b', { text: g }), latin ? el('small', { text: id.toUpperCase() }) : null)));
     body.append(el('p', { text: L(RUNE_DOOR) }), show, ring, el('p', { class: 'dim', text: latin ? t('p18_latin') : t('p18_nolatin') }),
@@ -345,6 +350,7 @@ const BUILD = {
         const tgt = targets.some(([a, b]) => a === x && b === y);
         grid.append(el('span', { class: `${c === '#' ? 'wall' : ''} ${tgt ? 'target' : ''}`, text: x === px && y === py ? '◉' : c === 'B' ? '🗿' : '' }));
       }));
+      const boxes = []; map.forEach((row, y) => row.forEach((c, x) => { if (c === 'B') boxes.push([x, y]); })); react('board', { boxes, player: [px, py] });
       if (!done && targets.every(([x, y]) => map[y][x] === 'B')) { done = true; submit('done').then((r) => { if (!r?.solved) done = false; }); }
     };
     const move = (dx, dy) => {
@@ -370,8 +376,8 @@ const BUILD = {
     const paint = () => {
       row.innerHTML = '';
       VIALS.forEach(([sym, name], i) => row.append(el('button', { class: side[i], onclick: () => {
-        if (mode === 'pick') return submit({ pick: i });
-        side[i] = side[i] === '' ? 'L' : side[i] === 'L' ? 'R' : ''; paint();
+        if (mode === 'pick') { react('pick', { i }); return submit({ pick: i }); }
+        side[i] = side[i] === '' ? 'L' : side[i] === 'L' ? 'R' : ''; react('vials', { side: [...side] }); paint();
       } }, el('b', { text: sym }), el('small', { text: named ? L(name) : '？' }), el('i', { text: side[i] }))));
     };
     paint();
@@ -379,9 +385,10 @@ const BUILD = {
       const left = side.flatMap((s, i) => (s === 'L' ? [i] : [])), right = side.flatMap((s, i) => (s === 'R' ? [i] : []));
       const r = await conn.request({ t: 'answer', pid: 'P21', value: { weigh: { left, right } } });
       if (r.reply?.reshuffled) out.textContent = t('p21_reshuffled');
-      else if (r.reply?.result) out.textContent = t(`p21_${r.reply.result}`, { n: r.reply.used });
+      else if (r.reply?.result) { out.textContent = t(`p21_${r.reply.result}`, { n: r.reply.used }); react('weigh', { result: r.reply.result }); }
       else if (r.t === 'error') out.textContent = errText(r.error, { s: Math.ceil((r.wait ?? 0) / 1000) });
       side.fill(''); paint();
+      if (!r.reply?.result) react('vials', { side: [...side] });
     };
     body.append(row, out, el('div', { class: 'row' },
       el('button', { text: t('weigh'), onclick: weigh }),
@@ -435,7 +442,7 @@ const BUILD = {
     const view = el('div', { class: 'rings' });
     const paint = () => { view.innerHTML = ''; rings.forEach((v, i) => view.append(el('div', {}, el('small', { text: t(`ring_${i}`) }),
       el('button', { text: '−', onclick: () => { rings[i] = (rings[i] + 12) % 13; paint(); } }), el('b', { text: String(v) }),
-      el('button', { text: '+', onclick: () => { rings[i] = (rings[i] + 1) % 13; paint(); } })))); };
+      el('button', { text: '+', onclick: () => { rings[i] = (rings[i] + 1) % 13; paint(); } })))); react('rings', { rings: [...rings] }); };
     paint();
     body.append(el('p', { text: t('p25_intro') }), view, el('button', { text: t('answer'), onclick: () => submit(rings.join(',')) }));
   },
@@ -450,10 +457,11 @@ const BUILD = {
       for (const p of pulls) for (const b of LEVERS[p]) locked.has(b) ? locked.delete(b) : locked.add(b);
       bolts.innerHTML = '';
       for (let b = 1; b <= 4; b++) bolts.append(el('span', { class: locked.has(b) ? 'locked' : 'open', text: `${b}　${t(locked.has(b) ? 'bolt_locked' : 'bolt_open')}` }));
+      react('levers', { locked: [...locked], reset: !pulls.length });
     };
     paint();
     body.append(el('p', { text: t('p26_intro') }), bolts,
-      el('div', { class: 'row' }, ...Object.keys(LEVERS).map((k) => el('button', { text: k, onclick: () => { pulls.push(k); paint(); } })),
+      el('div', { class: 'row' }, ...Object.keys(LEVERS).map((k) => el('button', { text: k, onclick: () => { pulls.push(k); react('pull', { k }); paint(); } })),
         el('button', { class: 'small', text: t('reset'), onclick: () => { pulls.length = 0; paint(); } })),
       el('button', { text: t('p26_push'), onclick: () => submit([...pulls]) }));
   },
@@ -475,6 +483,7 @@ const BUILD = {
       });
       const all = pick.every(Boolean) && pick.every((g, i) => chain[i] / 6 + g / 6 === AXLE_GAPS[i]);
       const k = gcd(12, pick[2] ?? 12);
+      react('gears', { pick: [...pick], fits: pick.map((g, i) => !!g && !!chain[i] && chain[i] / 6 + g / 6 === AXLE_GAPS[i]), all });
       out.textContent = all ? t('p27_result', { dir: t(pick.length % 2 ? 'p27_ccw' : 'p27_cw'), ratio: `${12 / k}/${pick[2] / k}` }) : '';
     };
     paint();
@@ -489,11 +498,11 @@ const BUILD = {
     let down = 0;
     const pad = el('button', { class: 'knock', text: t('p28_tap') });
     pad.onpointerdown = () => { down = performance.now(); pad.classList.add('on'); };
-    pad.onpointerup = () => { if (!down) return; pad.classList.remove('on'); if (seq.length < 7) seq.push(performance.now() - down > 350 ? 'L' : 'S'); down = 0; paint(); };
+    pad.onpointerup = () => { if (!down) return; pad.classList.remove('on'); const k = performance.now() - down > 350 ? 'L' : 'S'; if (seq.length < 7) seq.push(k); react('tap', { kind: k }); down = 0; paint(); };
     paint();
     body.append(el('p', { text: t('p28_intro') }), show, pad, mine,
-      el('div', { class: 'row' }, el('button', { class: 'small', text: t('p28_long'), onclick: () => { if (seq.length < 7) seq.push('L'); paint(); } }),
-        el('button', { class: 'small', text: t('p28_short'), onclick: () => { if (seq.length < 7) seq.push('S'); paint(); } }),
+      el('div', { class: 'row' }, el('button', { class: 'small', text: t('p28_long'), onclick: () => { if (seq.length < 7) seq.push('L'); react('tap', { kind: 'L' }); paint(); } }),
+        el('button', { class: 'small', text: t('p28_short'), onclick: () => { if (seq.length < 7) seq.push('S'); react('tap', { kind: 'S' }); paint(); } }),
         el('button', { class: 'small', text: t('reset'), onclick: () => { seq.length = 0; paint(); } }),
         el('button', { text: t('p28_knock'), onclick: async () => { const r = await submit(seq.join('')); if (r && r.t !== 'error' && !r.solved) noise?.(); seq.length = 0; paint(); } })));
   },
@@ -634,7 +643,7 @@ const NEST = {
 };
 
 // 燭光閃爍：長＝－，短＝・
-function blink(lamp, codes) {
+function blink(lamp, codes, onLight = () => {}) { // onLight(true/false)：場景裡遠方窗戶的燭光跟著亮滅
   if (lamp.dataset.on) return;
   lamp.dataset.on = '1';
   const seq = [];
@@ -644,8 +653,8 @@ function blink(lamp, codes) {
   });
   let i = 0;
   const step = () => {
-    if (i >= seq.length) { delete lamp.dataset.on; lamp.classList.remove('lit'); return; }
-    const [on, ms] = seq[i++]; lamp.classList.toggle('lit', !!on); setTimeout(step, ms);
+    if (i >= seq.length) { delete lamp.dataset.on; lamp.classList.remove('lit'); onLight(false); return; }
+    const [on, ms] = seq[i++]; lamp.classList.toggle('lit', !!on); onLight(!!on); setTimeout(step, ms);
   };
   step();
 }

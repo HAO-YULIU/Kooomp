@@ -10,9 +10,9 @@ import * as P from './props.mjs';
 
 // ---------- 材質 ----------
 const M = {};
-const std = (key, opt) => (M[key] ||= new THREE.MeshStandardMaterial({ name: key, roughness: 0.85, ...opt }));
-const glow = (key, color, k = 1) => (M[key] ||= new THREE.MeshBasicMaterial({ name: key, color: new THREE.Color(color).multiplyScalar(k), fog: false }));
-const MAT = {
+export const std = (key, opt) => (M[key] ||= new THREE.MeshStandardMaterial({ name: key, roughness: 0.85, ...opt }));
+export const glow = (key, color, k = 1) => (M[key] ||= new THREE.MeshBasicMaterial({ name: key, color: new THREE.Color(color).multiplyScalar(k), fog: false }));
+export const MAT = {
   wood: () => std('wood', { map: T.tile(T.planks('#4a2e1a'), 0.5, 0.5), roughness: 0.7 }),
   darkWood: () => std('darkWood', { map: T.tile(T.planks('#2a1a10'), 0.5, 0.5), roughness: 0.65 }),
   brass: () => std('brass', { map: T.metal('#b08a3a'), metalness: 0.85, roughness: 0.35 }),
@@ -31,6 +31,8 @@ const MAT = {
 };
 
 P.setMaterials({ MAT, std, glow });
+// 謎題的場景反應（react.mjs）會自己蓋會動的版本：這些東西這裡只藏起灰盒，不蓋靜態的
+export const REPLACE = new Set(['P03:lock_eldrin', 'P05:scale', 'P06:hourglass', 'P08:disk', 'P20:statues', 'P21:scale', 'P25:well', 'P26:ironDoor', 'P27:gearwall']);
 
 // ---------- 組裝工具：同材質的形狀先收集起來，最後合成一個物件 ----------
 class Kit {
@@ -463,7 +465,7 @@ decorators.door.push(safe(({ door: d, mesh, group }) => {
 }));
 
 // ---------- 可以調查的東西 ----------
-const hideBox = (mesh) => { mesh.material = (M.invis ||= new THREE.MeshBasicMaterial({ visible: false })); };
+export const hideBox = (mesh) => { mesh.material = (M.invis ||= new THREE.MeshBasicMaterial({ visible: false })); };
 function curtain(t, mesh, group) { // 厚窗簾：一片一片的布褶
   const [w, h, d] = t.size, k = new Kit(), mat = MAT.velvet('#3a0e14'), n = 9;
   const along = d >= w, len = along ? d : w;
@@ -775,6 +777,7 @@ const KIND = {
 
 decorators.thing.push(safe(({ thing: t, mesh, group }) => {
   if (t.hidden) return;
+  if (REPLACE.has(`${t.puzzle}:${t.id}`)) return hideBox(mesh);
   if (t.kind === 'hide' || t.kind === 'pillar') return KIND[t.kind](t, mesh, group);
   const inLib = /^lib_/.test(t.room), inA4 = /^a4_/.test(t.room);
   if (inLib && (ACT3[t.id] || ACT3[t.kind])) return (ACT3[t.id] || ACT3[t.kind])(t, mesh, group);

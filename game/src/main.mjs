@@ -253,33 +253,45 @@ function setupFullscreen() {
 
 // ---------- 遊戲 ----------
 let game = null, starting = false, pendingNotes = null;
-// 載入畫面：腳本 15%、模型（角色、法杖、守夜人）70%、畫面準備（編譯材質、前幾格）15%
+// 載入畫面（2026-10-22 製作人：按出發後看起來像卡住）：
+// 蓋整座學校時電腦會忙到沒空畫畫面，所以 1) 先讓載入畫面畫出來再開始蓋 2) 每一步換一句說明、進度往前跳
+// 3) 轉圈的魔法陣和進度條上的流光用 CSS 的 transform 動畫——電腦在忙的時候也會繼續動，不會看起來當掉
+const nextPaint = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 function loadingScreen() {
   const el = $('loading'), tips = t('loading_tips').split('|');
-  el.hidden = false; $('loading-text').textContent = t('loading');
+  el.hidden = false; el.classList.remove('failed');
   let tip = Math.floor(Math.random() * tips.length);
   const showTip = () => { $('loading-tip').textContent = '✧ ' + tips[tip++ % tips.length] + ' ✧'; };
   showTip(); const tipTimer = setInterval(showTip, 3500);
-  const safety = setTimeout(() => { el.hidden = true; }, 60000); // 萬一出錯，最多 60 秒也會打開，不會一直卡在載入畫面
-  let shown = 0, target = 0.03, models = { done: 0, total: 0 }, stage = 'script';
+  const safety = setTimeout(() => { el.hidden = true; }, 90000); // 萬一出錯，最多 90 秒也會打開，不會一直卡在載入畫面
+  // 每一步：[說明, 起點, 終點]
+  const STEPS = { script: ['loading_script', 0.03, 0.15], build: ['loading_build', 0.15, 0.4], models: ['loading_models', 0.4, 0.9], gpu: ['loading_gpu', 0.9, 1] };
+  let shown = 0, stage = 'script', stageT0 = performance.now(), models = { done: 0, total: 0 };
   DefaultLoadingManager.onProgress = (_, done, total) => { models = { done, total }; };
-  const anim = setInterval(() => {
-    const m = models.total ? models.done / models.total : 0;
-    target = stage === 'script' ? 0.12 : stage === 'models' ? 0.15 + 0.7 * m : 1;
-    shown += (target - shown) * 0.15; $('loading-bar').style.width = `${(shown * 100).toFixed(1)}%`; $('loading-pct').textContent = `${Math.round(shown * 100)}%`;
-  }, 50);
+  const setStage = (s) => { stage = s; stageT0 = performance.now(); $('loading-text').textContent = t(STEPS[s][0]); paint(); };
+  const target = () => {
+    const [, a, b] = STEPS[stage];
+    if (stage === 'models') return a + (b - a) * (models.total ? models.done / models.total : 0);
+    return a + (b - a) * (1 - Math.exp(-(performance.now() - stageT0) / 2500)); // 不知道還要多久的步驟：慢慢往終點靠
+  };
+  const paint = () => { shown = Math.max(shown, shown + (target() - shown) * 0.2); $('loading-bar').style.width = `${(shown * 100).toFixed(1)}%`; $('loading-pct').textContent = `${Math.round(shown * 100)}%`; };
+  const anim = setInterval(paint, 50);
+  setStage('script');
   return {
-    scriptsDone() { stage = 'models'; },
-    // 等模型都載完（開始載之後 0.8 秒內沒有新的要載），最多等 30 秒
+    stage: async (s) => { setStage(s); shown = Math.max(shown, STEPS[s][1]); paint(); await nextPaint(); }, // 換一步，等畫面畫出來再繼續
+    fail() { clearInterval(anim); clearInterval(tipTimer); clearTimeout(safety); el.classList.add('failed'); $('loading-text').textContent = t('loading_fail'); $('loading-tip').innerHTML = ''; const b = document.createElement('button'); b.className = 'primary small'; b.textContent = t('loading_retry'); b.onclick = () => location.reload(); $('loading-tip').append(b); },
+    // 等模型都載完（0.8 秒內沒有新的要載），最多等 30 秒
     async ready() {
+      await this.stage('models');
       const t0 = performance.now(); let idle = 0;
       while (performance.now() - t0 < 30000) {
         await new Promise((r) => setTimeout(r, 100));
         idle = models.total && models.done >= models.total ? idle + 100 : 0;
         if (idle >= 800 || (!models.total && performance.now() - t0 > 3000)) break;
       }
-      stage = 'gpu'; $('loading-text').textContent = t('loading_done');
-      await new Promise((r) => setTimeout(r, 700)); // 先畫幾格（材質編譯）再打開
+      await this.stage('gpu');
+      await new Promise((r) => setTimeout(r, 300));
+      await Promise.race([game?.world?.ready?.(), new Promise((r) => setTimeout(r, 20000))]); // 等材質在背景編譯好（最多 20 秒）
       clearInterval(anim); clearInterval(tipTimer); clearTimeout(safety); $('loading-bar').style.width = '100%'; $('loading-pct').textContent = '100%';
       el.classList.add('out'); setTimeout(() => { el.hidden = true; el.classList.remove('out'); }, 600);
     },
@@ -292,18 +304,23 @@ async function startGame() {
   const loading = loadingScreen();
   closeStage(); $('backdrop').hidden = true;
   for (const s of screens) $(s).hidden = true;
-  setupFullscreen();
-  $('view').hidden = false; $('hud').hidden = false; $('dev').hidden = !DEV;
-  const { startPlay } = await import('./logic/play.mjs');
-  loading.scriptsDone();
-  // 手機：遊戲中強制橫向（Android 全螢幕時會真的鎖住；iPhone 只能蓋提示）
-  const orient = await import('../../prototype/src/orient.mjs');
-  orient.initOrientation($('rotate'));
-  orient.requireOrientation('landscape', { text: t('rotate_landscape') });
-  game = startPlay({ conn, getState: () => state, myUid, toast, dev: DEV, devUser: devUser || DEV });
-  if (pendingNotes) game.setNotes(pendingNotes);
-  game.onState(state, null);
-  renderTeam();
+  await nextPaint(); // 先讓載入畫面出來
+  try {
+    setupFullscreen();
+    $('view').hidden = false; $('hud').hidden = false; $('dev').hidden = !DEV;
+    const { startPlay } = await import('./logic/play.mjs');
+    // 手機：遊戲中強制橫向（Android 全螢幕時會真的鎖住；iPhone 只能蓋提示）
+    const orient = await import('../../prototype/src/orient.mjs');
+    orient.initOrientation($('rotate'));
+    orient.requireOrientation('landscape', { text: t('rotate_landscape') });
+    await loading.stage('build'); // 蓋學校（最久、畫面會停住，但魔法陣和流光會繼續轉）
+    const t0 = performance.now();
+    game = startPlay({ conn, getState: () => state, myUid, toast, dev: DEV, devUser: devUser || DEV });
+    if (DEV) console.log(`蓋學校花了 ${Math.round(performance.now() - t0)} 毫秒`);
+    if (pendingNotes) game.setNotes(pendingNotes);
+    game.onState(state, null);
+    renderTeam();
+  } catch (e) { console.error(e); loading.fail(); return; }
   loading.ready().then(() => game.tutorial());
 }
 function renderTeam() {

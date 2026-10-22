@@ -5,15 +5,21 @@ import * as THREE from 'three';
 const cache = new Map();
 const S = 512;
 
-// 簡單的雜訊（同樣的座標得到同樣的值）
-const hash = (x, y, s = 0) => { const h = Math.sin(x * 127.1 + y * 311.7 + s * 74.7) * 43758.5453; return h - Math.floor(h); };
+// 簡單的雜訊（同樣的座標得到同樣的值）。用整數運算打散（比 Math.sin 快很多：一張圖要算幾十萬次）
+const hash = (x, y, s = 0) => {
+  let h = Math.imul((x * 1000) | 0, 374761393) ^ Math.imul((y * 1000) | 0, 668265263) ^ Math.imul((s * 1000) | 0, 1274126177);
+  h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+};
 function noise(x, y, s = 0) {
   const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi, u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
   const a = hash(xi, yi, s), b = hash(xi + 1, yi, s), c = hash(xi, yi + 1, s), d = hash(xi + 1, yi + 1, s);
   return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
 }
 const fbm = (x, y, s = 0) => noise(x, y, s) * 0.5 + noise(x * 2, y * 2, s + 1) * 0.25 + noise(x * 4, y * 4, s + 2) * 0.15 + noise(x * 8, y * 8, s + 3) * 0.1;
-const col = (hex) => { const c = new THREE.Color(hex); return [c.r * 255, c.g * 255, c.b * 255]; };
+// 顏色字串 → [r, g, b]：記起來（畫每個點都會用到，每次重新解析字串會非常慢）
+const colCache = new Map();
+const col = (hex) => colCache.get(hex) ?? colCache.set(hex, (() => { const c = new THREE.Color(hex); return [c.r * 255, c.g * 255, c.b * 255]; })()).get(hex);
 
 function make(key, draw, { srgb = true } = {}) {
   if (cache.has(key)) return cache.get(key);
