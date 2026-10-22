@@ -25,7 +25,9 @@ const out = await build({
 let code = out.outputFiles[0].text;
 if (!plain) {
   code = JavaScriptObfuscator.obfuscate(code, {
-    compact: true, stringArray: true, stringArrayThreshold: 0.5, stringArrayEncoding: ['base64'],
+    // 2026-10-22：不再把文字放進「每次用到再解碼」的陣列（stringArray）：場景貼圖逐點計算的迴圈裡會被呼叫幾千萬次，
+    // 整個遊戲慢 8 倍，電腦上按出發會「網頁沒有回應」。答案本來就只在伺服器，不受影響
+    compact: true, stringArray: false,
     identifierNamesGenerator: 'hexadecimal', renameGlobals: false, selfDefending: false, simplify: true,
     target: 'browser', sourceMap: false,
   }).getObfuscatedCode();
