@@ -5,6 +5,7 @@ import { signIn, lobbyGate, testPanel, isTest, devLogin } from './net/platform.m
 import { createRoom, roomInfo, connectRoom, mySave } from './net/room.mjs';
 import { openSorting } from './ui/sorting.mjs';
 import { DefaultLoadingManager } from 'three';
+import { setMusic } from './art/sfx.mjs';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -40,6 +41,7 @@ const ageOk = () => { try { return sessionStorage.getItem(AGE_KEY) === '1'; } ca
 $('age-ok').onclick = () => { try { sessionStorage.setItem(AGE_KEY, '1'); } catch { /* 無痕模式 */ } boot(); };
 $('age-no').onclick = () => { $('age-bye').hidden = false; $('age-ok').hidden = true; $('age-no').hidden = true; };
 if (ageOk() && !params.has('age')) boot(); else show('s-age');
+setMusic('menu'); // 主選單的配樂（玩家點過畫面才會響）
 
 // ---------- 登入 ----------
 let me = null;
@@ -300,7 +302,7 @@ function loadingScreen() {
 
 async function startGame() {
   if (game || starting) return;
-  starting = true;
+  starting = true; setMusic(null);
   const loading = loadingScreen();
   closeStage(); $('backdrop').hidden = true;
   for (const s of screens) $(s).hidden = true;

@@ -14,7 +14,7 @@ function audio() {
 addEventListener('pointerdown', () => audio(), { once: true }); // 瀏覽器要等玩家點過畫面才能出聲
 addEventListener('keydown', () => audio(), { once: true });
 /** 音量（0～1.5），設定裡調；存在這台裝置 */
-export function setVolume(v) { volume = v; try { localStorage.setItem('ml_volume', String(v)); } catch { /* 無痕 */ } if (master) master.gain.value = 0.55 * v; if (amb.bus) amb.bus.gain.value = AMB_VOL * v; }
+export function setVolume(v) { volume = v; try { localStorage.setItem('ml_volume', String(v)); } catch { /* 無痕 */ } if (master) master.gain.value = 0.55 * v; if (amb.bus) amb.bus.gain.value = AMB_VOL * v; if (M.bus) M.bus.gain.value = MUS_VOL * v; }
 export const getVolume = () => volume;
 // 一個音：頻率、波形、長度、音量、滑音
 function tone(f, { type = 'sine', dur = 0.3, vol = 0.25, at = 0, slide = 0, attack = 0.005 } = {}) {
@@ -50,6 +50,11 @@ const SOUNDS = {
   whoosh: () => noise({ dur: 0.45, vol: 0.12, type: 'bandpass', freq: 600, q: 0.8, sweep: 4 }),
   wrong: () => { tone(160, { type: 'sawtooth', dur: 0.35, vol: 0.08, slide: 0.7 }); tone(150, { type: 'sawtooth', dur: 0.35, vol: 0.06, at: 0.02, slide: 0.7 }); },
   solved: () => { [523, 659, 784, 1047].forEach((f, i) => tone(f, { dur: 1.4 - i * 0.2, vol: 0.12, at: i * 0.11 })); noise({ dur: 1.2, vol: 0.03, type: 'highpass', freq: 6000, at: 0.3 }); },
+  // 驚嚇：一聲重擊＋刺耳的不和諧高音＋往下掉的呼嘯
+  stinger: () => { tone(48, { dur: 1.4, vol: 0.45, slide: 0.5 }); noise({ dur: 0.5, vol: 0.25, freq: 900, sweep: 0.3 }); for (const f of [1175, 1245, 1661]) tone(f, { type: 'sawtooth', dur: 1.3, vol: 0.035, slide: 0.85, attack: 0.02 }); noise({ dur: 1.6, vol: 0.08, type: 'bandpass', freq: 3000, q: 2, sweep: 0.2, at: 0.05 }); },
+  // 耳語：幾段很短的「嘶—」，像有人在耳邊講話，左右飄
+  whisper: () => { for (let i = 0; i < 7; i++) { const at = i * 0.28 + Math.random() * 0.2; noise({ dur: 0.18 + Math.random() * 0.25, vol: 0.3, type: 'bandpass', freq: 2200 + Math.random() * 2600, q: 3, at, sweep: 0.7 + Math.random() * 0.6 }); } },
+  heartbeat: () => { tone(62, { dur: 0.22, vol: 0.4, slide: 0.6 }); tone(55, { dur: 0.22, vol: 0.28, slide: 0.6, at: 0.24 }); },
   hum: () => { tone(110, { dur: 1.5, vol: 0.08, attack: 0.3 }); tone(165, { dur: 1.5, vol: 0.05, attack: 0.3 }); },
 };
 // ---------- 真的音檔（製作人之後補）：assets/audio/sfx/list.json 列出有哪些，有就用音檔、沒有就用上面合成的 ----------
@@ -61,6 +66,7 @@ async function loadFiles() {
     const list = await (await fetch('assets/audio/sfx/list.json')).json(); const c = audio(); if (!c) return;
     await Promise.all(list.map(async (f) => { try { const buf = await c.decodeAudioData(await (await fetch(`assets/audio/sfx/${f}`)).arrayBuffer()); const key = f.replace(/\.(mp3|ogg|wav)$/, '').replace(/_\d+$/, ''); (FILES[key] ??= []).push(buf); } catch { /* 這個檔有問題：用合成的 */ } }));
   } catch { /* 沒有清單：全部用合成的 */ }
+  if (M.kind && FILES[`music_${M.kind}`]) { const k = M.kind; M.kind = null; setMusic(k); } // 配樂的音檔到了：換成音檔
 }
 addEventListener('pointerdown', () => loadFiles(), { once: true });
 /** 播一個音檔（有的話）；回傳有沒有播 */
@@ -174,3 +180,83 @@ export function wardenVoice({ visible, dist = 99, side = 0, mode = 'patrol', dt 
     if (W.stepT <= 0) { W.stepT = mode === 'chase' ? 0.38 : 0.7; if (k > 0.02 && !playFile('warden_step', { vol: k * 1.2, rate: 0.9 + Math.random() * 0.1 })) { tone(48, { dur: 0.35, vol: 0.4 * k, slide: 0.6 }); noise({ dur: 0.15, vol: 0.12 * k, freq: 260 }); } }
   }
 }
+
+// ---------- 配樂：主選單（陰森的長音＋偶爾一兩個音樂盒的音）、被追（低音的脈動＋心跳，越近越快越大聲） ----------
+// 有音檔（music_menu、music_chase）就用音檔；被追的音檔一樣會照緊張程度調大小聲
+const MUS_VOL = 0.45;
+const M = { want: null, kind: null, bus: null, mix: null, high: null, layers: [], timer: 0, k: 0, next: 0, beat: 0, file: null };
+const BOX = [220, 261.63, 293.66, 329.63, 392, 207.65]; // 守夜人童謠的音（A 小調，最後那個升 Sol 讓人不安）
+function musicNodes() {
+  const c = audio(); if (!c) return null;
+  if (!M.bus) { M.bus = c.createGain(); M.bus.gain.value = MUS_VOL * volume; M.bus.connect(c.destination); }
+  return c;
+}
+function stopMusic() {
+  clearTimeout(M.timer); M.kind = null;
+  for (const l of M.layers) l.stop(); M.layers = []; M.file = null; M.mix = null; M.high = null;
+}
+// 一層持續的聲音：fade 秒淡入，stop() 淡出
+function pad(c, dest, build, fade = 3) {
+  const g = c.createGain(); g.gain.value = 0; g.gain.linearRampToValueAtTime(1, c.currentTime + fade); g.connect(dest);
+  const nodes = build(g);
+  return { g, stop() { const t = c.currentTime; g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(g.gain.value, t); g.gain.linearRampToValueAtTime(0, t + 2); setTimeout(() => nodes.forEach((n) => { try { n.stop(); } catch { /* 已停 */ } }), 2200); } };
+}
+// 在配樂的音量上播 tone／noise（跟環境音一樣借用）
+function onMusic(fn) { const save = master; master = M.mix; try { fn(); } finally { master = save; } }
+/** 換配樂：'menu'｜'chase'｜null（安靜）。玩家還沒點過畫面時先記著，點了才開始 */
+export function setMusic(kind) {
+  M.want = kind ?? null;
+  if (!ctx) return; // 還不能出聲
+  if (M.want === M.kind) return;
+  stopMusic(); if (!M.want) return;
+  const c = musicNodes(); if (!c) return; M.kind = M.want;
+  M.mix = c.createGain(); M.mix.gain.value = kind === 'chase' ? 0 : 1; M.mix.connect(M.bus);
+  M.layers.push({ stop: ((mix) => () => { const t = c.currentTime; mix.gain.setTargetAtTime(0, t, 0.6); setTimeout(() => mix.disconnect(), 3000); })(M.mix) });
+  const file = playFile(`music_${kind}`, { loop: true, dest: M.mix, vol: 0.8 });
+  if (file) { M.file = file; M.layers.push({ stop: () => setTimeout(() => { try { file.src.stop(); } catch { /* 已停 */ } }, 2500) }); return; }
+  if (kind === 'menu') {
+    // 兩組慢慢飄的低音（A 小調的 A、E 加上一點點走音），經過低通讓它悶悶的
+    M.layers.push(pad(c, M.mix, (g) => {
+      const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 520; lp.connect(g);
+      const lfo = c.createOscillator(); lfo.frequency.value = 0.05; const ld = c.createGain(); ld.gain.value = 260; lfo.connect(ld).connect(lp.frequency); lfo.start();
+      const os = [[55, 0.05], [82.4, 0.03], [110.6, 0.02], [164.8, 0.012]].map(([f, v]) => { const o = c.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.detune.value = (Math.random() - 0.5) * 14; const og = c.createGain(); og.gain.value = v; o.connect(og).connect(lp); o.start(); return o; });
+      return [lfo, ...os];
+    }, 5));
+    M.next = c.currentTime + 4;
+    const loop = () => { // 偶爾一個音樂盒的音，帶一點回音
+      if (M.kind !== 'menu') return;
+      if (c.currentTime >= M.next) { const f = BOX[Math.floor(Math.random() * BOX.length)] * 2; onMusic(() => { tone(f, { type: 'triangle', dur: 2.2, vol: 0.05 }); tone(f, { type: 'triangle', dur: 1.8, vol: 0.018, at: 0.42 }); tone(f, { type: 'triangle', dur: 1.4, vol: 0.007, at: 0.84 }); }); M.next = c.currentTime + 2.5 + Math.random() * 6; }
+      M.timer = setTimeout(loop, 200);
+    };
+    loop();
+  }
+  if (kind === 'chase') {
+    // 底下的低鳴＋兩個打架的高音（越緊張越大聲，由 setTension 調）
+    const low = pad(c, M.mix, (g) => { const o = c.createOscillator(); o.type = 'sawtooth'; o.frequency.value = 36.7; const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 180; const og = c.createGain(); og.gain.value = 0.12; o.connect(lp).connect(og).connect(g); o.start(); return [o]; }, 1);
+    const high = pad(c, M.mix, (g) => [1174.7, 1244.5].map((f) => { const o = c.createOscillator(); o.frequency.value = f; const og = c.createGain(); og.gain.value = 0.012; const tr = c.createOscillator(); tr.frequency.value = 9 + Math.random() * 3; const td = c.createGain(); td.gain.value = 0.008; tr.connect(td).connect(og.gain); tr.start(); o.connect(og).connect(g); o.start(); return [o, tr]; }).flat(), 1);
+    M.high = high; M.layers.push(low, high);
+    M.next = c.currentTime + 0.1; M.beat = c.currentTime + 0.2; let n = 0;
+    const PAT = [73.4, 73.4, 77.8, 73.4, 73.4, 69.3, 73.4, 82.4]; // D、D、降 E、D…半音來回，聽起來被逼著跑
+    const loop = () => {
+      if (M.kind !== 'chase') return;
+      const k = M.k, ahead = c.currentTime + 0.25;
+      if (k > 0.05) {
+        const step = 60 / (96 + 84 * k) / 2; // 八分音符：越緊張越快
+        while (M.next < ahead) { const at = Math.max(0, M.next - c.currentTime), f = PAT[n++ % PAT.length]; onMusic(() => { tone(f, { type: 'sawtooth', dur: step * 0.9, vol: 0.05 + 0.08 * k, at }); if (n % 4 === 1) noise({ dur: 0.08, vol: 0.03 + 0.06 * k, freq: 160, at }); }); M.next += step; }
+        const beatGap = 60 / (70 + 90 * k); // 心跳
+        while (M.beat < ahead) { const at = Math.max(0, M.beat - c.currentTime); onMusic(() => { tone(60, { dur: 0.2, vol: 0.12 + 0.3 * k, slide: 0.6, at }); tone(52, { dur: 0.22, vol: 0.08 + 0.2 * k, slide: 0.6, at: at + 0.22 }); }); M.beat += beatGap; }
+      } else { M.next = M.beat = ahead; }
+      M.timer = setTimeout(loop, 60);
+    };
+    loop();
+  }
+}
+/** 被追的緊張程度 0～1（守夜人越近、在追你就越高）；配樂跟著變大聲、變快 */
+export function setTension(k) {
+  M.k = Math.max(0, Math.min(1, k));
+  if (M.kind !== 'chase' || !M.mix) return; const c = audio();
+  M.mix.gain.setTargetAtTime(M.file ? M.k : 0.25 + 0.75 * M.k, c.currentTime, 0.4);
+  M.high?.g.gain.setTargetAtTime(M.k * M.k, c.currentTime, 0.4);
+}
+addEventListener('pointerdown', () => { if (M.want) setMusic(M.want); }); // 點過畫面才能出聲：補開
+addEventListener('keydown', () => { if (M.want && !M.kind) setMusic(M.want); });

@@ -1,6 +1,6 @@
 # 音效清單（2026-10-22）
 
-遊戲裡的聲音目前全部用程式即時合成（`game/src/art/sfx.mjs`）。製作人找到真的音檔後，放進 `assets/audio/sfx/`，
+遊戲裡的聲音目前全部用程式即時合成（`game/src/art/sfx.mjs`），配樂（`music_menu`、`music_chase`）、驚嚇聲（`stinger`）、耳語（`whisper`）、心跳（`heartbeat`）也有合成的版本。製作人找到真的音檔後，放進 `assets/audio/sfx/`，
 檔名照下表，並把檔名加進 `assets/audio/sfx/list.json`（例如 `["amb_fire.mp3", "step_stone_1.mp3", "step_stone_2.mp3"]`），
 遊戲就會改用音檔（沒有的照樣用合成的）。同一種聲音可以給好幾個檔（`_1`、`_2`…），每次隨機挑一個。
 

@@ -7,6 +7,7 @@ import { A4_SPAWN, CHECKPOINTS, NEST_SPOT, NEST_EXIT, WARDEN, WARDEN_POINTS, WAR
 import { ROOMS, DOORS, SPAWNS } from '../data/world-ch1.mjs';
 import { SCRIPT } from '../data/story-ch1.mjs';
 import { playLullaby, playFile, scream, chime } from '../world/sound.mjs';
+import { sfx, setMusic, setTension } from '../art/sfx.mjs';
 import { openPanel, closePanel, panelOpen, el, L } from '../ui/overlay.mjs';
 import { openRescue } from '../ui/puzzles.mjs';
 import { t } from './i18n.mjs';
@@ -58,7 +59,7 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
     };
     grabbed = setTimeout(() => done(false), Math.max(300, until - serverNow()));
     addEventListener('keydown', hit); fight.addEventListener('pointerdown', hit);
-    scream(); navigator.vibrate?.([200, 80, 200]);
+    scream(); sfx('stinger'); navigator.vibrate?.([200, 80, 200]);
   }
 
   // 這一幀所有玩家的狀況（給守夜人的 AI，只有 sim 在跑）
@@ -101,12 +102,12 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
     // 每一幀：回傳要放進位置訊息的躲藏狀態
     frame(dt, mine, segment) {
       if (segment !== 'act4') {
-        if (active) { active = false; hud.hidden = true; veil.style.opacity = 0; world.tired = false; }
+        if (active) { active = false; hud.hidden = true; veil.style.opacity = 0; world.tired = false; setMusic(null); }
         if (ending === 'climax' && !talking()) { // 守夜人墜下屋頂之後：回到宿舍，播尾聲
           ending = 'epilogue'; warden.set({ visible: false }); world.setDark(false);
           world.teleport(SPAWNS.act1?.[CHARS[myChar()]?.house] ?? A4_SPAWN); playScript('segment:epilogue');
         } else if (ending === 'epilogue' && !talking()) { // 尾聲講完：第一章結束
-          ending = null;
+          ending = null; setMusic('menu');
           openPanel(t('ch1_end'), (body) => body.append(...summary(S().result), el('p', { text: t('ch1_end_body') }),
             el('button', { text: t('to_menu'), onclick: () => { const q = new URLSearchParams(location.search); q.delete('room'); location.href = location.pathname + (q.size ? `?${q}` : ''); } })));
         }
@@ -155,6 +156,9 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
       // 靠近的感覺：畫面邊緣變紅、童謠
       const d = shown.zone === mine.z ? Math.hypot(shown.x - mine.p[0], shown.z - mine.p[1]) : 99;
       if (!me) { const k = Math.max(0, 1 - d / 14); veil.style.background = `radial-gradient(circle, transparent 55%, rgba(120,0,0,${(0.55 * k).toFixed(2)}) 100%)`; veil.style.opacity = k > 0 ? 1 : 0; }
+      // 配樂：守夜人越近越緊張；在追人時至少一半；被綁在蝕巢時只剩一點點
+      if (!ending) setMusic('chase'); const near = Math.max(0, 1 - d / 22);
+      setTension(me ? 0.12 : shown.mode === 'chase' || shown.mode === 'grab' ? 0.5 + 0.5 * near : shown.mode === 'search' ? 0.25 + 0.5 * near : 0.6 * near);
       if (d < 20 && performance.now() > humAt) { humAt = performance.now() + 16000; playLullaby({ lines: 1, volume: 0.06 + 0.25 * (1 - d / 20) }); }
       // 屋頂的石板：踩到新的一塊就問伺服器
       if (mine.z === 'a4_roof' && !st.solved.includes('P29') && !me) {
@@ -212,7 +216,7 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
     },
     // 尾聲：先在屋頂演完高潮（月光下的守夜人），再回宿舍。伺服器的段落可能比 P29 的回覆先到，所以在這裡排順序
     end() {
-      active = false; ending = 'climax'; hud.hidden = true; veil.style.opacity = 0; ai.stun(9999, performance.now());
+      active = false; ending = 'climax'; hud.hidden = true; setMusic(null); veil.style.opacity = 0; ai.stun(9999, performance.now());
       if (world.zone() !== 'a4_roof') world.teleport({ x: 155, z: -42, yaw: 0 });
       warden.set({ x: 155, z: -52, yaw: Math.PI, visible: true, mode: 'stun' }); // 屋頂盡頭，月光下
       playScript('solved:P29'); playScript(myChar() === 'cyril' ? 'P29:cyril' : 'P29:others');
