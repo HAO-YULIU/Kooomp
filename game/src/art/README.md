@@ -42,6 +42,11 @@ c.talk(秒數); c.setMood('calm' | 'smile' | 'scared');
 - 擺在：碼頭（新生的行李、木箱、木桶）、大廳（長凳、石甕、公告板）、典禮廳（每張長桌上的食物、高腳杯、水壺）、星盤廳（望遠鏡、星圖、地球儀）、四間交誼廳（火爐前的茶桌、書桌、行李箱、學院特色小物：艾爾德林望遠鏡、格里莫瓦水晶球和符文石、貝爾蒙特鹿角和劍、烏洛波斯坩堝和蛇雕像），天花板角落的蜘蛛網。
 - 只是外觀：不擋路、不能調查。長廊不放（找異常用）。
 
+## 長廊的畫像
+- `game/src/art/portraits.mjs` 的 `paintPortrait(kind, seed)`：油畫風格（筆觸、泛黃的亮油、龜裂紋、四角變暗），每個人的髮型（短、長、盤起）、眼鏡、鬍子、袍子顏色不同。
+- 帳號一的 `corridor.mjs` 只改了一行：`paint` 改成呼叫 `paintPortrait`（原本的簡單版本改名 `paintPlain` 留著）。異常的種類（移位、空框、背對、沒瞳孔、莉安娜、臉被挖掉）跟原本一樣；眼睛的位置對齊「眼睛跟著你」的活瞳孔。
+- 測試頁：`prototype/portraits-test.html`。
+
 ## 守夜人
 `game/src/art/warden.mjs` 用美術掛鉤 `decorators.npc`（key＝`warden`）把 `game/src/world/warden.mjs` 的灰盒換成正式模型，綠色的光（玩法用）不動。
 動作照 AI 狀態：`idle`、`stun` → 待機；`patrol`、`search` → 走路；`chase` → 跑步；`grab` → 撲抓。

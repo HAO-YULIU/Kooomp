@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { GALLERY_NAMES, HEADMASTERS } from '../data/story-ch1.mjs';
 import { THINGS } from '../data/world-ch1.mjs';
+import { paintPortrait } from '../art/portraits.mjs'; // 帳號二：油畫風格的畫像（種類、異常的差別跟原本一樣）
 
 // X：牆的內側（灰盒的牆有 0.3 公尺厚）；END：盡頭假牆的位置（「走廊變長」時往後退）
 const X = 2.5 - 0.16, NORMAL_END = -56, LONG_END = -62;
@@ -13,8 +14,9 @@ const RUNIC = 'ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃᛇᛈᛉᛋᛏᛒᛖᛗᛚ�
 const toRunes = (s) => s.toUpperCase().split('').map((c) => RUNIC[(c.charCodeAt(0) * 7) % RUNIC.length]).join('');
 const rand = (seed) => () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
 
-// ---- 畫像（畫在 canvas 上） ----
-function paint(kind, seed) {
+// ---- 畫像（畫在 canvas 上）：用帳號二的 paintPortrait；下面的 paintPlain 是原本的簡單版本，留著備用 ----
+const paint = (kind, seed) => paintPortrait(kind, seed);
+function paintPlain(kind, seed) {
   const c = document.createElement('canvas'); c.width = 128; c.height = 166;
   const g = c.getContext('2d'), r = rand(seed * 977 + 13);
   const bg = `hsl(${Math.floor(r() * 360)}, 22%, ${14 + r() * 10}%)`;
