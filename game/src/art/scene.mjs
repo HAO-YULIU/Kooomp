@@ -402,6 +402,35 @@ const DETAILS = {
     k.build(group);
   },
 };
+// 第三、四幕的小細節
+Object.assign(DETAILS, {
+  lib_entry(r, group) { // 靠牆的書架、倒在地上的椅子、散落的書
+    const k = new Kit();
+    for (let z = 7; z <= 12; z += 1.8) bookshelf(k, r.x[1] - 0.4, z, -Math.PI / 2, 1.6, 2.6);
+    for (let x = 102.5; x <= 108; x += 1.8) bookshelf(k, x, r.z[1] - 0.4, Math.PI, 1.6, 2.6);
+    k.add(new THREE.BoxGeometry(0.42, 0.04, 0.42), MAT.darkWood(), 106, 0.22, 9, 0.4, 0, Math.PI / 2 - 0.1); // 倒下的椅子
+    for (let i = 0; i < 6; i++) P.bookStack(k, 104 + P.rnd(i) * 7, 0, 6 + P.rnd(i, 1) * 6, 1 + Math.floor(P.rnd(i, 2) * 2), i);
+    cobwebs(k, r, 1.4); k.build(group);
+  },
+  lib_reading(r, group) { // 閱覽室：長桌、綠色檯燈、書
+    const k = new Kit(), flames = [];
+    for (const z of [-40, -36]) {
+      k.box(3, 0.06, 1, MAT.wood(), 126.5, 0.76, z); for (const sx of [-1, 1]) k.box(0.08, 0.73, 0.9, MAT.darkWood(), 126.5 + sx * 1.4, 0.365, z);
+      for (const sx of [-0.9, 0.9]) { k.cyl(0.07, 0.08, 0.02, MAT.brass(), 126.5 + sx, 0.8, z, 10); k.cyl(0.01, 0.01, 0.3, MAT.brass(), 126.5 + sx, 0.95, z, 6); k.add(new THREE.CylinderGeometry(0.06, 0.13, 0.1, 10, 1, true), std('bankerGreen', { color: '#1a5a2a', emissive: '#0a3a14', emissiveIntensity: 0.5, side: THREE.DoubleSide }), 126.5 + sx, 1.1, z); }
+      P.openBook(k, 126.2, 0.79, z, P.rnd(z)); P.bookStack(k, 127.3, 0.79, z, 3, z);
+    }
+    cobwebs(k, r, 1); k.build(group); candles(group, flames);
+  },
+  lib_ante(r, group) { const k = new Kit(); cobwebs(k, r, 1.2); P.skull(k, 125.5, 0, -59.4, 0.4); P.bookStack(k, 122, 0, -51, 2, 3); k.build(group); },
+  lib_well(r, group) { const k = new Kit(); cobwebs(k, r, 1.6); P.ropeCoil(k, 132.5, -60); P.barrel(k, 138, -65); k.build(group); },
+  a4_pass(r, group) { const k = new Kit(); P.crate(k, 120, 7.9, 0.5); P.barrel(k, 136, 7.9); P.broom(k, 141, 8.2); cobwebs(k, r, 0.6); k.build(group); },
+  a4_gears(r, group) { // 機械室：工作台、油桶、齒輪零件
+    const k = new Kit(); k.box(2, 0.08, 0.8, MAT.wood(), 163, 0.9, 1); for (const sx of [-0.9, 0.9]) k.box(0.08, 0.86, 0.7, MAT.darkWood(), 163 + sx, 0.43, 1);
+    for (let i = 0; i < 4; i++) k.add(new THREE.TorusGeometry(0.12 + i * 0.03, 0.03, 4, 12), std('gearIron', { color: '#4a3e30', metalness: 0.6, roughness: 0.5 }), 162.4 + i * 0.35, 0.97, 1, 0, Math.PI / 2);
+    P.barrel(k, 147, 8); P.barrel(k, 147.6, 8.7); P.crate(k, 163.5, 12, 0.7);
+    cobwebs(k, r, 2); k.build(group);
+  },
+});
 for (const h of ['eldrin', 'grimoire', 'belmont', 'ouroboros']) DETAILS['dorm_' + h] = (r, group) => dormDetails(r, group, h);
 
 // 美術出錯時只印警告，不要讓遊戲壞掉（灰盒照樣能玩）
@@ -433,6 +462,154 @@ decorators.door.push(safe(({ door: d, mesh, group }) => {
 
 // ---------- 可以調查的東西 ----------
 const hideBox = (mesh) => { mesh.material = (M.invis ||= new THREE.MeshBasicMaterial({ visible: false })); };
+function curtain(t, mesh, group) { // 厚窗簾：一片一片的布褶
+  const [w, h, d] = t.size, k = new Kit(), mat = MAT.velvet('#3a0e14'), n = 9;
+  const along = d >= w, len = along ? d : w;
+  for (let i = 0; i < n; i++) {
+    const off = -len / 2 + (i + 0.5) * len / n, wob = (i % 2 ? 0.08 : -0.08);
+    if (along) k.box(0.08, h, len / n + 0.05, mat, t.x + wob, h / 2, t.z + off); else k.box(len / n + 0.05, h, 0.08, mat, t.x + off, h / 2, t.z + wob);
+  }
+  if (along) k.box(0.1, 0.1, len + 0.4, MAT.brass(), t.x, h + 0.05, t.z); else k.box(len + 0.4, 0.1, 0.1, MAT.brass(), t.x, h + 0.05, t.z);
+  k.build(group); hideBox(mesh);
+}
+// 第三、四幕的躲藏點（人要站得進去：只在旁邊、後面放東西，中間留空）
+const toolCabinet = (t, mesh, group) => { // 工具櫃：門開著
+  const k = new Kit(), [w, h, d] = t.size, back = t.z < 8 ? -1 : 1; // 靠牆那一邊
+  k.box(w, h, 0.05, MAT.darkWood(), t.x, h / 2, t.z + back * d / 2);
+  for (const sx of [-1, 1]) k.box(0.05, h, d, MAT.darkWood(), t.x + sx * w / 2, h / 2, t.z);
+  k.box(w, 0.05, d, MAT.darkWood(), t.x, h, t.z);
+  k.box(w * 0.5, h * 0.95, 0.04, MAT.darkWood(), t.x + w * 0.75, h / 2, t.z - back * d * 0.3, 0); // 開著的門
+  for (let i = 0; i < 3; i++) k.box(0.04, 0.4, 0.02, MAT.iron(), t.x - w * 0.3 + i * 0.25, h * 0.75, t.z + back * (d / 2 - 0.05)); // 掛著的工具
+  k.build(group); hideBox(mesh);
+};
+const gearHide = (t, mesh, group) => { // 大齒輪後面：一個斜靠的大齒輪
+  const k = new Kit(), r = 1.1;
+  k.add(new THREE.CylinderGeometry(r, r, 0.18, 20), std('gearIron', { color: '#4a3e30', metalness: 0.6, roughness: 0.5 }), t.x, r, t.z - 0.6, 0, Math.PI / 2 - 0.15, 0);
+  for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; k.box(0.22, 0.22, 0.2, std('gearIron', {}), t.x + Math.cos(a) * (r + 0.08), r + Math.sin(a) * (r + 0.08), t.z - 0.6); }
+  k.build(group); hideBox(mesh);
+};
+const shelfGap = (t, mesh, group) => { const k = new Kit(); for (const dz of [-0.95, 0.95]) bookshelf(k, t.x - 0.3, t.z + dz, Math.PI / 2, 0.8, 2.4); k.build(group); hideBox(mesh); };
+const niche = (t, mesh, group) => { const k = new Kit(); k.add(new THREE.TorusGeometry(0.6, 0.1, 6, 16, Math.PI), MAT.stone(), t.x, 1.4, t.z + 0.2); for (const sx of [-0.6, 0.6]) k.box(0.2, 1.4, 0.3, MAT.stone(), t.x + sx, 0.7, t.z + 0.2); k.build(group); hideBox(mesh); };
+const chimney = (t, mesh, group) => { // 屋頂的煙囪：人躲在後面（煙囪在靠走道那邊）
+  const k = new Kit(), side = t.x < 155 ? 1 : -1, brick = std('brick', { map: T.tile(T.stoneWall('#5a3a2c'), 0.5, 0.5) });
+  k.box(1.2, 2.6, 0.9, brick, t.x + side * 0.6, 1.3, t.z); k.box(1.35, 0.15, 1.05, MAT.stone(), t.x + side * 0.6, 2.65, t.z);
+  k.build(group); hideBox(mesh);
+};
+const HIDE = { hide_g1: toolCabinet, hide_g2: toolCabinet, hide_g3: toolCabinet, hide_g4: gearHide, hide_g5: gearHide, hide_e1: shelfGap, hide_e2: shelfGap, hide_p1: niche, hide_r1: chimney, hide_r2: chimney };
+
+// 第三幕：沉眠圖書館的謎題物件（位置、大小照配置；外觀不暗示答案）
+const ACT3 = {
+  cat(t, mesh, group) { // 貓的屍體：身上長滿黑色結晶
+    const k = new Kit(), fur = std('deadfur', { color: '#2a2622', roughness: 1 }), xtal = std('blightXtal', { color: '#0d0d18', emissive: '#08081a', roughness: 0.2, metalness: 0.6 });
+    k.add(new THREE.SphereGeometry(0.16, 10, 7), fur, t.x, 0.1, t.z, 0, 0, Math.PI / 2); k.add(new THREE.SphereGeometry(0.08, 8, 6), fur, t.x + 0.2, 0.08, t.z);
+    for (let i = 0; i < 7; i++) k.add(new THREE.ConeGeometry(0.025, 0.12 + P.rnd(i) * 0.12, 5), xtal, t.x - 0.12 + i * 0.05, 0.2, t.z + (P.rnd(i, 1) - 0.5) * 0.1, 0, (P.rnd(i, 2) - 0.5), (P.rnd(i, 3) - 0.5));
+    k.build(group); hideBox(mesh);
+  },
+  senior(t, mesh) { hideBox(mesh); }, // 屍體由帳號一的 library.mjs 畫
+  tiles(t, mesh) { hideBox(mesh); }, // 暗室的石板由 library.mjs 畫
+  notice(t, mesh, group) { // 搜救公告：釘在牆上的紙
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(t.size[2] * 0.8, t.size[1]), MAT.parchment()); m.position.set(t.x + 0.12, (t.y ?? 0) + t.size[1] / 2, t.z); m.rotation.y = Math.PI / 2; group.add(m); hideBox(mesh);
+  },
+  lampbox(t, mesh, group) { // 上鎖的提燈箱
+    const [w, h, d] = t.size; const k = new Kit(); k.box(w, h, d, MAT.darkWood(), t.x, h / 2, t.z); for (const s of [-1, 1]) k.box(0.04, h + 0.02, d + 0.02, MAT.iron(), t.x + s * w * 0.35, h / 2, t.z);
+    k.box(0.12, 0.14, 0.04, MAT.brass(), t.x, h * 0.6, t.z - d / 2 - 0.02); k.build(group, { shadow: true }); hideBox(mesh);
+  },
+  gate(t, mesh, group) { // 鐵柵門＋中間的元素鎖（圓盤）
+    const [w, h] = t.size, k = new Kit();
+    for (let i = 0; i <= 10; i++) k.cyl(0.025, 0.025, h, MAT.iron(), t.x - w / 2 + i * w / 10, h / 2, t.z, 6);
+    for (const y of [0.15, h * 0.5, h - 0.1]) k.box(w, 0.06, 0.06, MAT.iron(), t.x, y, t.z);
+    k.add(new THREE.CylinderGeometry(0.3, 0.3, 0.06, 20), MAT.brass(), t.x, h * 0.5, t.z + 0.05, 0, Math.PI / 2, 0);
+    ['#ff6a3a', '#4cc8ff', '#8ad04c', '#d8d0b0'].forEach((c, i) => { const a = i / 4 * Math.PI * 2 + Math.PI / 4; k.add(new THREE.SphereGeometry(0.05, 8, 6), glow('elem' + c, c, 0.8), t.x + Math.cos(a) * 0.18, h * 0.5 + Math.sin(a) * 0.18, t.z + 0.1); });
+    k.build(group); hideBox(mesh);
+  },
+  mark(t, mesh, group) { const m = new THREE.Mesh(new THREE.RingGeometry(0.22, 0.3, 24), MAT.brass()); m.rotation.x = -Math.PI / 2; m.position.set(t.x, 0.013, t.z); group.add(m); hideBox(mesh); },
+  ladder(t, mesh, group) { // 圖書館的滑軌梯
+    const [w, h] = t.size, k = new Kit();
+    for (const s of [-1, 1]) k.add(new THREE.BoxGeometry(0.06, h + 0.4, 0.06), MAT.wood(), t.x + s * w * 0.35, (h + 0.4) / 2, t.z, 0, -0.2, 0);
+    for (let y = 0.3; y < h; y += 0.32) k.box(w * 0.7, 0.04, 0.05, MAT.wood(), t.x, y, t.z - Math.sin(0.2) * (y - h / 2));
+    k.build(group, { shadow: true }); hideBox(mesh);
+  },
+  sign(t, mesh, group) { const k = new Kit(); k.box(t.size[0], t.size[1], 0.05, MAT.darkWood(), t.x, (t.y ?? 0) + t.size[1] / 2, t.z); k.box(t.size[0] * 0.85, t.size[1] * 0.7, 0.02, MAT.parchment(), t.x, (t.y ?? 0) + t.size[1] / 2, t.z + 0.03); k.build(group); hideBox(mesh); },
+  books(t, mesh, group) { // 有編號的書：一張長桌上排成一排（書背上的號碼由謎題畫面顯示）
+    const [w, , d] = t.size, k = new Kit(), top = 0.78;
+    k.box(w, 0.05, d, MAT.wood(), t.x, top, t.z); for (const sx of [-1, 1]) for (const sz of [-1, 1]) k.box(0.06, top, 0.06, MAT.darkWood(), t.x + sx * (w / 2 - 0.06), top / 2, t.z + sz * (d / 2 - 0.06));
+    for (let i = 0; i < 9; i++) k.box(0.06, 0.26, 0.2, MAT.cloth(['#5a1a1a', '#1a3a2a', '#2a2a4a', '#4a3a1a'][i % 4]), t.x - w * 0.4 + i * w * 0.1, top + 0.155, t.z);
+    k.build(group); hideBox(mesh);
+  },
+  crystal(t, mesh, group) { // 留聲水晶：石座上的一塊發光水晶
+    const k = new Kit(); k.cyl(0.2, 0.25, 0.9, MAT.stone(), t.x, 0.45, t.z, 8);
+    k.add(new THREE.OctahedronGeometry(0.18), std('songXtal', { color: '#9fd8ff', emissive: '#3a7aa8', emissiveIntensity: 0.8, roughness: 0.05, transparent: true, opacity: 0.85 }), t.x, 1.1, t.z);
+    k.build(group); hideBox(mesh);
+  },
+  desk7(t, mesh, group) { const k = new Kit(); const top = P.desk(k, t.x, t.z, Math.PI, t.size[0]); P.bookStack(k, t.x - 0.4, top, t.z, 3, 7); P.inkQuill(k, t.x + 0.4, top, t.z); k.build(group); hideBox(mesh); },
+  flipbook(t, mesh, group) { // 自己翻頁的書：放在書架台上，攤開
+    const k = new Kit(); k.box(0.12, 0.85, 0.12, MAT.darkWood(), t.x, 0.42, t.z); k.add(new THREE.BoxGeometry(0.5, 0.04, 0.4), MAT.darkWood(), t.x, 0.88, t.z, 0, -0.35); P.openBook(k, t.x, 0.9, t.z, 0); k.build(group); hideBox(mesh);
+  },
+  eastern(t, mesh, group) { // 「東方典藏」櫃：紅漆木櫃、很多小抽屜
+    const [, h, d] = t.size, k = new Kit(), lac = std('lacquer', { color: '#6a1414', roughness: 0.4 });
+    k.box(0.4, h, d, lac, t.x - 0.1, h / 2, t.z);
+    for (let r = 0; r < 6; r++) for (let c = 0; c < 4; c++) { k.box(0.02, h / 6 - 0.04, d / 4 - 0.04, std('lacquerDrawer', { color: '#8a1e1a', roughness: 0.4 }), t.x - 0.31, (r + 0.5) * h / 6, t.z - d / 2 + (c + 0.5) * d / 4); k.cyl(0.015, 0.015, 0.03, MAT.brass(), t.x - 0.33, (r + 0.5) * h / 6, t.z - d / 2 + (c + 0.5) * d / 4, 6); }
+    k.build(group); hideBox(mesh);
+  },
+  familychart(t, mesh, group) { const m = new THREE.Mesh(new THREE.PlaneGeometry(t.size[2], t.size[1]), MAT.parchment()); m.position.set(t.x - 0.12, (t.y ?? 0) + t.size[1] / 2, t.z); m.rotation.y = -Math.PI / 2; group.add(m); hideBox(mesh); },
+  letter(t, mesh, group) { const k = new Kit(); P.trunk(k, t.x, t.z, 0.3, '#3a1418'); k.add(new THREE.PlaneGeometry(0.2, 0.14), std('envelope', { color: '#e8dcc0', side: THREE.DoubleSide }), t.x, 0.58, t.z, 0.3, -Math.PI / 2); k.build(group); hideBox(mesh); },
+  runedoor(t, mesh, group) { // 刻滿盧恩符文的大門：石門＋發光的符文
+    const [, h, d] = t.size, k = new Kit(); k.box(0.25, h, d, MAT.stone(), t.x, h / 2, t.z);
+    const RUNES = 'ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃ'; const tex = T.drawn('runedoor', (g, S) => { g.fillStyle = '#2a2a30'; g.fillRect(0, 0, S, S); g.fillStyle = '#7ab0ff'; g.font = `${S / 9}px serif`; g.textAlign = 'center'; for (let r = 0; r < 6; r++) for (let c = 0; c < 4; c++) g.fillText(RUNES[(r * 4 + c * 5) % RUNES.length], (c + 0.5) * S / 4, (r + 0.75) * S / 6); });
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(d * 0.9, h * 0.9), std('runeFace', { map: tex, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: 0.35 })); face.position.set(t.x - 0.13, h / 2, t.z); face.rotation.y = -Math.PI / 2; group.add(face);
+    k.build(group); hideBox(mesh);
+  },
+  mirrors(t, mesh, group) { // 月光與鏡座：一圈立著的小圓鏡
+    const k = new Kit(); k.cyl(t.size[0] / 2, t.size[0] / 2, 0.1, MAT.stone(), t.x, 0.05, t.z, 20);
+    for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2, x = t.x + Math.cos(a) * 0.7, z = t.z + Math.sin(a) * 0.7; k.cyl(0.03, 0.04, 0.9, MAT.brass(), x, 0.5, z, 6); k.add(new THREE.CylinderGeometry(0.18, 0.18, 0.02, 16), MAT.mirror(), x, 1.0, z, -a, Math.PI / 2, 0); }
+    k.build(group); hideBox(mesh);
+  },
+  statues(t, mesh, group) { // 四座石像鬼
+    const k = new Kit(), st = MAT.stone();
+    for (let i = 0; i < 4; i++) { const x = t.x - 0.75 + i * 0.5; k.box(0.32, 0.4, 0.32, st, x, 0.2, t.z); k.add(new THREE.SphereGeometry(0.15, 8, 6), st, x, 0.55, t.z); k.add(new THREE.ConeGeometry(0.05, 0.14, 4), st, x - 0.08, 0.72, t.z); k.add(new THREE.ConeGeometry(0.05, 0.14, 4), st, x + 0.08, 0.72, t.z); k.add(new THREE.BoxGeometry(0.03, 0.3, 0.25), st, x - 0.17, 0.5, t.z + 0.05, 0, 0, 0.5); k.add(new THREE.BoxGeometry(0.03, 0.3, 0.25), st, x + 0.17, 0.5, t.z + 0.05, 0, 0, -0.5); }
+    k.build(group, { shadow: true }); hideBox(mesh);
+  },
+  badge(t, mesh, group) { const k = new Kit(); k.cyl(0.05, 0.05, 0.01, glow('badgeGlow', '#ffd060', 1), t.x, 0.02, t.z, 12); k.build(group); hideBox(mesh); },
+  sketch(t, mesh, group) { const k = new Kit(); k.box(t.size[0] + 0.1, t.size[1] + 0.1, 0.05, MAT.brass(), t.x, (t.y ?? 0) + t.size[1] / 2, t.z); k.box(t.size[0], t.size[1], 0.02, MAT.mirror(), t.x, (t.y ?? 0) + t.size[1] / 2, t.z + 0.03); k.build(group); hideBox(mesh); },
+  braille(t, mesh, group) { const k = new Kit(); bookshelf(k, t.x + 0.15, t.z, -Math.PI / 2, t.size[2], 2.2); k.build(group); hideBox(mesh); },
+  ball(t, mesh, group) { const k = new Kit(); k.cyl(0.18, 0.25, 0.9, MAT.darkWood(), t.x, 0.45, t.z, 10); P.crystalBall(k, t.x, 0.9, t.z); k.build(group); hideBox(mesh); },
+  exitdoor(t, mesh, group) { const k = new Kit(); k.box(t.size[0], t.size[1], 0.1, MAT.darkWood(), t.x, t.size[1] / 2, t.z); k.add(new THREE.SphereGeometry(0.05, 8, 6), MAT.brass(), t.x + 0.55, 1.1, t.z + 0.08); k.build(group); hideBox(mesh); },
+  well(t, mesh, group) { // 井：石砌的井口、鐵蓋上三個圓環
+    const k = new Kit(), R = t.size[0] / 2; k.cyl(R, R * 1.05, t.size[1], MAT.stone(), t.x, t.size[1] / 2, t.z, 20);
+    k.cyl(R * 0.85, R * 0.85, 0.06, MAT.iron(), t.x, t.size[1] + 0.03, t.z, 20);
+    for (const r of [0.3, 0.55, 0.8]) k.add(new THREE.TorusGeometry(R * r, 0.03, 4, 32), MAT.brass(), t.x, t.size[1] + 0.07, t.z, 0, Math.PI / 2);
+    k.build(group, { shadow: true }); hideBox(mesh);
+  },
+  note(t, mesh, group) { const m = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 0.3), MAT.parchment()); m.rotation.set(-Math.PI / 2, 0, P.rnd(t.x, t.z) * 3); m.position.set(t.x, 0.014, t.z); group.add(m); hideBox(mesh); },
+};
+// 第四幕
+const ACT4 = {
+  ironDoor(t, mesh, group) { // 卡住的鐵門＋四根拉桿
+    const [, h, d] = t.size, k = new Kit(); k.box(0.12, h, d, MAT.iron(), t.x, h / 2, t.z);
+    for (let i = 0; i < 6; i++) k.cyl(0.03, 0.03, 0.05, MAT.iron(), t.x - 0.08, 0.3 + i * 0.36, t.z - d / 2 + 0.1, 6);
+    for (let i = 0; i < 4; i++) { const z = t.z - d * 0.3 + i * d * 0.2; k.box(0.06, 0.06, 0.06, MAT.iron(), t.x - 0.1, 1.2, z); k.add(new THREE.CylinderGeometry(0.02, 0.02, 0.45, 6), MAT.iron(), t.x - 0.22, 1.35, z, 0, 0, 0.6); k.add(new THREE.SphereGeometry(0.04, 6, 5), std('leverKnob', { color: '#6a1a14' }), t.x - 0.35, 1.53, z); }
+    k.build(group); hideBox(mesh);
+  },
+  gearwall(t, mesh, group) { // 鐘槌的齒輪組：牆上一組咬在一起的齒輪
+    const [w, h, d] = t.size, k = new Kit(), iron = std('gearIron', { color: '#4a3e30', metalness: 0.6, roughness: 0.5 });
+    k.box(w, h, 0.15, MAT.darkWood(), t.x, (t.y ?? 0) + h / 2, t.z + d / 2 - 0.08);
+    for (const [dx, dy, r] of [[-0.8, 0.9, 0.55], [0.15, 1.6, 0.45], [0.85, 0.8, 0.6], [0, 0.4, 0.3]]) {
+      k.add(new THREE.CylinderGeometry(r, r, 0.08, 18), iron, t.x + dx, (t.y ?? 0) + dy, t.z + d / 2 - 0.2, 0, Math.PI / 2);
+      for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; k.box(0.1, 0.1, 0.08, iron, t.x + dx + Math.cos(a) * (r + 0.04), (t.y ?? 0) + dy + Math.sin(a) * (r + 0.04), t.z + d / 2 - 0.2); }
+      k.cyl(0.06, 0.06, 0.12, MAT.brass(), t.x + dx, (t.y ?? 0) + dy, t.z + d / 2 - 0.25, 8);
+    }
+    k.build(group, { shadow: true }); hideBox(mesh);
+  },
+  pendulum(t, mesh, group) { // 鐘擺室的出口：刻著童謠的石框門
+    const [w, h] = t.size, k = new Kit(); k.box(w, h, 0.12, MAT.darkWood(), t.x, h / 2, t.z);
+    for (const s of [-1, 1]) k.box(0.3, h + 0.3, 0.3, MAT.stone(), t.x + s * (w / 2 + 0.15), (h + 0.3) / 2, t.z);
+    k.box(w + 0.9, 0.35, 0.3, MAT.stone(), t.x, h + 0.2, t.z); k.box(w * 0.8, 0.25, 0.02, MAT.parchment(), t.x, h - 0.3, t.z + 0.07);
+    k.build(group); hideBox(mesh);
+  },
+  roofsign(t, mesh, group) { const k = new Kit(); k.box(t.size[0], t.size[1], 0.15, MAT.stone(), t.x, (t.y ?? 0) + t.size[1] / 2, t.z); k.build(group); hideBox(mesh); },
+  roots(t, mesh) { hideBox(mesh); }, // 黑根由帳號一的 act4scene.mjs 畫
+};
+
 const THING = {
   boat(t, mesh, group) {
     const k = new Kit(), [w, , d] = t.size;
@@ -558,7 +735,11 @@ const KIND = {
     k.box(w, 0.5, w, MAT.stone(), t.x, 0.25, t.z); k.box(w * 1.1, 0.5, w * 1.1, MAT.stone(), t.x, h - 0.25, t.z);
     k.build(group, { shadow: true }); hideBox(mesh);
   },
-  hide(t, mesh, group) { // 厚窗簾：一片一片的布褶
+  hide(t, mesh, group) { // 躲藏點：依房間換樣子（星盤廳是厚窗簾）
+    if (HIDE[t.id]) return HIDE[t.id](t, mesh, group);
+    return curtain(t, mesh, group);
+  },
+  curtainUnused(t, mesh, group) {
     const [w, h, d] = t.size, k = new Kit(), mat = MAT.velvet('#3a0e14'), n = 9;
     const along = d >= w, len = along ? d : w;
     for (let i = 0; i < n; i++) {
@@ -592,6 +773,10 @@ const KIND = {
 
 decorators.thing.push(safe(({ thing: t, mesh, group }) => {
   if (t.hidden) return;
+  if (t.kind === 'hide' || t.kind === 'pillar') return KIND[t.kind](t, mesh, group);
+  const inLib = /^lib_/.test(t.room), inA4 = /^a4_/.test(t.room);
+  if (inLib && (ACT3[t.id] || ACT3[t.kind])) return (ACT3[t.id] || ACT3[t.kind])(t, mesh, group);
+  if (inA4 && ACT4[t.id]) return ACT4[t.id](t, mesh, group);
   if (THING[t.id]) return THING[t.id](t, mesh, group);
   KIND[t.kind]?.(t, mesh, group);
 }));
