@@ -91,7 +91,7 @@ export function createControls(camera, dom, { colliders, bounds, isTouch, onStep
     // 走路時鏡頭輕微上下晃
     if (moving) {
       s.bob += dt * speed * 3.2; s.stepAcc += dt * speed;
-      if (s.stepAcc > (run ? 1.1 : 0.8)) { s.stepAcc = 0; onStep?.(); }
+      if (s.stepAcc > (run ? 1.1 : 0.8)) { s.stepAcc = 0; onStep?.(run); }
     } else s.bob *= 0.9;
     camera.position.set(s.pos.x, EYE + Math.sin(s.bob) * 0.035 * Math.min(1, m), s.pos.z);
     camera.rotation.set(s.pitch, s.yaw, 0, 'YXZ');

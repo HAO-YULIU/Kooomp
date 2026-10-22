@@ -1,7 +1,7 @@
 // 第一章的 3D 世界：灰盒場景（greybox.mjs）＋第一人稱操作＋隊友、電腦同伴、赫爾嘉夫人、標記、可以調查的東西。
 // 隊友和同伴目前是簡單的人形，正式的角色模型由帳號二做好後換上。
 import * as THREE from 'three';
-import { reactThing, syncSolved, tickRigs, sfx } from '../art/index.mjs'; // 帳號二的美術掛鉤（守夜人的正式模型、謎題的場景反應），要在蓋場景之前註冊
+import { reactThing, syncSolved, tickRigs, sfx, step, setAmbience } from '../art/index.mjs'; // 帳號二的美術掛鉤（守夜人的正式模型、謎題的場景反應），要在蓋場景之前註冊
 import { loadCharacter } from '../art/characters.mjs';
 import { createControls } from '../../../prototype/src/controls.mjs';
 import { buildWorld } from './greybox.mjs';
@@ -60,6 +60,9 @@ export function patrolAt(t) {
 // 玩家換房間時，不在「這個房間＋門連過去的房間」的東西換到看不到的圖層（不動 visible，玩法自己的顯示／隱藏不受影響）。
 // 燈不換圖層（燈的數量一變，畫面要重新編譯，會卡一下）。不在任何房間裡的東西（湖、遠方的城堡）一直畫。
 const HIDDEN_LAYER = 3;
+// 每個區域的環境音（art/sfx.mjs 的 setAmbience）
+const AMBIENCE = (id) => !id ? null : id === 'dock' ? 'lake' : /^(hall|banquet)$/.test(id) ? 'fire' : /^dorm_/.test(id) ? 'hearth' : id === 'starhall' ? 'clock'
+  : /^lib_(dark|well)$/.test(id) ? 'drip' : /^lib_/.test(id) ? 'library' : id === 'a4_roof' ? 'roof' : /^a4_/.test(id) ? 'tower' : 'hush';
 function makeRoomCuller(scene) {
   const near = new Map(); for (const r of ROOMS) near.set(r.id, new Set([r.id]));
   for (const d of DOORS) { near.get(d.a)?.add(d.b); near.get(d.b)?.add(d.a); }
@@ -105,7 +108,10 @@ export function createWorld(canvas, lang = 'zh') {
   const camera = new THREE.PerspectiveCamera(70, 1, 0.05, 120);
   scene.add(camera);
   const world = buildWorld(scene, { rooms: ROOMS, doors: DOORS, things: THINGS }, { lowQuality: isTouch });
-  const controls = createControls(camera, renderer.domElement, { colliders: world.colliders, isTouch, bounds: world.bounds });
+  // 腳步聲：照腳下房間的地板（石頭／木頭）
+  const floorAt = (x, z) => ROOMS.find((r) => x >= r.x[0] && x <= r.x[1] && z >= r.z[0] && z <= r.z[1])?.floor ?? 'stone';
+  const controls = createControls(camera, renderer.domElement, { colliders: world.colliders, isTouch, bounds: world.bounds,
+    onStep: (run) => step(floorAt(controls.state.pos.x, controls.state.pos.z), run) });
   renderer.domElement.addEventListener('click', () => controls.lockPointer());
 
   // 手上的燈（不然灰盒很暗）
@@ -269,7 +275,7 @@ export function createWorld(canvas, lang = 'zh') {
         compiledRoots = roots;
         compiling = (renderer.compileAsync ? renderer.compileAsync(scene, camera) : Promise.resolve()).catch(() => {}).finally(() => { compiling = null; });
       }
-      world.lightRoom(myZone); cullRooms(myZone);
+      world.lightRoom(myZone); cullRooms(myZone); if (myZone) setAmbience(AMBIENCE(myZone));
       // 鏡頭靠近／滑回來
       if (F.on) {
         F.t = Math.min(1, F.t + dt / (F.back ? 0.45 : 0.6)); const k = ease(F.t);

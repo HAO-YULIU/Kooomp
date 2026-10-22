@@ -2,11 +2,13 @@
 // 瀏覽器要等玩家點過畫面才能出聲，所以第一次用到時才建立 AudioContext。
 let ctx = null, master = null;
 const ac = () => {
-  if (!ctx) { ctx = new (window.AudioContext || window.webkitAudioContext)(); master = ctx.createGain(); master.gain.value = 0.8; master.connect(ctx.destination); }
+  if (!ctx) { ctx = new (window.AudioContext || window.webkitAudioContext)(); master = ctx.createGain(); master.gain.value = 0.8 * (() => { try { return +(localStorage.getItem('ml_volume') ?? 1); } catch { return 1; } })(); master.connect(ctx.destination); }
   if (ctx.state === 'suspended') ctx.resume();
   return ctx;
 };
 addEventListener('pointerdown', () => { try { ac(); } catch { /* 沒有音效也能玩 */ } }, { once: true });
+/** 設定裡的音量（雨聲、童謠、呼吸聲、尖叫也跟著） */
+export function setSoundVolume(v) { try { ac(); master.gain.value = 0.8 * v; } catch { /* 沒有音效 */ } }
 
 // ---------- 雨聲（濾過的雜訊，一直循環） ----------
 let rain = null;
