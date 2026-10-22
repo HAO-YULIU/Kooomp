@@ -55,6 +55,9 @@ export function createDevTools({ conn, world, S, things, toast, onSolved }) {
     const fast = el('button', { class: world.controls.state.speedMul > 1 ? 'on' : '', text: T('快速移動', 'Fast move'), onclick: () => { const s = world.controls.state; s.speedMul = s.speedMul > 1 ? 1 : 3; fast.classList.toggle('on', s.speedMul > 1); } });
     const clock = el('button', { text: T('第四幕倒數剩 30 秒', 'Act 4: 30 s left'), onclick: () => req({ t: 'dev', deadline: 30000 }) });
     box.append(el('b', { text: T('其他', 'Other') }), el('div', { class: 'dt-row' }, fast, clock));
+    // 鬧鬼的小事件：馬上來一件（黑影會出現在你沒在看的地方，轉頭找找看）
+    const HAUNT = [['shade', '黑影', 'Shade'], ['knock', '敲門', 'Knock'], ['flicker', '燈閃', 'Flicker'], ['steps', '腳步', 'Steps'], ['whisper', '耳語', 'Whisper'], ['slam', '關門', 'Slam'], ['giggle', '笑聲', 'Giggle']];
+    box.append(el('b', { text: T('鬧鬼（第一～三幕）', 'Haunting (Acts 1–3)') }), el('div', { class: 'dt-row' }, ...HAUNT.map(([k, a, b]) => el('button', { text: T(a, b), onclick: () => { world.hauntNow?.(k); toast(`🛠 ${T(a, b)}`); } }))));
   }
   return { refresh: () => { if (open) render(); } };
 }

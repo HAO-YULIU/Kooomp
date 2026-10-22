@@ -6,4 +6,5 @@ import './staff.mjs'; // 第一人稱的法杖（掛在相機上）
 export { setStaff, staffCast } from './staff.mjs';
 export { loadCharacter, setCharacterBase, CHARACTER_KEYS } from './characters.mjs';
 export { reactThing, syncSolved, tickRigs } from './react.mjs';
-export { sfx, step, setAmbience, setVolume, getVolume, setMusic, setTension } from './sfx.mjs';
+export { tickHaunt, hauntNow } from './haunt.mjs';
+export { sfx, sfxPan, step, setAmbience, setVolume, getVolume, setMusic, setTension, hasSound } from './sfx.mjs';

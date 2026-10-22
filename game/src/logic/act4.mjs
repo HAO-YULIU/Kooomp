@@ -7,7 +7,7 @@ import { A4_SPAWN, CHECKPOINTS, NEST_SPOT, NEST_EXIT, WARDEN, WARDEN_POINTS, WAR
 import { ROOMS, DOORS, SPAWNS } from '../data/world-ch1.mjs';
 import { SCRIPT } from '../data/story-ch1.mjs';
 import { playLullaby, playFile, scream, chime } from '../world/sound.mjs';
-import { sfx, setMusic, setTension } from '../art/sfx.mjs';
+import { sfx, setMusic, setTension, hasSound } from '../art/sfx.mjs';
 import { openPanel, closePanel, panelOpen, el, L } from '../ui/overlay.mjs';
 import { openRescue } from '../ui/puzzles.mjs';
 import { t } from './i18n.mjs';
@@ -59,7 +59,7 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
     };
     grabbed = setTimeout(() => done(false), Math.max(300, until - serverNow()));
     addEventListener('keydown', hit); fight.addEventListener('pointerdown', hit);
-    scream(); sfx('stinger'); navigator.vibrate?.([200, 80, 200]);
+    if (hasSound('grab_scream')) sfx('grab_scream'); else scream(); sfx('stinger'); navigator.vibrate?.([200, 80, 200]);
   }
 
   // 這一幀所有玩家的狀況（給守夜人的 AI，只有 sim 在跑）

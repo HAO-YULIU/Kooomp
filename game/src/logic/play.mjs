@@ -24,6 +24,7 @@ const HOUR_PID = { P03: 'eldrin', P04: 'grimoire', P05: 'belmont', P06: 'ourobor
 export function startPlay({ conn, getState, myUid, toast, dev, devUser }) {
   let devtools = null; // 開發者測試工具（下面建立）
   const world = createWorld($('view'), getLang());
+  if (dev) window.__w = world; // 本機測試用
   const sender = createSender((m) => { conn.send(m); if (window.__ml) window.__ml.sent++; });
   const receiver = createReceiver();
   const S = () => getState();
@@ -253,6 +254,7 @@ export function startPlay({ conn, getState, myUid, toast, dev, devUser }) {
     $('btn-inspect').classList.toggle('ready', !!tg);
     // 同步、畫面
     sender.update({ ...mine, h: hideState }, now);
+    world.haunting = !!segment && segment !== 'act4' && segment !== 'epilogue' && segment !== 'prologue'; world.busy = panelOpen() || talking();
     world.frame(dt, receiver.update(dt, now), mine.z);
     requestAnimationFrame(loop);
   };

@@ -10,16 +10,18 @@ addEventListener('pointerdown', () => { try { ac(); } catch { /* 沒有音效也
 /** 設定裡的音量（雨聲、童謠、呼吸聲、尖叫也跟著） */
 export function setSoundVolume(v) { try { ac(); master.gain.value = 0.8 * v; } catch { /* 沒有音效 */ } }
 
-// ---------- 雨聲（濾過的雜訊，一直循環） ----------
-let rain = null;
+// ---------- 雨聲（有製作人給的音檔就用音檔，沒有就用濾過的雜訊；一直循環） ----------
+let rain = null, rainBuf = null;
+const RAIN_URL = 'assets/audio/sfx/amb_rain.mp3';
+addEventListener('pointerdown', () => { try { load(RAIN_URL).then((b) => { rainBuf = b; }); } catch { /* 沒有就用合成的 */ } }, { once: true });
 export function setRain(on) {
   try { ac(); } catch { return; }
   if (on && !rain) {
-    const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate), d = buf.getChannelData(0);
-    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    let buf = rainBuf;
+    if (!buf) { buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate); const d = buf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
     const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1400;
-    const g = ctx.createGain(); g.gain.value = 0.0; g.gain.linearRampToValueAtTime(0.06, ctx.currentTime + 1.5);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = rainBuf ? 6000 : 1400;
+    const g = ctx.createGain(); g.gain.value = 0.0; g.gain.linearRampToValueAtTime(rainBuf ? 0.3 : 0.06, ctx.currentTime + 1.5);
     src.connect(lp).connect(g).connect(master); src.start();
     rain = { src, g };
   } else if (!on && rain) {

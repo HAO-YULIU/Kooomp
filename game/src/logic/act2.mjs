@@ -1,7 +1,7 @@
 // 第二幕的玩法：肖像畫長廊（P09）的「往前／回頭」判斷、同步隊友、異常的聲音；創辦人房間的熄燈（P10）。
 import { createGallery } from '../world/corridor.mjs';
 import { setRain, playLullaby, playFile, scream, chime } from '../world/sound.mjs';
-import { sfx } from '../art/sfx.mjs';
+import { sfx, hasSound } from '../art/sfx.mjs';
 import { t, errText } from './i18n.mjs';
 
 const START = { x: 0, z: -21.6, yaw: 0 }; // 每一趟的起點（長廊南端，面向北）
@@ -69,7 +69,7 @@ export function createAct2({ world, conn, toast, play, S, house, solo, lang }) {
       }
       if (darkUntil && performance.now() > darkUntil) { darkUntil = 0; world.setDark(false); gallery.setDark(false); }
       if (gallery.update(dt, pos, mine.z === 'corridor', mine.y) === 'rush') {
-        scream(); sfx('stinger'); const f = document.getElementById('flash'); f.classList.add('on'); setTimeout(() => f.classList.remove('on'), 160);
+        if (hasSound('grab_scream')) sfx('grab_scream'); else scream(); sfx('stinger'); const f = document.getElementById('flash'); f.classList.add('on'); setTimeout(() => f.classList.remove('on'), 160);
       }
     },
   };

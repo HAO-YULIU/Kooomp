@@ -4,6 +4,7 @@
 //   setStaff('moon' | 'dragon' | null)   // 換法杖（null＝收起來）；例如依玩家角色：艾洛拉、月晞 'moon'，沃恩、西里爾 'dragon'
 //   staffCast('#9fc4ff')                  // 施咒時呼叫：往前一揮、杖頭發出這個顏色的光
 import * as THREE from 'three';
+import { sfx } from './sfx.mjs';
 import { GLTFLoader } from '../../../prototype/vendor/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from '../../../prototype/vendor/addons/libs/meshopt_decoder.module.js';
 import { decorators } from '../world/art-hooks.mjs';
@@ -69,7 +70,7 @@ function show() {
   }
 }
 export function setStaff(k) { kind = k; show(); }
-export function staffCast(color = '#9fc4ff') { flash = 1; light.color.set(color); for (const st of Object.values(loaded)) for (const m of st.glow) m.emissive.set(color); }
+export function staffCast(color = '#9fc4ff') { flash = 1; sfx('spell_cast'); light.color.set(color); for (const st of Object.values(loaded)) for (const m of st.glow) m.emissive.set(color); }
 
 // 場景蓋好時掛到相機上；每一格（畫相機看到的東西之前）更新晃動和光
 decorators.room.push(({ group }) => {

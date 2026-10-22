@@ -55,6 +55,17 @@ const SOUNDS = {
   // 耳語：幾段很短的「嘶—」，像有人在耳邊講話，左右飄
   whisper: () => { for (let i = 0; i < 7; i++) { const at = i * 0.28 + Math.random() * 0.2; noise({ dur: 0.18 + Math.random() * 0.25, vol: 0.3, type: 'bandpass', freq: 2200 + Math.random() * 2600, q: 3, at, sweep: 0.7 + Math.random() * 0.6 }); } },
   heartbeat: () => { tone(62, { dur: 0.22, vol: 0.4, slide: 0.6 }); tone(55, { dur: 0.22, vol: 0.28, slide: 0.6, at: 0.24 }); },
+  spell_cast: () => { noise({ dur: 0.5, vol: 0.06, type: 'bandpass', freq: 1500, q: 0.8, sweep: 4 }); [1568, 2093, 2637].forEach((f, i) => tone(f, { dur: 0.5, vol: 0.04, at: 0.08 + i * 0.06 })); },
+  unlock: () => { tone(900, { type: 'square', dur: 0.04, vol: 0.06 }); noise({ dur: 0.12, vol: 0.12, type: 'bandpass', freq: 1800, q: 3, at: 0.05 }); tone(200, { type: 'triangle', dur: 0.15, vol: 0.12, at: 0.25 }); },
+  door_stone: () => noise({ dur: 1.6, vol: 0.18, freq: 260, q: 0.7, sweep: 0.6 }),
+  door_iron: () => { tone(420, { type: 'sawtooth', dur: 1.4, vol: 0.02, slide: 0.7, attack: 0.2 }); noise({ dur: 0.2, vol: 0.1, type: 'bandpass', freq: 2500, q: 4 }); },
+  door_wood: () => { noise({ dur: 0.08, vol: 0.12, type: 'bandpass', freq: 1800, q: 3 }); tone(160, { type: 'sawtooth', dur: 1.1, vol: 0.02, slide: 1.4, attack: 0.15, at: 0.1 }); noise({ dur: 0.9, vol: 0.05, type: 'bandpass', freq: 600, q: 2, at: 0.1, sweep: 1.5 }); },
+  // 遠處有門重重關上
+  slam: () => { tone(55, { dur: 0.9, vol: 0.4, slide: 0.55 }); noise({ dur: 0.6, vol: 0.18, freq: 350, sweep: 0.4 }); noise({ dur: 1.5, vol: 0.03, freq: 500, at: 0.15, sweep: 0.3 }); },
+  // 有人在後面慢慢走（四步，越來越近，最後停住）
+  steps: () => { for (let i = 0; i < 4; i++) { const v = 0.05 + i * 0.03; noise({ dur: 0.07, vol: v, type: 'bandpass', freq: 1100, q: 1.2, at: i * 0.62 }); tone(70, { dur: 0.08, vol: v * 0.9, slide: 0.6, at: i * 0.62 }); } },
+  // 小孩的笑聲（很短、很遠，三聲往上飄的音）
+  giggle: () => { for (let i = 0; i < 3; i++) tone(820 + i * 90, { type: 'triangle', dur: 0.12, vol: 0.035, slide: 1.25, at: i * 0.16 }); noise({ dur: 0.5, vol: 0.012, type: 'bandpass', freq: 2500, q: 2 }); },
   hum: () => { tone(110, { dur: 1.5, vol: 0.08, attack: 0.3 }); tone(165, { dur: 1.5, vol: 0.05, attack: 0.3 }); },
 };
 // ---------- 真的音檔（製作人之後補）：assets/audio/sfx/list.json 列出有哪些，有就用音檔、沒有就用上面合成的 ----------
@@ -77,13 +88,26 @@ function playFile(key, { vol = 1, rate = 1, loop = false, dest = null, pan = 0 }
   if (pan && c.createStereoPanner) { const p = c.createStereoPanner(); p.pan.value = pan; node = node.connect(p); }
   node.connect(dest ?? master); src.start(); return { src, g };
 }
+/** 從左邊（−1）或右邊（1）傳來的聲音（鬧鬼的小事件用）；vol 調大小聲 */
+export function sfxPan(name, pan = 0, { vol = 1, arg } = {}) {
+  try {
+    const c = audio(); if (!c) return;
+    const g = c.createGain(); g.gain.value = vol; const dest = g;
+    if (c.createStereoPanner) { const p = c.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, pan)); g.connect(p).connect(master); } else g.connect(master);
+    setTimeout(() => g.disconnect(), 6000);
+    if (playFile(name, { dest, vol: 1, rate: 0.95 + Math.random() * 0.1 })) return;
+    const save = master; master = dest; try { SOUNDS[name]?.(arg); } finally { master = save; }
+  } catch { /* 沒有聲音也沒關係 */ }
+}
+/** 有沒有這個音檔（製作人給的） */
+export const hasSound = (name) => !!FILES[name]?.length;
 export function sfx(name, arg) { try { if (playFile(name, { rate: 0.95 + Math.random() * 0.1 })) return; SOUNDS[name]?.(arg); } catch { /* 沒有聲音也沒關係 */ } }
 
 // ---------- 腳步聲：石地、木地板聲音不同；跑步重一點 ----------
 let stepN = 0;
 export function step(floor = 'stone', run = false) {
   const c = audio(); if (!c) return; stepN++;
-  if (playFile(`step_${floor}`, { vol: run ? 0.9 : 0.6, rate: 0.95 + Math.random() * 0.1 })) return;
+  if (playFile(`step_${floor}`, { vol: run ? 0.35 : 0.22, rate: 0.95 + Math.random() * 0.1 })) return;
   const v = run ? 0.16 : 0.1, p = 1 + (Math.random() - 0.5) * 0.15 + (stepN % 2 ? 0.04 : -0.04);
   if (floor === 'wood') { tone(110 * p, { type: 'triangle', dur: 0.09, vol: v * 0.9, slide: 0.7 }); noise({ dur: 0.07, vol: v * 0.6, type: 'bandpass', freq: 700 * p, q: 1.5 }); }
   else { noise({ dur: 0.06, vol: v, type: 'bandpass', freq: 1400 * p, q: 1.2 }); tone(75 * p, { dur: 0.07, vol: v * 0.7, slide: 0.6 }); }
@@ -118,15 +142,15 @@ function blip(kind) {
   } finally { master = save; }
 }
 const PROFILES = {
-  lake: { file: 'amb_lake', beds: [{ freq: 350, vol: 0.06, lfo: 0.15, lfoDepth: 150 }, { type: 'bandpass', freq: 700, q: 0.4, vol: 0.025, lfo: 0.07, lfoDepth: 300 }], blips: [['water', 2, 4], ['bell', 25, 40], ['gust', 8, 14]] },
-  fire: { file: 'amb_fire', beds: [{ freq: 180, vol: 0.05 }], drones: [[55, 0.012]], blips: [['crackle', 0.15, 0.6], ['creak', 10, 20]] },
-  hearth: { file: 'amb_fire', beds: [{ freq: 160, vol: 0.035 }], blips: [['crackle', 0.4, 1.4], ['creak', 12, 25]] },
-  clock: { file: 'amb_castle', beds: [{ freq: 220, vol: 0.025 }], drones: [[73.4, 0.012]], blips: [['tick', 1, 1], ['creak', 14, 26]] },
+  lake: { file: 'amb_lake', skip: ['water', 'gust'], beds: [{ freq: 350, vol: 0.06, lfo: 0.15, lfoDepth: 150 }, { type: 'bandpass', freq: 700, q: 0.4, vol: 0.025, lfo: 0.07, lfoDepth: 300 }], blips: [['water', 2, 4], ['bell', 25, 40], ['gust', 8, 14]] },
+  fire: { file: 'amb_fire', skip: ['crackle'], beds: [{ freq: 180, vol: 0.05 }], drones: [[55, 0.012]], blips: [['crackle', 0.15, 0.6], ['creak', 10, 20]] },
+  hearth: { file: 'amb_fire', fileVol: 0.4, skip: ['crackle'], beds: [{ freq: 160, vol: 0.035 }], blips: [['crackle', 0.4, 1.4], ['creak', 12, 25]] },
+  clock: { file: 'amb_clock', fileVol: 0.3, skip: ['tick'], beds: [{ freq: 220, vol: 0.025 }], drones: [[73.4, 0.012]], blips: [['tick', 1, 1], ['creak', 14, 26]] },
   hush: { file: 'amb_castle', beds: [{ freq: 260, vol: 0.02 }], drones: [[49, 0.015]], blips: [['creak', 6, 14]] },
   library: { file: 'amb_castle', beds: [{ freq: 200, vol: 0.025 }], drones: [[55, 0.02], [82.4, 0.008]], blips: [['page', 5, 12], ['creak', 8, 16], ['drip', 9, 18]] },
-  drip: { file: 'amb_drip', beds: [{ freq: 150, vol: 0.02 }], drones: [[41.2, 0.02]], blips: [['drip', 0.8, 3]] },
-  tower: { file: 'amb_clocktower', beds: [{ freq: 300, vol: 0.03 }], drones: [[36.7, 0.03], [55, 0.01]], blips: [['bigtick', 1, 1], ['creak', 4, 9]] },
-  roof: { file: 'amb_wind', beds: [{ type: 'bandpass', freq: 500, q: 0.5, vol: 0.06, lfo: 0.1, lfoDepth: 250 }], blips: [['gust', 3, 7]] },
+  drip: { file: 'amb_drip', skip: ['drip'], beds: [{ freq: 150, vol: 0.02 }], drones: [[41.2, 0.02]], blips: [['drip', 0.8, 3]] },
+  tower: { file: 'amb_clock', fileRate: 0.55, fileVol: 0.7, skip: ['bigtick'], beds: [{ freq: 300, vol: 0.03 }], drones: [[36.7, 0.03], [55, 0.01]], blips: [['bigtick', 1, 1], ['creak', 4, 9]] },
+  roof: { file: 'amb_wind', fileVol: 0.8, skip: ['gust'], beds: [{ type: 'bandpass', freq: 500, q: 0.5, vol: 0.06, lfo: 0.1, lfoDepth: 250 }], blips: [['gust', 3, 7]] },
 };
 /** 換環境音（null＝安靜）；同一種不重來 */
 export function setAmbience(kind) {
@@ -134,12 +158,13 @@ export function setAmbience(kind) {
   if (!amb.bus) { amb.bus = c.createGain(); amb.bus.gain.value = AMB_VOL * volume; amb.bus.connect(c.destination); }
   for (const l of amb.layers) l.stop(); amb.layers = []; clearTimeout(amb.timer); amb.kind = kind;
   const P = PROFILES[kind]; if (!P) return;
-  const file = P.file && playFile(P.file, { loop: true, dest: amb.bus, vol: 0 }); // 有錄好的環境音就用它當底
+  const file = P.file && playFile(P.file, { loop: true, dest: amb.bus, vol: 0, rate: P.fileRate ?? 1 }); // 有錄好的環境音就用它當底（鐘塔：時鐘放慢＝大鐘）
   if (file) { file.g.gain.linearRampToValueAtTime(P.fileVol ?? 0.6, c.currentTime + 1.5); amb.layers.push({ stop() { const t = c.currentTime; file.g.gain.setValueAtTime(file.g.gain.value, t); file.g.gain.linearRampToValueAtTime(0, t + 1.5); setTimeout(() => file.src.stop(), 1700); } }); }
   else for (const b of P.beds ?? []) amb.layers.push(bed(b));
   for (const [f, v] of P.drones ?? []) amb.layers.push(drone(f, v));
-  const next = {}; for (const [k, a, b] of P.blips ?? []) next[k] = c.currentTime + a + Math.random() * (b - a);
-  const loop = () => { if (amb.kind !== kind) return; const now = c.currentTime; for (const [k, a, b] of P.blips ?? []) if (now >= next[k]) { blip(k); next[k] = now + a + Math.random() * (b - a); } amb.timer = setTimeout(loop, 100); };
+  const blips = (P.blips ?? []).filter(([k]) => !(file && P.skip?.includes(k))); // 音檔裡已經有的聲音不再合成
+  const next = {}; for (const [k, a, b] of blips) next[k] = c.currentTime + a + Math.random() * (b - a);
+  const loop = () => { if (amb.kind !== kind) return; const now = c.currentTime; for (const [k, a, b] of blips) if (now >= next[k]) { blip(k); next[k] = now + a + Math.random() * (b - a); } amb.timer = setTimeout(loop, 100); };
   loop();
 }
 
@@ -149,7 +174,7 @@ function wardenNodes() {
   const c = audio(); if (!c || W.bus) return;
   W.bus = c.createGain(); W.bus.gain.value = 0; W.panner = c.createStereoPanner ? c.createStereoPanner() : null;
   (W.panner ? W.bus.connect(W.panner) : W.bus).connect(master);
-  const file = playFile('warden_breath', { loop: true, dest: W.bus, vol: 0.9 });
+  const file = playFile('warden_breath', { loop: true, dest: W.bus, vol: 0.5 });
   if (!file) { // 合成的呼吸：濾過的雜訊，一吸一吐（0.3 Hz）
     const src = c.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
     const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 420; f.Q.value = 1.4;
@@ -171,20 +196,20 @@ export function wardenVoice({ visible, dist = 99, side = 0, mode = 'patrol', dt 
   // 剛開始追：嘶吼（10 秒內不重複）
   if (visible && mode === 'chase' && W.mode !== 'chase' && c.currentTime > W.roarAt) {
     W.roarAt = c.currentTime + 10;
-    if (!playFile('warden_roar', { vol: 0.3 + k })) { tone(140, { type: 'sawtooth', dur: 1.2, vol: 0.12 * (0.4 + k), slide: 0.45, attack: 0.05 }); noise({ dur: 1.1, vol: 0.12 * (0.4 + k), type: 'bandpass', freq: 900, q: 1.2, sweep: 0.4 }); }
+    if (!playFile('warden_roar', { vol: 0.25 + 0.6 * k })) { tone(140, { type: 'sawtooth', dur: 1.2, vol: 0.12 * (0.4 + k), slide: 0.45, attack: 0.05 }); noise({ dur: 1.1, vol: 0.12 * (0.4 + k), type: 'bandpass', freq: 900, q: 1.2, sweep: 0.4 }); }
   }
   W.mode = mode;
   // 腳步：走 0.7 秒一步、跑 0.38 秒一步
   if (visible && mode !== 'idle' && mode !== 'stun' && mode !== 'grab') {
     W.stepT -= dt;
-    if (W.stepT <= 0) { W.stepT = mode === 'chase' ? 0.38 : 0.7; if (k > 0.02 && !playFile('warden_step', { vol: k * 1.2, rate: 0.9 + Math.random() * 0.1 })) { tone(48, { dur: 0.35, vol: 0.4 * k, slide: 0.6 }); noise({ dur: 0.15, vol: 0.12 * k, freq: 260 }); } }
+    if (W.stepT <= 0) { W.stepT = mode === 'chase' ? 0.38 : 0.7; if (k > 0.02 && !playFile('warden_step', { vol: k * 0.9, rate: 0.9 + Math.random() * 0.1 })) { tone(48, { dur: 0.35, vol: 0.4 * k, slide: 0.6 }); noise({ dur: 0.15, vol: 0.12 * k, freq: 260 }); } }
   }
 }
 
 // ---------- 配樂：主選單（陰森的長音＋偶爾一兩個音樂盒的音）、被追（低音的脈動＋心跳，越近越快越大聲） ----------
 // 有音檔（music_menu、music_chase）就用音檔；被追的音檔一樣會照緊張程度調大小聲
 const MUS_VOL = 0.45;
-const M = { want: null, kind: null, bus: null, mix: null, high: null, layers: [], timer: 0, k: 0, next: 0, beat: 0, file: null };
+const M = { want: null, kind: null, bus: null, mix: null, high: null, hb: null, layers: [], timer: 0, k: 0, next: 0, beat: 0, file: null };
 const BOX = [220, 261.63, 293.66, 329.63, 392, 207.65]; // 守夜人童謠的音（A 小調，最後那個升 Sol 讓人不安）
 function musicNodes() {
   const c = audio(); if (!c) return null;
@@ -193,7 +218,7 @@ function musicNodes() {
 }
 function stopMusic() {
   clearTimeout(M.timer); M.kind = null;
-  for (const l of M.layers) l.stop(); M.layers = []; M.file = null; M.mix = null; M.high = null;
+  for (const l of M.layers) l.stop(); M.layers = []; M.file = null; M.mix = null; M.high = null; M.hb = null;
 }
 // 一層持續的聲音：fade 秒淡入，stop() 淡出
 function pad(c, dest, build, fade = 3) {
@@ -212,6 +237,10 @@ export function setMusic(kind) {
   const c = musicNodes(); if (!c) return; M.kind = M.want;
   M.mix = c.createGain(); M.mix.gain.value = kind === 'chase' ? 0 : 1; M.mix.connect(M.bus);
   M.layers.push({ stop: ((mix) => () => { const t = c.currentTime; mix.gain.setTargetAtTime(0, t, 0.6); setTimeout(() => mix.disconnect(), 3000); })(M.mix) });
+  if (kind === 'chase') { // 心跳的音檔：一直循環，越緊張越大聲、越快（沒有音檔就在下面用合成的）
+    const hb = playFile('heartbeat', { loop: true, dest: M.mix, vol: 0 });
+    if (hb) { M.hb = hb; M.layers.push({ stop: () => setTimeout(() => { try { hb.src.stop(); } catch { /* 已停 */ } }, 2500) }); }
+  }
   const file = playFile(`music_${kind}`, { loop: true, dest: M.mix, vol: 0.8 });
   if (file) { M.file = file; M.layers.push({ stop: () => setTimeout(() => { try { file.src.stop(); } catch { /* 已停 */ } }, 2500) }); return; }
   if (kind === 'menu') {
@@ -244,7 +273,7 @@ export function setMusic(kind) {
         const step = 60 / (96 + 84 * k) / 2; // 八分音符：越緊張越快
         while (M.next < ahead) { const at = Math.max(0, M.next - c.currentTime), f = PAT[n++ % PAT.length]; onMusic(() => { tone(f, { type: 'sawtooth', dur: step * 0.9, vol: 0.05 + 0.08 * k, at }); if (n % 4 === 1) noise({ dur: 0.08, vol: 0.03 + 0.06 * k, freq: 160, at }); }); M.next += step; }
         const beatGap = 60 / (70 + 90 * k); // 心跳
-        while (M.beat < ahead) { const at = Math.max(0, M.beat - c.currentTime); onMusic(() => { tone(60, { dur: 0.2, vol: 0.12 + 0.3 * k, slide: 0.6, at }); tone(52, { dur: 0.22, vol: 0.08 + 0.2 * k, slide: 0.6, at: at + 0.22 }); }); M.beat += beatGap; }
+        while (!M.hb && M.beat < ahead) { const at = Math.max(0, M.beat - c.currentTime); onMusic(() => { tone(60, { dur: 0.2, vol: 0.12 + 0.3 * k, slide: 0.6, at }); tone(52, { dur: 0.22, vol: 0.08 + 0.2 * k, slide: 0.6, at: at + 0.22 }); }); M.beat += beatGap; }
       } else { M.next = M.beat = ahead; }
       M.timer = setTimeout(loop, 60);
     };
@@ -257,6 +286,7 @@ export function setTension(k) {
   if (M.kind !== 'chase' || !M.mix) return; const c = audio();
   M.mix.gain.setTargetAtTime(M.file ? M.k : 0.25 + 0.75 * M.k, c.currentTime, 0.4);
   M.high?.g.gain.setTargetAtTime(M.k * M.k, c.currentTime, 0.4);
+  if (M.hb) { M.hb.g.gain.setTargetAtTime(0.2 + 0.8 * M.k, c.currentTime, 0.4); M.hb.src.playbackRate.setTargetAtTime(0.85 + 0.6 * M.k, c.currentTime, 0.6); }
 }
 addEventListener('pointerdown', () => { if (M.want) setMusic(M.want); }); // 點過畫面才能出聲：補開
 addEventListener('keydown', () => { if (M.want && !M.kind) setMusic(M.want); });

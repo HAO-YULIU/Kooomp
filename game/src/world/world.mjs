@@ -1,7 +1,7 @@
 // 第一章的 3D 世界：灰盒場景（greybox.mjs）＋第一人稱操作＋隊友、電腦同伴、赫爾嘉夫人、標記、可以調查的東西。
 // 隊友和同伴目前是簡單的人形，正式的角色模型由帳號二做好後換上。
 import * as THREE from 'three';
-import { reactThing, syncSolved, tickRigs, sfx, step, setAmbience } from '../art/index.mjs'; // 帳號二的美術掛鉤（守夜人的正式模型、謎題的場景反應），要在蓋場景之前註冊
+import { reactThing, syncSolved, tickRigs, sfx, sfxPan, step, setAmbience, tickHaunt, hauntNow } from '../art/index.mjs'; // 帳號二的美術掛鉤（守夜人的正式模型、謎題的場景反應），要在蓋場景之前註冊
 import { loadCharacter } from '../art/characters.mjs';
 import { createControls } from '../../../prototype/src/controls.mjs';
 import { buildWorld } from './greybox.mjs';
@@ -168,6 +168,7 @@ export function createWorld(canvas, lang = 'zh') {
   addEventListener('resize', resize); resize();
 
   let dark = null; // 熄燈前的亮度
+  const bornAt = performance.now();
   const lastPos = controls.state.pos.clone();
   const vel = new THREE.Vector3();
   const fwd = new THREE.Vector3();
@@ -184,7 +185,19 @@ export function createWorld(canvas, lang = 'zh') {
       const p = camera.position.clone().addScaledVector(ray.ray.direction, Math.min(t, 8));
       return [+p.x.toFixed(2), +p.z.toFixed(2)];
     },
-    setDoor: world.setDoor,
+    // 門打開時：有門的聲音（太遠聽不到；剛進遊戲、讀檔時一次打開好幾扇門不出聲）
+    setDoor(id, open) {
+      const st = world.doorState.get(id), was = st?.open;
+      world.setDoor(id, open);
+      if (!st || !open || was || performance.now() - bornAt < 4000) return;
+      const p = controls.state.pos, dx = st.door.x - p.x, dz = st.door.z - p.z, d = Math.hypot(dx, dz);
+      if (d > 25) return;
+      const right = Math.cos(controls.state.yaw) * dx - Math.sin(controls.state.yaw) * dz; // 門在右邊＋、左邊－
+      const kind = /well|pass|gears|nest/.test(id) ? 'door_iron' : /founder/.test(id) ? 'door_stone' : 'door_wood'; // 圖書館深處和鐘塔是鐵門、創辦人廳是石門
+      const pan = (right / Math.max(d, 1)) * 0.8, vol = Math.max(0.15, 1 - d / 25);
+      if (st.door.lock?.puzzle) { sfxPan('unlock', pan, { vol }); setTimeout(() => sfxPan(kind, pan, { vol }), 700); } // 解謎打開的門：先「喀」一聲解鎖
+      else sfxPan(kind, pan, { vol });
+    },
     // 熄燈（P10）：房間的燈和手上的燈一起關掉
     setDark(on) { // 調亮度而不是關掉燈，避免畫面重新編譯而卡一下
       if (on && !dark) dark = [world.roomLight.intensity, lamp.intensity];
@@ -259,6 +272,7 @@ export function createWorld(canvas, lang = 'zh') {
     },
     react: (th, name, data) => reactThing(th, name, data), // 謎題視窗裡的操作 → 場景裡的機關
     syncSolved, // 已經解開的題目：機關擺成解開的樣子
+    haunting: false, busy: false, hauntNow, // 鬧鬼的小事件：play.mjs 依段落開關（第四幕、尾聲不鬧）；busy＝對話、謎題視窗開著
     tired: false, // 第四幕：跑太久喘不過氣，只能用走的
     frame(dt, peers, myZone) {
       const bx = controls.state.pos.x, bz = controls.state.pos.z;
@@ -283,6 +297,7 @@ export function createWorld(canvas, lang = 'zh') {
         else { camera.position.lerpVectors(F.from.p, F.to.p, k); camera.quaternion.slerpQuaternions(F.from.q, F.to.q, k); }
       }
       tickRigs(dt);
+      tickHaunt(dt, { room: this.roomOf(controls.state.pos.x, controls.state.pos.z), camera, scene, roomLight: world.roomLight, busy: F.on || this.busy, on: this.haunting });
       // 特效
       if (FX.t < FX.dur) {
         FX.t += dt; const u = Math.min(1, FX.t / FX.dur), fade = 1 - u;
