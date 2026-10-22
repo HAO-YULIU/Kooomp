@@ -6,6 +6,7 @@ import { mergeGeometries } from '../../../prototype/vendor/addons/utils/BufferGe
 import { decorators } from '../world/art-hooks.mjs';
 import { DOORS } from '../data/world-ch1.mjs';
 import * as T from './textures.mjs';
+import * as P from './props.mjs';
 
 // ---------- 材質 ----------
 const M = {};
@@ -28,6 +29,8 @@ const MAT = {
   cloth: (c) => std('cloth' + c, { color: c, roughness: 0.95 }),
   velvet: (c) => std('velvet' + c, { color: c, roughness: 0.9, side: THREE.DoubleSide }),
 };
+
+P.setMaterials({ MAT, std, glow });
 
 // ---------- 組裝工具：同材質的形狀先收集起來，最後合成一個物件 ----------
 class Kit {
@@ -332,12 +335,82 @@ for (const h of ['eldrin', 'grimoire', 'belmont', 'ouroboros']) {
   };
 }
 
+
+// ---------- 小裝飾、小細節（props.mjs）：每個房間額外擺的東西。只是外觀，不擋路 ----------
+// 天花板四個角的蜘蛛網
+function cobwebs(k, r, s = 0.7) {
+  const y = r.h - 0.02;
+  [[r.x[0] + 0.17, r.z[0] + 0.17, 0], [r.x[1] - 0.17, r.z[0] + 0.17, -Math.PI / 2], [r.x[1] - 0.17, r.z[1] - 0.17, Math.PI], [r.x[0] + 0.17, r.z[1] - 0.17, Math.PI / 2]]
+    .forEach(([x, z, ry], i) => { if (P.rnd(x, z, i) > 0.35) P.cobweb(k, x, y, z, ry, s * (0.7 + P.rnd(z, x) * 0.6)); });
+}
+const DORM_EXTRA = {
+  eldrin(k, ctx) { P.telescope(k, ctx.cornerX, ctx.cornerZ, ctx.fry + Math.PI); P.globe(k, ctx.deskX - 0.4, ctx.deskTop, ctx.deskZ); P.starChart(k, ctx.cx + 5.5, 2.4, ctx.oppZ, ctx.fry + Math.PI); },
+  grimoire(k, ctx) { P.crystalBall(k, ctx.tableX, ctx.tableTop, ctx.tableZ + 0.1); P.runeStones(k, ctx.deskX - 0.3, ctx.deskTop, ctx.deskZ, 4); P.bottles(k, ctx.cornerX, 0, ctx.cornerZ, 7, 5); P.skull(k, ctx.deskX + 0.45, ctx.deskTop, ctx.deskZ, ctx.fry); },
+  belmont(k, ctx) { P.antlers(k, ctx.cx + 2.2, 2.6, ctx.fireZ - ctx.toward * 0.25, ctx.fry); P.crossedSwords(k, ctx.cx - 2.2, 2.4, ctx.fireZ - ctx.toward * 0.25, ctx.fry); P.barrel(k, ctx.cornerX, ctx.cornerZ); P.coatRack(k, ctx.rackX, ctx.rackZ, ['#d1a640', '#3a2410']); },
+  ouroboros(k, ctx) { P.serpent(k, ctx.deskX - 0.35, ctx.deskTop, ctx.deskZ); P.cauldron(k, ctx.cornerX, ctx.cornerZ); P.bottles(k, ctx.tableX, ctx.tableTop, ctx.tableZ, 11, 3); P.skull(k, ctx.deskX + 0.4, ctx.deskTop, ctx.deskZ, ctx.fry); },
+};
+function dormDetails(r, group, h) {
+  const k = new Kit(), flames = [];
+  const cx = (r.x[0] + r.x[1]) / 2, north = h === 'eldrin' || h === 'grimoire', toward = north ? 1 : -1;
+  const fireZ = north ? r.z[0] + 0.45 : r.z[1] - 0.45, fry = north ? 0 : Math.PI;
+  const oppZ = north ? r.z[1] - 0.2 : r.z[0] + 0.2; // 對面那面牆
+  // 火爐前的小圓桌：茶壺、茶杯、一本攤開的書
+  const tableX = cx, tableZ = fireZ + toward * 2.3, tableTop = P.roundTable(k, tableX, tableZ, 0.32, 0.5);
+  P.teapot(k, tableX - 0.1, tableTop, tableZ - 0.08); P.teacup(k, tableX + 0.14, tableTop, tableZ + 0.05); P.teacup(k, tableX - 0.12, tableTop, tableZ + 0.15);
+  // 對面牆邊的書桌（門在對面那面牆的中間，書桌放旁邊）
+  const deskX = cx + (r.x[1] - r.x[0] > 10 ? 3.6 : 2.6), deskZ = oppZ - toward * 0.55, deskTop = P.desk(k, deskX, deskZ, north ? Math.PI : 0);
+  P.openBook(k, deskX, deskTop, deskZ, fry); P.inkQuill(k, deskX + 0.35, deskTop, deskZ - toward * 0.15); P.bookStack(k, deskX - 0.5, deskTop, deskZ + toward * 0.1, 4, r.x[0]);
+  P.candleStick(k, deskX + 0.5, deskTop, deskZ + toward * 0.15, flames);
+  // 書架前地上的書、捲軸
+  P.bookStack(k, cx - 3.4 + 0.7, 0, fireZ + toward * 0.75, 3, r.z[0]); P.scroll(k, cx - 3.4 - 0.2, 0, fireZ + toward * 0.9, 0.6);
+  // 角落的箱子（行李）
+  P.chest(k, r.x[0] + 0.7, oppZ - toward * 0.5, fry, HOUSE[h].rug[0]);
+  // 爐台上的小東西：燭台、小畫框
+  P.candleStick(k, cx - 0.9, 1.52, fireZ + toward * 0.1, flames); P.candleStick(k, cx + 0.9, 1.52, fireZ + toward * 0.1, flames);
+  // 學院的特色小物
+  const cornerX = h === 'ouroboros' ? r.x[0] + 0.8 : r.x[1] - 0.8, cornerZ = fireZ + toward * 1.4;
+  DORM_EXTRA[h](k, { cx, fry, toward, fireZ, oppZ, tableX, tableZ, tableTop, deskX, deskZ, deskTop, cornerX, cornerZ, rackX: r.x[0] + 0.5, rackZ: fireZ + toward * 2.8 });
+  cobwebs(k, r, 0.5);
+  k.build(group); candles(group, flames, { h: 0.12, r: 0.018 });
+}
+const DETAILS = {
+  dock(r, group) { // 新生的行李、木箱、木桶、繩子
+    const k = new Kit();
+    [[-4.6, 144], [4.5, 145.2], [-4.4, 152], [4.7, 158]].forEach(([x, z], i) => P.trunk(k, x, z, P.rnd(i) * 0.6, ['#5a2a1a', '#2a3a5a', '#3a2a10', '#1a3a2a'][i]));
+    P.crate(k, 4.6, 147, 0.7); P.crate(k, 4.6, 147, 0.5, 0.7, 0.4); P.crate(k, -4.7, 160, 0.6);
+    P.barrel(k, -4.8, 147.5); P.barrel(k, -4.3, 148.4); P.ropeCoil(k, 4.3, 163);
+    k.build(group);
+  },
+  hall(r, group) { // 石柱之間的長凳、角落的石甕、門邊的公告板
+    const k = new Kit();
+    for (const z of [116.75, 127.75]) for (const s of [-1, 1]) P.bench(k, s * 9.4, z, s > 0 ? -Math.PI / 2 : Math.PI / 2, 2.4);
+    for (const [x, z] of [[-9.3, 111], [9.3, 111], [-9.3, 139.2], [9.3, 139.2]]) P.urn(k, x, z);
+    // 公告板：一塊木板＋幾張羊皮紙
+    k.box(1.6, 1.1, 0.06, MAT.darkWood(), 5.5, 1.7, 139.7);
+    for (let i = 0; i < 4; i++) k.add(new THREE.PlaneGeometry(0.32, 0.42), MAT.parchment(), 4.95 + i * 0.37, 1.72 + (i % 2) * 0.12, 139.66, Math.PI, 0, (P.rnd(i) - 0.5) * 0.2);
+    cobwebs(k, r, 1.2);
+    k.build(group);
+  },
+  banquet(r, group) { const k = new Kit(); cobwebs(k, r, 1.2); k.build(group); },
+  starhall(r, group) { // 牆角的望遠鏡、牆上的星圖、書架上的地球儀
+    const k = new Kit();
+    P.telescope(k, -8.2, 8.2, Math.PI * 0.75); P.telescope(k, 8.2, -8.2, -Math.PI * 0.25);
+    P.starChart(k, -5, 2.6, -8.8, 0); P.starChart(k, 5, 2.6, -8.8, 0); P.starChart(k, -8.8, 2.6, -1, Math.PI / 2); P.starChart(k, 8.8, 2.6, 1, -Math.PI / 2);
+    const t1 = P.roundTable(k, 8.2, 8.2, 0.35, 0.8); P.globe(k, 8.2, t1, 8.2);
+    const t2 = P.roundTable(k, -8.2, -8.2, 0.35, 0.8); P.bookStack(k, -8.25, t2, -8.2, 3, 9); P.scroll(k, -8.1, t2 + 0.1, -8.05, 1);
+    cobwebs(k, r, 0.9);
+    k.build(group);
+  },
+};
+for (const h of ['eldrin', 'grimoire', 'belmont', 'ouroboros']) DETAILS['dorm_' + h] = (r, group) => dormDetails(r, group, h);
+
 // 美術出錯時只印警告，不要讓遊戲壞掉（灰盒照樣能玩）
 const safe = (fn) => (arg) => { try { fn(arg); } catch (e) { console.warn('場景美術出錯（先用灰盒）', e); } };
 decorators.room.push(safe(({ room, group }) => {
   const st = STYLE[room.id];
   if (st) cladding(group, room, st);
   ROOM_DECOR[room.id]?.(room, group);
+  DETAILS[room.id]?.(room, group);
 }));
 
 // ---------- 門：木門＋鐵條，跟著灰盒門板一起開關；門框一直都在 ----------
@@ -471,6 +544,11 @@ const KIND = {
     for (let z = -d / 2 + 1; z <= d / 2 - 1; z += 3) for (const s of [-1, 1]) k.box(0.1, 0.72, 0.1, MAT.darkWood(), t.x + s * (w / 2 - 0.15), 0.36, t.z + z);
     for (const s of [-1, 1]) { k.box(0.35, 0.06, d, MAT.darkWood(), t.x + s * (w / 2 + 0.45), 0.45, t.z); for (let z = -d / 2 + 1; z <= d / 2 - 1; z += 4) k.box(0.3, 0.45, 0.08, MAT.darkWood(), t.x + s * (w / 2 + 0.45), 0.22, t.z + z); }
     for (let z = -d / 2 + 0.8; z <= d / 2 - 0.8; z += 1.2) for (const s of [-1, 1]) k.cyl(0.13, 0.11, 0.02, MAT.pale(), t.x + s * (w / 2 - 0.3), 0.81, t.z + z, 12);
+    // 盤子上的食物、高腳杯、水壺
+    for (let z = -d / 2 + 0.8, i = 0; z <= d / 2 - 0.8; z += 1.2, i++) for (const sd of [-1, 1]) {
+      const x = t.x + sd * (w / 2 - 0.3); P.plateFood(k, x, 0.81, t.z + z, i * 2 + sd + t.x); P.goblet(k, x - sd * 0.22, 0.8, t.z + z + 0.2);
+    }
+    for (let z = -d / 2 + 4; z <= d / 2 - 4; z += 4) { P.pitcher(k, t.x + 0.15, 0.8, t.z + z); P.bread(k, t.x - 0.15, 0.8, t.z + z + 0.6); }
     k.build(group); hideBox(mesh);
     const c = []; for (let z = -d / 2 + 2; z <= d / 2 - 2; z += 4) c.push([t.x, 0.8, t.z + z]); candles(group, c, { h: 0.25 });
   },
