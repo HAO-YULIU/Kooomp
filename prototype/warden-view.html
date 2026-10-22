@@ -13,7 +13,7 @@ s.add(new THREE.HemisphereLight('#9aa0b8', '#3a2e24', 1.4)); const k = new THREE
 const w = await loadWardenModel(); s.add(w.root);
 const cam = new THREE.PerspectiveCamera(35, innerWidth / innerHeight, 0.05, 50);
 window.shot = (ang, dist = 3.5, y = 1.1, anim = 'idle', sec = 1) => {
-  w.play(anim, 0); for (let i = 0; i < sec * 30; i++) w.update(1 / 30);
+  w.play(anim, 0); for (let i = 0; i < sec * 30; i++) w.update(1 / 30, anim === 'run' ? 'chase' : 'patrol');
   cam.position.set(Math.sin(ang) * dist, y, -Math.cos(ang) * dist); cam.lookAt(0, y * 0.85, 0); r.render(s, cam);
 };
 window.ready = true;

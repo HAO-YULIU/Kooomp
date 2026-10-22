@@ -27,7 +27,8 @@ export async function loadWardenModel() {
   });
   const root = new THREE.Group(); model.rotation.y = Math.PI; root.add(model); // 模型面向 +z，遊戲要 -z
 
-  corrupt(model, root);
+  const ribs = corrupt(model, root); // 背後翻開的肋骨（鉸鍊），每一格讓它們開合
+  let open = 0;
 
   const mixer = new THREE.AnimationMixer(model);
   const actions = Object.fromEntries(gltf.animations.map((c) => [c.name, mixer.clipAction(c)]));
@@ -48,8 +49,11 @@ export async function loadWardenModel() {
   let t = 0;
   return {
     root, play,
-    update(dt) {
+    update(dt, mode) {
+      // 肋骨：平常隨呼吸微微開合；追趕、撲抓時整個撐開
+      const want = mode === 'chase' || mode === 'grab' ? 1 : 0; open += (want - open) * Math.min(1, dt * 3);
       t += dt; mixer.update(dt);
+      for (const r of ribs) r.h.rotation.y = r.sd * (0.12 + 0.1 * Math.sin(t * (1.6 + open * 5) + r.ph) + open * 0.55);
       if (hand) { root.updateMatrixWorld(true); hand.getWorldPosition(hp); root.worldToLocal(hp); lamp.position.copy(hp).add(new THREE.Vector3(0, -0.2, 0)); }
       lamp.rotation.z = Math.sin(t * 2.2) * 0.12;
       glass.opacity = 0.7 + 0.25 * Math.sin(t * 9) * Math.sin(t * 3.7);
@@ -61,13 +65,14 @@ export async function loadWardenModel() {
 // ---------- 蝕化（docs：背後裂開、肋骨像門一樣往兩側撐開、黑色結晶刺穿衣服、臉皮往下剝落） ----------
 // 先在「站好的姿勢」下，用世界座標把東西擺在身上，再掛到最近的骨頭（bone.attach 會保留位置），之後就跟著動作動。
 function corrupt(model, root) {
+  const hinges = [];
   root.updateMatrixWorld(true);
   // 骨頭有好幾份（每個零件自己一份，名字後面可能多了 _1）；找會動的那一份：被零件的骨架用到的
   const used = []; model.traverse((o) => { if (o.isSkinnedMesh) used.push(...o.skeleton.bones); });
   const bone = (n) => used.find((b) => b.name === n) || used.find((b) => new RegExp('^' + n + '(_\\d+)?$').test(b.name));
   const spine = bone('spine_03') || bone('spine_02'), spineLow = bone('spine_01'), head = bone('head'), neck = bone('neck_01'), armL = bone('upperarm_l'), armR = bone('upperarm_r');
   if (window.__wardenDebug) console.error('warden bones ' + [spine, spineLow, head, neck, armL, armR].map((b) => b?.name).join(','));
-  if (!spine || !head) return;
+  if (!spine || !head) return hinges;
   const W = (b) => b.getWorldPosition(new THREE.Vector3());
   const q = model.getWorldQuaternion(new THREE.Quaternion());
   const BACK = new THREE.Vector3(0, 0, -1).applyQuaternion(q), UP = new THREE.Vector3(0, 1, 0), SIDE = new THREE.Vector3(1, 0, 0).applyQuaternion(q), FRONT = BACK.clone().negate();
@@ -97,7 +102,10 @@ function corrupt(model, root) {
     // 圓弧的平面：往旁邊、往後；從裂口邊緣開始彎出去再彎回身上
     const m = new THREE.Matrix4().makeBasis(SIDE.clone().multiplyScalar(sd), BACK, AXIS.clone().cross(SIDE).normalize().multiplyScalar(sd));
     rib.quaternion.setFromRotationMatrix(m); rib.rotateZ(-Math.PI * 0.15);
-    put(rib, base.clone().addScaledVector(SIDE, sd * r * 0.9), spine);
+    // 鉸鍊：在裂口邊緣，沿著脊椎的方向轉；肋骨像門一樣開合
+    const hinge = new THREE.Object3D(); look(hinge, AXIS); put(hinge, base, spine);
+    rib.position.copy(base.clone().addScaledVector(SIDE, sd * r * 0.9)); root.add(rib); rib.updateMatrixWorld(true); hinge.attach(rib); rib.frustumCulled = false; rib.castShadow = true;
+    hinges.push({ h: hinge, sd, ph: i * 0.6 });
   }
 
   // 3. 黑色結晶：從背上的裂口、肩膀、手臂刺穿衣服
@@ -116,6 +124,7 @@ function corrupt(model, root) {
   const peel = new THREE.Mesh(new THREE.PlaneGeometry(0.06, 0.1, 1, 3), new THREE.MeshStandardMaterial({ color: '#8a7466', roughness: 0.7, side: THREE.DoubleSide }));
   const pp = peel.geometry.attributes.position; for (let i = 0; i < pp.count; i++) { const y = pp.getY(i); pp.setZ(i, (0.05 - y) ** 2 * 3); } peel.geometry.translate(0, -0.05, 0); peel.geometry.computeVertexNormals();
   peel.quaternion.copy(q); peel.rotateX(0.35); peel.scale.setScalar(0.8); put(peel, face.clone().addScaledVector(UP, -0.025).addScaledVector(FRONT, 0.004), head);
+  return hinges;
 }
 
 decorators.npc.push(({ key, group }) => {
@@ -125,7 +134,7 @@ decorators.npc.push(({ key, group }) => {
     group.add(w.root);
     let told = false, last = null, speed = 0;
     const clock = new THREE.Clock();
-    group.userData.update = (dt, mode) => { told = true; w.play(MODE_ANIM[mode] || 'walk'); w.update(dt); };
+    group.userData.update = (dt, mode) => { told = true; w.play(MODE_ANIM[mode] || 'walk'); w.update(dt, mode); };
     // 帳號一還沒呼叫 userData.update 時：在畫面要畫它之前自己更新
     // （看不見的材質不會被畫，onBeforeRender 就不會被叫；所以用一個縮成一點、不寫顏色也不寫深度的三角形）
     const tg = new THREE.BufferGeometry(); tg.setAttribute('position', new THREE.Float32BufferAttribute([0, 1, 0, 0, 1, 0, 0, 1, 0], 3));
@@ -138,7 +147,7 @@ decorators.npc.push(({ key, group }) => {
       if (last && dt > 0) speed += (Math.hypot(p.x - last.x, p.z - last.z) / dt - speed) * Math.min(1, dt * 5);
       last = { x: p.x, z: p.z };
       w.play(speed > 2.2 ? 'run' : speed > 0.2 ? 'walk' : 'idle');
-      w.update(dt);
+      w.update(dt, speed > 2.2 ? 'chase' : 'patrol');
     };
     group.add(tick);
   }).catch((e) => console.warn('守夜人模型載入失敗，先用灰盒', e));
