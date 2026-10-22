@@ -2,7 +2,7 @@
 
 樣品教室（符文學教室）＋樣品角色（艾洛拉），用來驗證第一人稱、手機橫直向、魔杖、手機掃 QR code 配對，以及讓製作人判斷美術風格。
 
-不需要 build，整個 `prototype/` 資料夾直接放上網站就能玩（例如 GitHub Pages：`https://hao-yuliu.github.io/Kooomp/prototype/`）。本機測試：在 `prototype/` 裡開一個靜態伺服器（例如 `npx http-server -c-1 .`）。
+不需要 build，整個 `prototype/` 資料夾直接放上網站就能玩（儲存庫已改成不對外開放，GitHub Pages 不能用；要給別人看時放到 Cloudflare）。本機測試：在 `prototype/` 裡開一個靜態伺服器（例如 `npx http-server -c-1 .`）。
 
 ## 可以試的東西
 - **走動**：電腦 WASD＋滑鼠（點畫面鎖定滑鼠）、Shift 跑、E 調查／對話；手機橫向，左半邊搖桿、右半邊滑動轉視角、右下「調查」鈕。

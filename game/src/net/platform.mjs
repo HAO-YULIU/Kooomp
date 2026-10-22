@@ -1,6 +1,6 @@
 // 夜語工作室平台：登入（大廳帶過來的一次性登入碼 #sd=…）、取得 token。做法跟千山夜錄一樣。
 // 本機測試：網址加 ?dev=名字，用假的登入（只有本機伺服器開了 DEV_AUTH 才會接受）。
-export const LOBBY = 'https://hao-yuliu.github.io/escape-room/';
+export const LOBBY = 'https://lobby.noron.workers.dev/'; // 2026-10-22 製作人：大廳從 GitHub Pages 搬到 Cloudflare
 export const SLUG = 'milner';
 const SUPABASE_URL = 'https://umlnwzpmjxktfzjvcbts.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_8J3VI8dijlCccHQbXPfCQQ_v_O0Au3w';
