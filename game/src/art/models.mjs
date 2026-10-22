@@ -1,0 +1,40 @@
+// 擺設的 3D 模型（帳號二，2026-10-22）：製作人下載的模型放進 game/models/props/，並列在 list.json：
+//   { "armchair": "armchair.glb", "wardrobe": "wardrobe.glb", ... }
+// 進遊戲時（載入畫面）先全部載好；場景擺東西時有模型就用模型（自動縮放到原本那個位置的大小、放在地上），沒有就用方塊拼的。
+// 名稱：armchair sofa wardrobe bookshelf desk clock chandelier candelabra armor gargoyle bust skull bones rowboat crate barrel cauldron globe telescope plant lantern statue bed
+import * as THREE from 'three';
+import { GLTFLoader } from '../../../prototype/vendor/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from '../../../prototype/vendor/addons/libs/meshopt_decoder.module.js';
+
+const T = {}; // 名稱 → 載好的模型（範本）
+let base = 'models/props/';
+
+/** 載入畫面時呼叫：讀清單、載入全部模型（失敗的跳過） */
+export async function preloadProps() {
+  let list = {};
+  try { const r = await fetch(base + 'list.json'); if (r.ok) list = await r.json(); } catch { return; }
+  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  await Promise.all(Object.entries(list).map(async ([name, file]) => {
+    try {
+      const g = await loader.loadAsync(base + file), root = g.scene;
+      root.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = true; for (const m of [o.material].flat()) if (m.map) m.map.anisotropy = 4; } });
+      // 量好大小：底部中間對齊原點
+      const box = new THREE.Box3().setFromObject(root), size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+      const holder = new THREE.Group(); root.position.set(-c.x, -box.min.y, -c.z); holder.add(root);
+      T[name] = { holder, size };
+    } catch (e) { console.warn('模型載入失敗', name, e); }
+  }));
+}
+export const hasProp = (name) => !!T[name];
+
+/**
+ * 擺一個模型：parent 裡、(x, y, z)、面向 ry（模型的正面要朝 +z）。fit＝[寬, 高, 深]：縮放到放得進這個大小（等比例）。
+ * 回傳 true＝擺了（就不用再拼方塊的版本）
+ */
+export function placeProp(parent, name, x, y, z, ry, fit) {
+  const t = T[name]; if (!t || !parent) return false;
+  const o = t.holder.clone(true);
+  const [w, h, d] = fit, s = Math.min(w / (t.size.x || 1), h / (t.size.y || 1), d / (t.size.z || 1));
+  o.scale.setScalar(s); o.position.set(x, y, z); o.rotation.y = ry;
+  parent.add(o); return true;
+}

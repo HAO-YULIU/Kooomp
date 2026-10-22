@@ -6,7 +6,11 @@
 import * as THREE from 'three';
 import { DOORS, THINGS } from '../data/world-ch1.mjs';
 import * as T from './textures.mjs';
+import { placeProp } from './models.mjs';
 
+let G = null; // 這個房間的擺設放在哪
+// 有製作人給的模型就用模型：(x, z)＝靠牆那一點，往前 D/2 擺在中間；回傳 true＝擺好了
+const prop = (name, x, z, ry, w, h, d, y = 0) => placeProp(G, name, x + Math.sin(ry) * d / 2, y, z + Math.cos(ry) * d / 2, ry, [w, h, d]);
 let L = null; // scene.mjs 給的工具：{ Kit, MAT, std, glow, candles, bookshelf, armchair, banner, P }
 const rnd = (a, b = 0) => { const v = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return v - Math.floor(v); };
 
@@ -67,6 +71,7 @@ function at(k, x, z, ry) {
 // ---------- 靠牆的家具（深度 D：背貼牆）。每個回傳 { w：佔的寬度 } ----------
 const FLOOR = {
   wardrobe(k, x, z, ry, ctx) { // 雕花衣櫃
+    if (prop('wardrobe', x, z, ry, 1.25, 2.35, 0.65)) return 1.3;
     const p = at(k, x, z, ry), wd = L.MAT.darkWood(), w2 = L.MAT.wood(), b = L.MAT.brass(), D = 0.6;
     p.box(1.2, 2.1, D, wd, 0, 1.12, D / 2); p.box(1.32, 0.12, D + 0.08, wd, 0, 2.22, D / 2); p.box(1.26, 0.06, D + 0.04, w2, 0, 2.3, D / 2);
     for (const sx of [-0.29, 0.29]) { p.box(0.52, 1.6, 0.03, w2, sx, 1.22, D + 0.01); p.box(0.4, 0.6, 0.02, wd, sx, 1.5, D + 0.03); p.box(0.4, 0.55, 0.02, wd, sx, 0.8, D + 0.03); }
@@ -88,6 +93,7 @@ const FLOOR = {
     return 1.7;
   },
   clock(k, x, z, ry, ctx) { // 落地鐘
+    if (prop('clock', x, z, ry, 0.6, 2.2, 0.45)) return 0.7;
     const p = at(k, x, z, ry), wd = L.MAT.darkWood(), b = L.MAT.brass(), D = 0.38;
     p.box(0.5, 1.4, D, wd, 0, 0.7, D / 2); p.box(0.56, 0.6, D + 0.04, wd, 0, 1.7, D / 2); p.box(0.6, 0.1, D + 0.08, wd, 0, 2.05, D / 2);
     p.add(new THREE.CylinderGeometry(0.2, 0.2, 0.02, 20), L.std('clockFace', { color: '#d8ccb0', roughness: 0.6 }), 0, 1.7, D + 0.03, 0, Math.PI / 2);
@@ -96,6 +102,7 @@ const FLOOR = {
     return 0.7;
   },
   armor(k, x, z, ry) { // 盔甲：底座、腿、胸甲、肩甲、頭盔、長戟
+    if (prop('armor', x, z, ry, 0.85, 2.2, 0.6)) return 0.9;
     const p = at(k, x, z, ry), st = L.MAT.stone(), steel = L.std('steel', { color: '#8a8c92', metalness: 0.9, roughness: 0.3 }), D = 0.6;
     p.box(0.7, 0.2, 0.6, st, 0, 0.1, D / 2);
     for (const sx of [-0.1, 0.1]) { p.cyl(0.07, 0.06, 0.8, steel, sx, 0.6, D / 2); p.box(0.12, 0.06, 0.2, steel, sx, 0.23, D / 2 + 0.04); }
@@ -107,6 +114,7 @@ const FLOOR = {
     return 0.9;
   },
   bust(k, x, z, ry) { // 大理石底座＋胸像
+    if (prop('bust', x, z, ry, 0.5, 1.6, 0.45)) return 0.6;
     const p = at(k, x, z, ry), mar = L.std('marble', { color: '#cfc8bc', roughness: 0.35 }), D = 0.45;
     p.box(0.4, 0.06, 0.4, mar, 0, 0.03, D / 2); p.cyl(0.13, 0.15, 1.0, mar, 0, 0.56, D / 2, 12); p.box(0.36, 0.06, 0.36, mar, 0, 1.09, D / 2);
     p.add(new THREE.SphereGeometry(0.2, 12, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), mar, 0, 1.3, D / 2); // 肩膀
@@ -114,23 +122,25 @@ const FLOOR = {
     return 0.6;
   },
   plant(k, x, z, ry, ctx, seed) { // 盆栽（深色的葉子，有點枯）
+    if (prop('plant', x, z, ry, 0.6, 1.1, 0.6)) return 0.6;
     const p = at(k, x, z, ry), pot = L.std('pot', { color: '#5a3424', roughness: 0.8 }), leaf = L.std('leaf', { color: '#1e3018', roughness: 0.8, side: THREE.DoubleSide }), D = 0.5;
     p.cyl(0.2, 0.15, 0.4, pot, 0, 0.2, D / 2, 12); p.cyl(0.21, 0.21, 0.04, pot, 0, 0.4, D / 2, 12);
     for (let i = 0; i < 11; i++) { const a = (i / 11) * Math.PI * 2 + seed, l = 0.3 + rnd(i, seed) * 0.3; const g = new THREE.SphereGeometry(1, 6, 5); g.scale(0.07, l / 2, 0.015); g.translate(0, l / 2, 0); p.add(g, leaf, Math.cos(a) * 0.05, 0.38, D / 2 + Math.sin(a) * 0.05, a, 0.45 + rnd(seed, i) * 0.5, 0); } // 葉子：橢圓的、往外垂
     return 0.6;
   },
   candelabraFloor(k, x, z, ry, ctx) { // 落地的大燭台
+    if (prop('candelabra', x, z, ry, 0.5, 1.7, 0.45)) return 0.5;
     const p = at(k, x, z, ry), b = L.MAT.iron(), D = 0.4;
     p.cyl(0.18, 0.2, 0.05, b, 0, 0.025, D / 2, 10); p.cyl(0.025, 0.03, 1.5, b, 0, 0.78, D / 2, 8);
     p.add(new THREE.TorusGeometry(0.18, 0.015, 4, 16, Math.PI), b, 0, 1.5, D / 2, 0, 0, Math.PI);
     for (const dx of [-0.18, 0, 0.18]) { const [px, py, pz] = p.pt(dx, dx ? 1.52 : 1.56, D / 2); p.cyl(0.035, 0.03, 0.04, b, dx, py - 0.02, D / 2, 8); ctx.flames.push([px, py, pz]); }
     return 0.5;
   },
-  bookshelf(k, x, z, ry, ctx) { const p = at(k, x, z, ry); const [bx, , bz] = p.pt(0, 0, 0.2); L.bookshelf(k, bx, bz, ry, 1.6, Math.min(2.5, ctx.h - 0.6)); return 1.7; },
-  tallShelf(k, x, z, ry, ctx) { const p = at(k, x, z, ry); const [bx, , bz] = p.pt(0, 0, 0.2); L.bookshelf(k, bx, bz, ry, 1.8, Math.min(4.2, ctx.h - 0.8)); if (ctx.h > 4.5 && ctx.i % 2 === 0) ladder(k, x, z, ry, Math.min(4, ctx.h - 1)); return 1.9; },
+  bookshelf(k, x, z, ry, ctx) { if (prop('bookshelf', x, z, ry, 1.6, Math.min(2.5, ctx.h - 0.6), 0.45)) return 1.7; const p = at(k, x, z, ry); const [bx, , bz] = p.pt(0, 0, 0.2); L.bookshelf(k, bx, bz, ry, 1.6, Math.min(2.5, ctx.h - 0.6)); return 1.7; },
+  tallShelf(k, x, z, ry, ctx) { if (prop('bookshelf', x, z, ry, 1.8, Math.min(4.2, ctx.h - 0.8), 0.5)) return 1.9; const p = at(k, x, z, ry); const [bx, , bz] = p.pt(0, 0, 0.2); L.bookshelf(k, bx, bz, ry, 1.8, Math.min(4.2, ctx.h - 0.8)); if (ctx.h > 4.5 && ctx.i % 2 === 0) ladder(k, x, z, ry, Math.min(4, ctx.h - 1)); return 1.9; },
   chairs(k, x, z, ry, ctx, seed) { // 兩張扶手椅＋小圓桌
     const p = at(k, x, z, ry), col = ctx.cloth ?? '#3a1a1a';
-    for (const sx of [-0.65, 0.65]) { const [ax, , az] = p.pt(sx, 0, 0.75); L.armchair(k, col, ax, az, ry + Math.PI - sx * 0.5); }
+    for (const sx of [-0.65, 0.65]) { const [ax, , az] = p.pt(sx, 0, 0.75); if (!placeProp(G, 'armchair', ax, 0, az, ry - sx * 0.5, [0.85, 1.2, 0.85])) L.armchair(k, col, ax, az, ry + Math.PI - sx * 0.5); }
     const [tx, , tz] = p.pt(0, 0, 0.55); const top = L.P.roundTable(k, tx, tz, 0.25, 0.55);
     if (seed % 2) L.P.teacup(k, tx, top, tz); else L.P.openBook(k, tx, top, tz, ry);
     return 2.1;
@@ -145,6 +155,7 @@ const FLOOR = {
     return 1.5;
   },
   statue(k, x, z, ry) { // 披斗篷的石像（大廳、典禮廳）
+    if (prop('statue', x, z, ry, 1.0, 2.9, 0.9)) return 1.3;
     const p = at(k, x, z, ry), st = L.std('statueStone', { color: '#8a8478', roughness: 0.75 }), D = 0.9;
     p.box(0.9, 0.5, 0.9, st, 0, 0.25, D / 2); p.box(1.0, 0.08, 1.0, st, 0, 0.54, D / 2);
     p.cyl(0.18, 0.42, 1.7, st, 0, 1.43, D / 2, 12); p.add(new THREE.SphereGeometry(0.16, 12, 10), st, 0, 2.42, D / 2);
@@ -159,9 +170,10 @@ const FLOOR = {
     for (let i = 0; i < 4; i++) { const dx = -0.4 + i * 0.27; p.cyl(0.015, 0.015, 1.7, wd, dx, 1.1, 0.15, 6); p.box(0.05, 0.22, 0.015, steel, dx, 2.05, 0.15); }
     return 1.4;
   },
-  cauldronStand(k, x, z, ry) { const p = at(k, x, z, ry); const [cx, , cz] = p.pt(0, 0, 0.5); L.P.cauldron(k, cx, cz); return 1.0; },
-  globeStand(k, x, z, ry) { const p = at(k, x, z, ry), wd = L.MAT.darkWood(); p.cyl(0.04, 0.06, 0.8, wd, 0, 0.4, 0.4, 8); for (let i = 0; i < 3; i++) p.box(0.05, 0.03, 0.4, wd, 0, 0.03, 0.4, i * 2.1); const [gx, , gz] = p.pt(0, 0, 0.4); L.P.globe(k, gx, 0.8, gz); return 0.8; },
+  cauldronStand(k, x, z, ry) { if (prop('cauldron', x, z, ry, 0.9, 0.9, 0.9)) return 1.0; const p = at(k, x, z, ry); const [cx, , cz] = p.pt(0, 0, 0.5); L.P.cauldron(k, cx, cz); return 1.0; },
+  globeStand(k, x, z, ry) { if (prop('globe', x, z, ry, 0.6, 1.2, 0.6)) return 0.8; const p = at(k, x, z, ry), wd = L.MAT.darkWood(); p.cyl(0.04, 0.06, 0.8, wd, 0, 0.4, 0.4, 8); for (let i = 0; i < 3; i++) p.box(0.05, 0.03, 0.4, wd, 0, 0.03, 0.4, i * 2.1); const [gx, , gz] = p.pt(0, 0, 0.4); L.P.globe(k, gx, 0.8, gz); return 0.8; },
   bones(k, x, z, ry, ctx, seed) { // 角落的骨頭（蝕巢、井室）
+    if (prop('bones', x, z, ry, 0.9, 0.5, 0.8)) return 1.0;
     const p = at(k, x, z, ry), bm = L.std('boneMat', { color: '#c8bca4', roughness: 0.6 });
     for (let i = 0; i < 6; i++) p.add(new THREE.CylinderGeometry(0.025, 0.03, 0.35 + rnd(i, seed) * 0.2, 6), bm, -0.4 + rnd(seed, i) * 0.8, 0.03, 0.3 + rnd(i, seed + 1) * 0.4, rnd(i) * 3, Math.PI / 2, 0);
     const [sx, , sz] = p.pt(0.1, 0, 0.45); L.P.skull(k, sx, 0, sz, ry + rnd(seed) * 2);
@@ -288,7 +300,7 @@ const pick = (list, s) => { const tot = list.reduce((a, e) => a + e[1], 0); let 
 
 /** 一個房間的擺設加強 */
 export function dressRoom(r, group, lib) {
-  L = lib;
+  L = lib; G = group;
   const kind = ROOM_KIND[r.id]; if (!kind) return;
   const K = KINDS[kind], ex = EXTRA[r.id]?.(r) ?? {}, k = new L.Kit(), flames = [];
   const ctx = { h: r.h, flames, cloth: { dorm_eldrin: '#2a3a6a', dorm_grimoire: '#5a1a1e', dorm_belmont: '#5a3a14', dorm_ouroboros: '#123322' }[r.id] ?? '#3a1a1a',
@@ -372,7 +384,7 @@ const roofSky = () => T.drawn('roofSky', (g, s) => {
   }
 }, { size: 512 });
 export function dressRoof(r, group, lib) {
-  L = lib; const k = new L.Kit(), st = L.MAT.stone(), H = 1.15;
+  L = lib; G = group; const k = new L.Kit(), st = L.MAT.stone(), H = 1.15;
   const skyMat = L.glow('roofSkyMat', '#ffffff', 1); skyMat.map = roofSky(); skyMat.needsUpdate = true;
   const sides = [[r.x[0] + 0.17, (r.z[0] + r.z[1]) / 2, Math.PI / 2, r.z[1] - r.z[0]], [r.x[1] - 0.17, (r.z[0] + r.z[1]) / 2, -Math.PI / 2, r.z[1] - r.z[0]], [(r.x[0] + r.x[1]) / 2, r.z[0] + 0.17, 0, r.x[1] - r.x[0]]];
   for (const [x, z, ry, len] of sides) {
@@ -387,6 +399,7 @@ export function dressRoof(r, group, lib) {
   // 石像鬼：蹲在矮牆上，往外看
   const gm = L.std('gargoyle', { color: '#5a5650', roughness: 0.9 });
   for (const [x, z, ry] of [[r.x[0] + 0.4, r.z[0] + 6, Math.PI / 2], [r.x[1] - 0.4, r.z[0] + 18, -Math.PI / 2], [r.x[0] + 0.4, r.z[0] + 34, Math.PI / 2], [r.x[1] - 0.4, r.z[0] + 48, -Math.PI / 2]]) {
+    if (placeProp(group, 'gargoyle', x, H, z, ry, [0.8, 1.1, 0.8])) continue;
     const p = at(k, x, z, ry);
     p.add(new THREE.SphereGeometry(0.28, 10, 8), gm, 0, H + 0.75, 0.05); p.add(new THREE.SphereGeometry(0.17, 10, 8), gm, 0, H + 1.1, -0.15);
     p.add(new THREE.ConeGeometry(0.05, 0.22, 5), gm, -0.1, H + 1.3, -0.15); p.add(new THREE.ConeGeometry(0.05, 0.22, 5), gm, 0.1, H + 1.3, -0.15);
@@ -403,9 +416,10 @@ const mistTex = () => T.drawn('mist', (g, s) => {
   for (let i = 0; i < 70; i++) { const x = rnd(i, 1) * s, y = rnd(i, 2) * s, r = 30 + rnd(i, 3) * 90; const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, 'rgba(200,210,235,0.07)'); gr.addColorStop(1, 'rgba(200,210,235,0)'); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); }
 }, { size: 256 });
 export function dressDock(r, group, lib) {
-  L = lib; const k = new L.Kit(), wd = L.MAT.darkWood(), w2 = L.MAT.wood();
+  L = lib; G = group; const k = new L.Kit(), wd = L.MAT.darkWood(), w2 = L.MAT.wood();
   // 小船：船身（兩片斜的木板＋船底）、座板、槳、繩子綁在木樁上
   for (const [x, z, ry] of [[7.4, 150, 0.1], [-7.6, 161, -0.15]]) {
+    if (placeProp(group, 'rowboat', x, -0.55, z, ry, [1.4, 0.8, 3.8])) continue;
     const p = at(k, x, z, ry);
     p.box(0.9, 0.08, 3.0, wd, 0, -0.45, 0);
     for (const sx of [-1, 1]) p.add(new THREE.BoxGeometry(0.06, 0.45, 3.0), w2, sx * 0.55, -0.3, 0, 0, 0, sx * 0.35);

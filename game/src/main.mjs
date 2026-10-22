@@ -320,6 +320,7 @@ async function startGame() {
     const orient = await import('../../prototype/src/orient.mjs');
     orient.initOrientation($('rotate'));
     orient.requireOrientation('landscape', { text: t('rotate_landscape') });
+    await (await import('./art/models.mjs')).preloadProps().catch(() => {}); // 製作人給的擺設模型（有的話）
     await loading.stage('build'); // 蓋學校（最久、畫面會停住，但魔法陣和流光會繼續轉）
     const t0 = performance.now();
     game = startPlay({ conn, getState: () => state, myUid, toast, dev: DEV, devUser: devUser || DEV });

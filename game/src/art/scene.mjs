@@ -8,6 +8,7 @@ import { DOORS } from '../data/world-ch1.mjs';
 import * as T from './textures.mjs';
 import * as P from './props.mjs';
 import { dressRoom, dressRoof, dressDock } from './dress.mjs';
+import { placeProp } from './models.mjs';
 
 // ---------- 材質 ----------
 const M = {};
@@ -335,8 +336,7 @@ for (const h of ['eldrin', 'grimoire', 'belmont', 'ouroboros']) {
     const fz = north ? r.z[0] + 0.45 : r.z[1] - 0.45, fry = north ? 0 : Math.PI;
     fireplace(k, cx, fz, fry);
     const toward = north ? 1 : -1;
-    armchair(k, HOUSE[h].rug[0], cx - 1.6, fz + toward * 1.6, fry + (north ? 0.5 : -0.5) + Math.PI);
-    armchair(k, HOUSE[h].rug[0], cx + 1.6, fz + toward * 1.6, fry - (north ? 0.5 : -0.5) + Math.PI);
+    for (const s of [-1, 1]) { const ry = fry - s * (north ? 0.5 : -0.5) + Math.PI; if (!placeProp(group, 'armchair', cx + s * 1.6, 0, fz + toward * 1.6, ry - Math.PI, [0.9, 1.2, 0.9])) armchair(k, HOUSE[h].rug[0], cx + s * 1.6, fz + toward * 1.6, ry); } // 有製作人給的模型就用模型
     // 書架：靠在火爐那面牆的兩邊
     for (const dx of [-3.4, 3.4]) if (Math.abs(dx) + 1 < (r.x[1] - r.x[0]) / 2) bookshelf(k, cx + dx, north ? r.z[0] + 0.4 : r.z[1] - 0.4, fry, 1.6, Math.min(2.4, r.h - 0.8));
     // 學院旗：火爐上方
