@@ -2,6 +2,7 @@
 // 書架的位置由「伺服器時間」算出來（每 30 秒換一次），所有人看到的一樣，不用傳訊息。
 import * as THREE from 'three';
 import { MAZE, mazeLayout } from '../data/library-ch1.mjs';
+import { bookWall } from '../art/textures.mjs';
 import { bloodTrail, bloodPool, buildSenior, bloodSplat } from '../art/gore.mjs';
 
 export const mazePhase = (serverNow) => Math.floor(serverNow / 1000 / MAZE.period);
@@ -12,18 +13,19 @@ export const cellCenter = (c, r) => ({ x: MAZE.x0 + (c + 0.5) * MAZE.cell, z: MA
 export function createLibrary(scene, colliders) {
   const root = new THREE.Group(); root.userData.static = true; scene.add(root); // static：不會移動的場景，world.mjs 只畫玩家附近房間的部分
   const shelfMat = new THREE.MeshStandardMaterial({ color: '#3b2716', roughness: 0.85 });
-  const bookCols = ['#5a1a14', '#1e3a2a', '#2a2a4a', '#6a5a2a', '#3a1a3a'].map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.8 }));
   const veinMat = new THREE.MeshBasicMaterial({ color: '#050505' });
+  const wallTex = bookWall().clone(); wallTex.wrapS = wallTex.wrapT = THREE.RepeatWrapping; wallTex.repeat.set((MAZE.cell - 0.2) / 1.8, 5.2 / 2.3); wallTex.needsUpdate = true;
+  const wallMat = new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.85 }), topMat = new THREE.MeshStandardMaterial({ color: '#1a120a', roughness: 0.9 });
 
   // ---- 書架方塊：每格一個，依目前的排列顯示或隱藏 ----
   const blocks = [];
   for (let r = 0; r < 5; r++) for (let c = 0; c < 5; c++) {
     const { x, z } = cellCenter(c, r), s = MAZE.cell - 0.2;
     const g = new THREE.Group(); g.position.set(x, 0, z);
-    const body = new THREE.Mesh(new THREE.BoxGeometry(s, 5.2, s), shelfMat); body.position.y = 2.6; body.castShadow = body.receiveShadow = true; g.add(body);
-    for (let k = 0; k < 4; k++) { // 一層一層的書（四面）
-      const band = new THREE.Mesh(new THREE.BoxGeometry(s + 0.06, 0.45, s + 0.06), bookCols[(r * 5 + c + k) % bookCols.length]); band.position.y = 0.7 + k * 1.15; g.add(band);
-    }
+    // 四面都是書牆（畫好的書背貼圖，帳號二）；上面是深色木頭的頂
+    const body = new THREE.Mesh(new THREE.BoxGeometry(s, 5.2, s), [wallMat, wallMat, topMat, topMat, wallMat, wallMat]); body.position.y = 2.6; body.castShadow = body.receiveShadow = true; g.add(body);
+    const crown = new THREE.Mesh(new THREE.BoxGeometry(s + 0.16, 0.18, s + 0.16), shelfMat); crown.position.y = 5.2; g.add(crown);
+    const plinth = new THREE.Mesh(new THREE.BoxGeometry(s + 0.08, 0.14, s + 0.08), shelfMat); plinth.position.y = 0.07; g.add(plinth);
     for (let k = 0; k < 3; k++) { // 書上長出黑色的紋路
       const v = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1 + Math.random() * 2, s + 0.1), veinMat); v.position.set(-s / 2 + 0.6 + k * 1.7, 2 + Math.random(), 0); v.rotation.z = Math.random() - 0.5; g.add(v);
     }

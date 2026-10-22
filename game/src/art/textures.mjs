@@ -137,3 +137,27 @@ export function drawn(key, draw, { size = 512, srgb = true } = {}) {
   cache.set(key, t);
   return t;
 }
+
+/** 一整面書牆（書架的層板＋一排排書背）：一張＝寬 1.8 公尺、高 2.3 公尺（五層） */
+export const bookWall = () => drawn('bookWall', (g, s) => {
+  const R = (a, b) => hash(a, b, 41);
+  g.fillStyle = '#1e140c'; g.fillRect(0, 0, s, s);
+  const rows = 5, rh = s / rows, cols = ['#5a1a14', '#1e3a2a', '#2a2a4a', '#6a5a2a', '#3a1a3a', '#4a2a1a', '#6a4a3a', '#2a3a3a', '#7a6a4a'];
+  for (let r = 0; r < rows; r++) {
+    const y0 = r * rh;
+    g.fillStyle = '#0c0805'; g.fillRect(0, y0, s, rh); // 書架裡面暗暗的
+    let x = 6;
+    for (let i = 0; x < s - 6; i++) {
+      const w = 7 + R(r, i) * 14, h = rh * (0.62 + R(i, r) * 0.3), gap = R(r * 7, i) < 0.08;
+      if (!gap) {
+        const c = cols[Math.floor(R(i * 3, r) * cols.length)]; g.fillStyle = c; g.fillRect(x, y0 + rh - 8 - h, w, h);
+        g.fillStyle = 'rgba(255,255,255,0.08)'; g.fillRect(x, y0 + rh - 8 - h, 2, h); // 書背的亮邊
+        g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(x + w - 2, y0 + rh - 8 - h, 2, h);
+        if (R(i, r * 5) > 0.5) { g.fillStyle = 'rgba(200,170,90,0.6)'; g.fillRect(x + 1, y0 + rh - 8 - h * 0.8, w - 2, 2); g.fillRect(x + 1, y0 + rh - 8 - h * 0.25, w - 2, 2); } // 燙金的線
+      } else if (R(i, r + 9) > 0.5) { g.fillStyle = cols[i % cols.length]; g.save(); g.translate(x + 4, y0 + rh - 8); g.rotate(-0.35); g.fillRect(0, -rh * 0.7, 12, rh * 0.7); g.restore(); } // 斜靠的書
+      x += w + 1;
+    }
+    g.fillStyle = '#3b2716'; g.fillRect(0, y0 + rh - 8, s, 8); g.fillStyle = '#2a1a0e'; g.fillRect(0, y0, s, 4); // 層板
+  }
+  g.fillStyle = '#3b2716'; g.fillRect(0, 0, 6, s); g.fillRect(s - 6, 0, 6, s); // 兩邊的側板
+}, { size: 512 });
