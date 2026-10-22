@@ -1,7 +1,7 @@
 // 第一章的 3D 世界：灰盒場景（greybox.mjs）＋第一人稱操作＋隊友、電腦同伴、赫爾嘉夫人、標記、可以調查的東西。
 // 隊友和同伴目前是簡單的人形，正式的角色模型由帳號二做好後換上。
 import * as THREE from 'three';
-import { reactThing, syncSolved, tickRigs } from '../art/index.mjs'; // 帳號二的美術掛鉤（守夜人的正式模型、謎題的場景反應），要在蓋場景之前註冊
+import { reactThing, syncSolved, tickRigs, sfx } from '../art/index.mjs'; // 帳號二的美術掛鉤（守夜人的正式模型、謎題的場景反應），要在蓋場景之前註冊
 import { loadCharacter } from '../art/characters.mjs';
 import { createControls } from '../../../prototype/src/controls.mjs';
 import { buildWorld } from './greybox.mjs';
@@ -238,6 +238,7 @@ export function createWorld(canvas, lang = 'zh') {
     fx(th, kind) {
       const k = FX_KIND[kind]; if (!k) return;
       if (kind !== 'input') reactThing(th ?? F.thing, kind); // 機關：打開、答錯、解開
+      if (kind === 'solved') sfx('solved'); else if (kind === 'wrong') sfx('wrong');
       const C = th ? new THREE.Vector3(th.x, (th.y ?? 0) + (th.size?.[1] ?? 0.6) / 2, th.z) : F.center;
       FX.t = 0; FX.kind = kind; FX.color.set(k[0]); FX.dur = k[1]; FX.power = k[2];
       fxLight.color.copy(FX.color); fxLight.position.copy(C).add(new THREE.Vector3(0, 0.3, 0));

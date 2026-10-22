@@ -5,9 +5,10 @@
 import * as THREE from 'three';
 import { decorators } from '../world/art-hooks.mjs';
 import { ROOMS } from '../data/world-ch1.mjs';
-import { SOKOBAN } from '../data/library-ch1.mjs';
+import { SOKOBAN, LIGHT_GRID } from '../data/library-ch1.mjs';
 import { LEVERS, BOLTS_LOCKED } from '../data/act4-ch1.mjs';
 import { MAT, std, glow } from './scene.mjs';
+import { sfx } from './sfx.mjs';
 
 const LIVE = new Map(); // `${puzzle}:${id}` → 機關
 const keyOf = (t) => `${t.puzzle}:${t.id}`;
@@ -177,7 +178,7 @@ const RIGS = {
     const g = rigAt(t, group); // +z 朝房間，窗外是 -z
     // 窗玻璃是畫上去的夜空（不透明），燭光就畫在玻璃上：遠方四座塔的窗，小小的光點
     const lamps = {}; let k = 0; const [, h, d] = t.size;
-    for (const hh of Object.keys(HOUSE_COLOR)) { const sp = halo(HOUSE_COLOR[hh], 0.12); sp.position.set((k - 1.5) * d * 0.22, h * (0.62 + (k % 2) * 0.15), 0.09); g.add(sp); lamps[hh] = sp; k++; }
+    for (const hh of Object.keys(HOUSE_COLOR)) { const sp = halo(HOUSE_COLOR[hh], 0.22); sp.position.set((k - 1.5) * d * 0.22, h * (0.62 + (k % 2) * 0.15), 0.09); g.add(sp); lamps[hh] = sp; k++; }
     return { on(n, d) { if (n === 'blink' && lamps[d.house]) lamps[d.house].material.opacity = d.on ? 1 : 0.08; if (n === 'open') for (const sp of Object.values(lamps)) sp.material.opacity = 0.15; }, solved() {}, tick() {} };
   },
 
@@ -444,6 +445,125 @@ const RIGS = {
       tick(dt) { vel += -swing * 40 * dt; vel *= Math.pow(0.3, dt); swing += vel * dt; ringP.rotation.x = swing; ring.rotation.x = swing * 0.3; if (glowT > 0) { glowT -= dt; lit.material.opacity = Math.min(1, glowT * 2); } else lit.material.opacity = 0; },
     };
   },
+
+  // P11：上鎖的提燈箱。輸入數字時鎖頭上的符號一閃；解開時蓋子掀開、提燈浮出來發光
+  'P11:lampbox'(t, group) {
+    const g = rigAt(t, group, 0), [w, h, d] = t.size;
+    const lidP = new THREE.Group(); lidP.position.set(0, h + 0.005, -d / 2); g.add(lidP);
+    mesh(new THREE.BoxGeometry(w + 0.02, 0.04, d + 0.02), MAT.darkWood(), 0, 0.02, d / 2, lidP);
+    const lock = mesh(new THREE.BoxGeometry(0.12, 0.14, 0.04), glowMat('#ffd27a', 0), 0, h * 0.6, -d / 2 - 0.03, g);
+    const lantern = new THREE.Group(); lantern.position.set(0, h * 0.5, 0); g.add(lantern); lantern.visible = false;
+    mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.22, 6, 1, true), std('lanternGlass', { color: '#ffe8b0', transparent: true, opacity: 0.4, side: THREE.DoubleSide }), 0, 0, 0, lantern);
+    mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.03, 6), MAT.iron(), 0, 0.12, 0, lantern); mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.03, 6), MAT.iron(), 0, -0.12, 0, lantern);
+    mesh(new THREE.TorusGeometry(0.05, 0.01, 4, 12), MAT.iron(), 0, 0.17, 0, lantern);
+    const flame = halo('#ffb050', 0.4); lantern.add(flame);
+    const tw = new Tween(), sh = shaker(g); let pulse = 0, time = 0;
+    return {
+      on(n) { if (n === 'digits') pulse = 1; if (n === 'wrong') { sh.start(); lock.material.emissive.set('#ff5a4a'); pulse = 1; setTimeout(() => lock.material.emissive.set('#ffd27a'), 600); } },
+      solved(now) { lantern.visible = true; flame.material.opacity = 1; if (now) { lidP.rotation.x = -1.9; lantern.position.y = h + 0.3; } else { tw.to(lidP.rotation, 'x', -1.9, 0.8); tw.to(lantern.position, 'y', h + 0.3, 1.6); } },
+      tick(dt) { time += dt; tw.tick(dt); sh.tick(dt); if (pulse > 0) { pulse -= dt * 2; lock.material.emissiveIntensity = Math.max(0, pulse); } if (lantern.visible) { lantern.rotation.y += dt * 0.6; flame.scale.setScalar(0.4 + Math.sin(time * 9) * 0.03); } },
+    };
+  },
+
+  // P12：柵門的元素鎖。選的元素依序點亮圓盤上的寶珠、在上方排成一列；解開時寶珠一起亮
+  'P12:gate'(t, group) {
+    const g = rigAt(t, group, 0), [, h] = t.size;
+    const ELEM = { fire: ['#ff6a3a', '🜂'], water: ['#4cc8ff', '🜄'], wind: ['#d8d0b0', '🜁'], earth: ['#8ad04c', '🜃'] };
+    const orbAt = { fire: 0, water: 1, earth: 2, wind: 3 }; // 跟靜態圓盤上的四顆珠子同一個順序（顏色）
+    const orbs = {}; for (const [k, [c]] of Object.entries(ELEM)) { const a = orbAt[k] / 4 * Math.PI * 2 + Math.PI / 4, sp = halo(c, 0.22); sp.position.set(Math.cos(a) * 0.18, h * 0.5 + Math.sin(a) * 0.18, 0.13); g.add(sp); orbs[k] = sp; }
+    const slots = [0, 1, 2, 3].map((i) => { const m = glyphPlane('🜁', 0.16, '#ffffff'); m.position.set((i - 1.5) * 0.22, h * 0.5 + 0.42, 0.12); g.add(m); return m; });
+    let pick = [], fade = 0;
+    const show = (c) => { slots.forEach((m, i) => { const e = ELEM[pick[i]]; if (e) { m.material.map = glyph(e[1]); m.material.needsUpdate = true; m.material.color.set(c ?? e[0]); m.material.opacity = 1; } else m.material.opacity = 0; }); for (const [k, sp] of Object.entries(orbs)) sp.material.opacity = pick.includes(k) ? 0.95 : 0.15; };
+    return {
+      on(n, d) { if (n === 'elements') { pick = d.pick ?? []; show(); } if (n === 'open') show(); if (n === 'wrong') { show('#ff5a4a'); fade = 0.9; } },
+      solved() { for (const sp of Object.values(orbs)) { sp.material.opacity = 1; sp.scale.setScalar(0.4); } slots.forEach((m) => { m.material.color.set('#ffd27a'); }); },
+      tick(dt) { if (fade > 0 && (fade -= dt) <= 0) { pick = []; show(); } },
+    };
+  },
+
+  // P14：有編號的書。翻開哪一本，那一本就浮起來、攤開發光
+  'P14:books'(t, group) {
+    const g = rigAt(t, group, 0), [w] = t.size, top = 0.78;
+    const book = new THREE.Group(); g.add(book); book.visible = false;
+    for (const s of [-1, 1]) { const pg = mesh(new THREE.BoxGeometry(0.16, 0.01, 0.22), MAT.parchment(), s * 0.085, 0, 0, book); pg.rotation.z = s * -0.12; }
+    const light = halo('#ffe0a0', 0.6); light.position.y = 0.05; book.add(light);
+    let target = 0, time = 0;
+    return {
+      on(n, d) { if (n === 'book') { const i = Math.max(1, Math.min(12, +d.i || 1)); book.visible = true; book.position.set(-w * 0.45 + (i - 0.5) * (w * 0.9 / 12), top + 0.3, 0); target = 1; book.scale.setScalar(0.01); } },
+      solved() { light.material.color.set('#ffd27a'); },
+      tick(dt) { time += dt; if (!book.visible) return; const k = book.scale.x + (target - book.scale.x) * Math.min(1, dt * 6); book.scale.setScalar(k); book.position.y = top + 0.3 + Math.sin(time * 2) * 0.03; light.material.opacity = 0.8 * k; },
+    };
+  },
+
+  // P15：留聲水晶。播放時水晶脈動發光、慢慢轉；倒著播是紅光，快轉轉得快
+  'P15:crystal'(t, group) {
+    const g = rigAt(t, group, 0);
+    const aura = halo('#9fd8ff', 0.9); aura.position.y = 1.1; g.add(aura);
+    const rings = [0, 1].map((i) => { const r = mesh(new THREE.TorusGeometry(0.28 + i * 0.08, 0.008, 4, 40), new THREE.MeshBasicMaterial({ color: '#9fd8ff', transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }), 0, 1.1, 0, g); r.rotation.x = Math.PI / 2 + i * 0.4; return r; });
+    let playing = false, speed = 1, time = 0, off = 0;
+    return {
+      on(n, d) { if (n === 'play') { playing = !d.off; if (playing) { speed = d.speed ?? 1; const c = d.rev ? '#ff7a6a' : '#9fd8ff'; aura.material.color.set(c); for (const r of rings) r.material.color.set(c); off = 12; } } },
+      solved() {},
+      tick(dt) {
+        time += dt; if (off > 0 && (off -= dt) <= 0) playing = false;
+        const k = playing ? 0.55 + 0.45 * Math.abs(Math.sin(time * 4 * speed)) : 0.2;
+        aura.material.opacity += (k - aura.material.opacity) * Math.min(1, dt * 6);
+        rings.forEach((r, i) => { r.material.opacity += ((playing ? 0.7 : 0) - r.material.opacity) * Math.min(1, dt * 4); r.rotation.z += dt * speed * (i ? -1.5 : 1); });
+      },
+    };
+  },
+
+  // P19：月光與鏡座。鏡座上方浮出一張 6×6 的光之棋盤：鏡子轉了，光線跟著轉彎；艾爾德林看得到光走的路，光打中水晶時水晶亮起來
+  'P19:mirrors'(t, group) {
+    const g = rigAt(t, group), board = new THREE.Group(); board.position.set(0, 1.45, 0); board.rotation.x = -1.0; g.add(board);
+    const C = 0.2, at = (x, y) => [(x - 2.5) * C, (y - 2.5) * C];
+    const plate = mesh(new THREE.PlaneGeometry(6 * C + 0.1, 6 * C + 0.1), new THREE.MeshBasicMaterial({ color: '#0a1830', transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false }), 0, 0, -0.01, board);
+    const lineMat = new THREE.LineBasicMaterial({ color: '#4a6a9a', transparent: true, opacity: 0.6 }), pts = [];
+    for (let i = 0; i <= 6; i++) { const v = (i - 3) * C; pts.push(new THREE.Vector3(v, -3 * C, 0), new THREE.Vector3(v, 3 * C, 0), new THREE.Vector3(-3 * C, v, 0), new THREE.Vector3(3 * C, v, 0)); }
+    board.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), lineMat));
+    const mirrors = {}, crystal = { m: null };
+    LIGHT_GRID.forEach((row, y) => [...row].forEach((c, x) => {
+      const [px, py] = at(x, y); // 棋盤的 y 往下為正 → 平面的 -y
+      if (c === '#') mesh(new THREE.BoxGeometry(C * 0.8, C * 0.8, 0.06), MAT.stone(), px, -py, 0.03, board);
+      if (c === 'W') { const sp = halo('#d8e8ff', 0.3); sp.material.opacity = 1; sp.position.set(px, -py, 0.04); board.add(sp); }
+      if (c === 'C') { crystal.m = mesh(new THREE.OctahedronGeometry(0.07), glowMat('#9fc4ff', 0.4), px, -py, 0.07, board); }
+      if (/\d/.test(c)) { const m = mesh(new THREE.BoxGeometry(C * 0.9, 0.025, 0.05), MAT.mirror(), px, -py, 0.04, board); m.visible = false; const base = mesh(new THREE.RingGeometry(0.03, 0.05, 16), new THREE.MeshBasicMaterial({ color: '#c9a86a', side: THREE.DoubleSide }), px, -py, 0.005, board); mirrors[c] = { m, base }; }
+    }));
+    const beamMat = new THREE.MeshBasicMaterial({ color: '#cfe4ff', transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
+    let beam = new THREE.Group(); board.add(beam);
+    const draw = (path, see) => {
+      board.remove(beam); beam = new THREE.Group(); board.add(beam); if (!see || path.length < 2) return;
+      for (let i = 1; i < path.length; i++) {
+        const [ax, ay] = at(...path[i - 1]), [bx, by] = at(...path[i]), len = Math.hypot(bx - ax, by - ay);
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, len, 5), beamMat); seg.position.set((ax + bx) / 2, -(ay + by) / 2, 0.05); seg.rotation.z = Math.atan2(-(by - ay), bx - ax) - Math.PI / 2; beam.add(seg);
+      }
+    };
+    let time = 0, hit = false;
+    return {
+      on(n, d) {
+        if (n === 'light') {
+          for (const [k, v] of Object.entries(d.mirrors ?? {})) { const M = mirrors[k]; if (!M) continue; M.m.visible = !!v; M.m.rotation.z = v === '/' ? Math.PI / 4 : -Math.PI / 4; }
+          draw(d.path ?? [], d.see); hit = !!d.hit; crystal.m.material.emissiveIntensity = hit ? 2 : 0.4;
+        }
+      },
+      solved() { hit = true; crystal.m.material.emissive.set('#ffd27a'); crystal.m.material.emissiveIntensity = 2.5; plate.material.color.set('#2a2010'); },
+      tick(dt) { time += dt; crystal.m.rotation.y += dt * (hit ? 3 : 0.6); beamMat.opacity = 0.7 + 0.3 * Math.sin(time * 6); },
+    };
+  },
+
+  // P24：暗室的門（門把上的凸點）。摸哪一格，門把上那一格的凸點就亮一下
+  'P24:exitdoor'(t, group) {
+    const g = rigAt(t, group, 0);
+    const plate = new THREE.Group(); plate.position.set(0.45, 1.25, 0.08); g.add(plate);
+    mesh(new THREE.BoxGeometry(0.34, 0.12, 0.015), MAT.brass(), 0, 0, 0, plate);
+    const cells = [0, 1, 2, 3].map((i) => Array.from({ length: 6 }, (_, k) => mesh(new THREE.SphereGeometry(0.008, 6, 4), glowMat('#9fc4ff', 0), -0.12 + i * 0.08 + (k >= 3 ? 0.018 : 0), 0.03 - (k % 3) * 0.022, 0.012, plate)));
+    const fades = [0, 0, 0, 0];
+    return {
+      on(n, d) { if (n === 'feel' && cells[d.i]) { fades[d.i] = 1.5; cells[d.i].forEach((m, k) => { m.visible = (d.dots ?? []).includes(k + 1); }); } },
+      solved() { for (const c of cells) for (const m of c) { m.visible = true; m.material.emissive.set('#ffd27a'); m.material.emissiveIntensity = 1; } fades.fill(-1); },
+      tick(dt) { fades.forEach((f, i) => { if (f > 0) { fades[i] = f - dt; for (const m of cells[i]) m.material.emissiveIntensity = Math.max(0, fades[i]) * 1.5; } }); },
+    };
+  },
 };
 
 // 星座盤以外的三扇窗（P07）、四個鎖：同一個機關用在每個學院的那一個
@@ -455,8 +575,16 @@ decorators.thing.push(({ thing: t, group }) => {
   try { const rig = f(t, group); rig.thing = t; rig.done = false; LIVE.set(keyOf(t), rig); } catch (e) { console.warn('機關做不出來', t.id, e); }
 });
 
-/** 介面的操作 → 場景裡那個東西的反應 */
+// 每種操作的聲音（沒有機關的題目也有聲音）
+const SOUND = {
+  zodiac: () => sfx('click'), digits: () => sfx('tick'), flip: () => sfx('whoosh'), reset: () => sfx('sand'), ring: () => sfx('stone'), page: () => sfx('paper'),
+  bars: () => sfx('wood'), runes: (d) => d.seq?.length && sfx('chime', d.seq.length - 1), board: () => sfx('stone'), vials: () => sfx('glass'), weigh: () => sfx('metal'),
+  pick: () => sfx('glass'), rings: () => sfx('stone'), pull: () => sfx('lever'), gears: () => sfx('gear'), tap: (d) => sfx('knock', d.kind === 'L'),
+  elements: (d) => d.pick?.length && sfx('note', d.pick.length), book: () => sfx('paper'), play: (d) => !d.off && sfx('hum'), feel: () => sfx('tick'), mirror: () => sfx('glass'),
+};
+/** 介面的操作 → 場景裡那個東西的反應（＋聲音） */
 export function reactThing(t, name, data = {}) {
+  if (name !== 'solved') SOUND[name]?.(data);
   const rig = t && LIVE.get(keyOf(t)); if (!rig) return;
   if (name === 'solved') { if (!rig.done) { rig.done = true; rig.solved(false); } return; }
   rig.on?.(name, data);

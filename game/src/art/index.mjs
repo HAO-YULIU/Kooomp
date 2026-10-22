@@ -6,3 +6,4 @@ import './staff.mjs'; // 第一人稱的法杖（掛在相機上）
 export { setStaff, staffCast } from './staff.mjs';
 export { loadCharacter, setCharacterBase, CHARACTER_KEYS } from './characters.mjs';
 export { reactThing, syncSolved, tickRigs } from './react.mjs';
+export { sfx } from './sfx.mjs';

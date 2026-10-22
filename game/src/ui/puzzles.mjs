@@ -228,7 +228,7 @@ const BUILD = {
       conn.request({ t: 'peek', pid: 'P12' }).then((r) => { sh.textContent = r.t === 'peek' ? r.content.shadows.map((id) => ELEM.find((e) => e[0] === id)?.[1] ?? '?').join(' ') : ''; });
     }
     const pick = []; const show = el('div', { class: 'slots' });
-    const paint = () => { show.textContent = [0, 1, 2, 3].map((i) => ELEM.find((e) => e[0] === pick[i])?.[1] ?? '＿').join('　'); };
+    const paint = () => { show.textContent = [0, 1, 2, 3].map((i) => ELEM.find((e) => e[0] === pick[i])?.[1] ?? '＿').join('　'); react('elements', { pick: [...pick] }); };
     paint();
     body.append(show, el('div', { class: 'row' }, ...ELEM.map(([id, sym, name]) => el('button', { text: `${sym} ${name}`, onclick: () => { if (pick.length < 4) pick.push(id); paint(); } })),
       el('button', { class: 'small', text: t('reset'), onclick: () => { pick.length = 0; paint(); } }),
@@ -242,6 +242,7 @@ const BUILD = {
     const page = el('input', { inputmode: 'numeric', maxlength: '3', class: 'num', placeholder: t('page'), onkeydown: (e) => e.stopPropagation() });
     const view = el('div', { class: 'bookpage' });
     const open = async () => {
+      react('book', { i: +book.value });
       const r = await conn.request({ t: 'peek', pid: 'P14', value: { book: +book.value, page: +page.value } });
       view.innerHTML = '';
       if (r.t !== 'peek') return (view.textContent = t('p14_nopage'));
@@ -259,14 +260,14 @@ const BUILD = {
     const paint = () => { lab.textContent = `${t('dial_dir')}：${dir === 'fwd' ? t('forward') : t('reverse')}　${t('dial_speed')}：${speed}×`; };
     paint();
     const play = async () => {
-      playing?.stop();
+      playing?.stop(); react('play', { rev: dir === 'rev', speed });
       playing = await playFile(`assets/audio/ch1/p15_liana_${getLang() === 'en' ? 'en' : 'zh'}.mp3`, { volume: 0.9, reverse: dir === 'rev', rate: speed });
     };
     body.append(el('p', { text: t('p15_crystal') }), lab, el('div', { class: 'row' },
       el('button', { text: t('dial_dir'), onclick: () => { dir = dir === 'fwd' ? 'rev' : 'fwd'; paint(); } }),
       el('button', { text: t('dial_speed'), onclick: () => { speed = speed === 1 ? 2 : speed === 2 ? 0.5 : 1; paint(); } }),
       el('button', { text: `▶ ${t('play')}`, onclick: play }),
-      el('button', { class: 'small', text: '■', onclick: () => playing?.stop() })));
+      el('button', { class: 'small', text: '■', onclick: () => { playing?.stop(); react('play', { off: true }); } })));
   },
   P15(body, { submit }) { body.append(el('p', { text: t('p15_drawer') }), numberInput(submit, '????')); },
 
@@ -326,10 +327,11 @@ const BUILD = {
         const b = el('button', { class: `${lit ? 'lit' : ''} ${end ? 'end' : ''} ${c === 'C' ? 'crystal' : ''}`, text: label });
         if (/\d/.test(c)) b.onclick = () => {
           if (c === '4' && !hasMirror) return (status.textContent = t('p19_need_mirror'));
-          set[c] = set[c] === '' ? '/' : set[c] === '/' ? '\\' : ''; paint();
+          set[c] = set[c] === '' ? '/' : set[c] === '/' ? '\\' : ''; react('mirror'); paint();
         };
         grid.append(b);
       }));
+      react('light', { path: [[0, 0], ...[...tr.path].filter((k) => k !== '0,0').map((k) => k.split(',').map(Number))], hit: !!tr.hit, mirrors: { ...set }, see });
       if (tr.hit && !done) { done = true; submit('done').then((r) => { if (!r?.solved) done = false; }); } // 沒送成功可以再試
     };
     const status = el('p', { class: 'dim', text: see ? t('p19_see') : t('p19_blind') });
@@ -427,9 +429,9 @@ const BUILD = {
   P24(body, { conn, submit }) {
     body.append(el('p', { text: t('p24_intro') }));
     const cells = el('div', { class: 'braille-door' });
-    conn.request({ t: 'peek', pid: 'P24' }).then((r) => (r.content?.cells ?? []).forEach((dots) => {
+    conn.request({ t: 'peek', pid: 'P24' }).then((r) => (r.content?.cells ?? []).forEach((dots, i) => {
       const c = brailleCell(dots, true);
-      const feel = () => { c.classList.add('felt'); navigator.vibrate?.(dots.map(() => 40)); setTimeout(() => c.classList.remove('felt'), 1500); };
+      const feel = () => { react('feel', { i, dots }); c.classList.add('felt'); navigator.vibrate?.(dots.map(() => 40)); setTimeout(() => c.classList.remove('felt'), 1500); };
       c.onpointerenter = feel; c.onclick = feel; cells.append(c);
     }));
     const inp = el('input', { maxlength: '8', onkeydown: (e) => e.stopPropagation() });
