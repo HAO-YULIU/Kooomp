@@ -13,9 +13,10 @@ export function setSoundVolume(v) { try { ac(); master.gain.value = 0.8 * v; } c
 // ---------- 雨聲（有製作人給的音檔就用音檔，沒有就用濾過的雜訊；一直循環） ----------
 let rain = null, rainBuf = null;
 const RAIN_URL = 'assets/audio/sfx/amb_rain.mp3';
-addEventListener('pointerdown', () => { try { load(RAIN_URL).then((b) => { rainBuf = b; }); } catch { /* 沒有就用合成的 */ } }, { once: true });
+// 雨聲的音檔第一次下雨時才下載、解開（之後下雨就用音檔）
 export function setRain(on) {
   try { ac(); } catch { return; }
+  if (on && !rainBuf) load(RAIN_URL).then((b) => { rainBuf = b; });
   if (on && !rain) {
     let buf = rainBuf;
     if (!buf) { buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate); const d = buf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }

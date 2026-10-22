@@ -6,7 +6,7 @@ import { openPuzzle } from '../ui/puzzles.mjs';
 import { openWand } from '../ui/wand.mjs';
 import { openTutorial, tutorialSeen } from '../ui/tutorial.mjs';
 import { createDevTools } from '../ui/devtools.mjs';
-import { setStaff, staffCast, setVolume, getVolume } from '../art/index.mjs';
+import { setStaff, staffCast, setVolume, getVolume, setMusicVolume, getMusicVolume } from '../art/index.mjs';
 import { setSoundVolume } from '../world/sound.mjs';
 import { t, getLang } from './i18n.mjs';
 import { CHARS, HOUSES } from './chars.mjs';
@@ -203,7 +203,11 @@ export function startPlay({ conn, getState, myUid, toast, dev, devUser }) {
     const vval = el('b', { text: `${Math.round(getVolume() * 100)}%` });
     const vol = el('input', { type: 'range', min: '0', max: '1.5', step: '0.05', value: String(getVolume()), class: 'bright' });
     vol.oninput = () => { setVolume(+vol.value); setSoundVolume(+vol.value); vval.textContent = `${Math.round(+vol.value * 100)}%`; };
+    const mval = el('b', { text: `${Math.round(getMusicVolume() * 100)}%` });
+    const mus = el('input', { type: 'range', min: '0', max: '1.5', step: '0.05', value: String(getMusicVolume()), class: 'bright' });
+    mus.oninput = () => { setMusicVolume(+mus.value); mval.textContent = `${Math.round(+mus.value * 100)}%`; };
     body.append(el('div', { class: 'row' }, el('span', { text: t('brightness') }), slider, val), el('div', { class: 'row' }, el('span', { text: t('volume') }), vol, vval),
+      el('div', { class: 'row' }, el('span', { text: t('music_volume') }), mus, mval),
       el('button', { text: t('replay_tut'), onclick: () => { closePanel(); openTutorial({ touch }); } }));
   });
   $('btn-wand').onclick = castWand;

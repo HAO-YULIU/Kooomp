@@ -7,4 +7,4 @@ export { setStaff, staffCast } from './staff.mjs';
 export { loadCharacter, setCharacterBase, CHARACTER_KEYS } from './characters.mjs';
 export { reactThing, syncSolved, tickRigs } from './react.mjs';
 export { tickHaunt, hauntNow } from './haunt.mjs';
-export { sfx, sfxPan, step, setAmbience, setVolume, getVolume, setMusic, setTension, hasSound } from './sfx.mjs';
+export { sfx, sfxPan, step, setAmbience, setVolume, getVolume, setMusic, setTension, hasSound, setMusicVolume, getMusicVolume, setLoop } from './sfx.mjs';

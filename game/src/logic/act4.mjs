@@ -7,7 +7,7 @@ import { A4_SPAWN, CHECKPOINTS, NEST_SPOT, NEST_EXIT, WARDEN, WARDEN_POINTS, WAR
 import { ROOMS, DOORS, SPAWNS } from '../data/world-ch1.mjs';
 import { SCRIPT } from '../data/story-ch1.mjs';
 import { playLullaby, playFile, scream, chime } from '../world/sound.mjs';
-import { sfx, setMusic, setTension, hasSound } from '../art/sfx.mjs';
+import { sfx, setMusic, setTension, hasSound, setLoop } from '../art/sfx.mjs';
 import { openPanel, closePanel, panelOpen, el, L } from '../ui/overlay.mjs';
 import { openRescue } from '../ui/puzzles.mjs';
 import { t } from './i18n.mjs';
@@ -102,7 +102,7 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
     // 每一幀：回傳要放進位置訊息的躲藏狀態
     frame(dt, mine, segment) {
       if (segment !== 'act4') {
-        if (active) { active = false; hud.hidden = true; veil.style.opacity = 0; world.tired = false; setMusic(null); }
+        if (active) { active = false; hud.hidden = true; veil.style.opacity = 0; world.tired = false; setMusic(null); setLoop('hide_breath', 0); }
         if (ending === 'climax' && !talking()) { // 守夜人墜下屋頂之後：回到宿舍，播尾聲
           ending = 'epilogue'; warden.set({ visible: false }); world.setDark(false);
           world.teleport(SPAWNS.act1?.[CHARS[myChar()]?.house] ?? A4_SPAWN); playScript('segment:epilogue');
@@ -137,6 +137,9 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
       if (performance.now() < tiredUntil) world.tired = true;
       else { world.tired = false; runFor = speed > 2.6 ? runFor + dt : Math.max(0, runFor - dt * 0.5); if (runFor > 8) { tiredUntil = performance.now() + 4000; runFor = 0; toast(t('a4_tired')); playFile('assets/audio/ch1/breath_panting.mp3', { volume: 0.5 }); } }
       const h = (world.hidden() ? 1 : 0) + (holding() ? 2 : 0);
+      // 躲起來時聽得到自己壓低的呼吸；屏息時停住（守夜人越近，呼吸越重）
+      const d0 = shown.zone === mine.z ? Math.hypot(shown.x - mine.p[0], shown.z - mine.p[1]) : 99;
+      setLoop('hide_breath', h === 1 && !me ? 0.25 + 0.35 * Math.max(0, 1 - d0 / 12) : 0);
       // 守夜人：sim 計算，其他人跟著 sim 的訊息
       if (isSim()) {
         const ps = players(mine, h);
@@ -216,7 +219,7 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
     },
     // 尾聲：先在屋頂演完高潮（月光下的守夜人），再回宿舍。伺服器的段落可能比 P29 的回覆先到，所以在這裡排順序
     end() {
-      active = false; ending = 'climax'; hud.hidden = true; setMusic(null); veil.style.opacity = 0; ai.stun(9999, performance.now());
+      active = false; ending = 'climax'; hud.hidden = true; setMusic(null); setLoop('hide_breath', 0); veil.style.opacity = 0; ai.stun(9999, performance.now());
       if (world.zone() !== 'a4_roof') world.teleport({ x: 155, z: -42, yaw: 0 });
       warden.set({ x: 155, z: -52, yaw: Math.PI, visible: true, mode: 'stun' }); // 屋頂盡頭，月光下
       playScript('solved:P29'); playScript(myChar() === 'cyril' ? 'P29:cyril' : 'P29:others');

@@ -5,7 +5,7 @@ import { signIn, lobbyGate, testPanel, isTest, devLogin } from './net/platform.m
 import { createRoom, roomInfo, connectRoom, mySave } from './net/room.mjs';
 import { openSorting } from './ui/sorting.mjs';
 import { DefaultLoadingManager } from 'three';
-import { setMusic } from './art/sfx.mjs';
+import { setMusic, setMusicVolume, getMusicVolume } from './art/sfx.mjs';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -28,7 +28,7 @@ function paintText() {
   for (const b of document.querySelectorAll('[data-lang]')) b.classList.toggle('on', b.dataset.lang === getLang());
   if (state) renderWait();
 }
-for (const b of document.querySelectorAll('[data-lang]')) b.onclick = () => { setLang(b.dataset.lang); $('plang').value = getLang(); paintText(); };
+for (const b of document.querySelectorAll('[data-lang]')) b.onclick = () => { setLang(b.dataset.lang); $('plang').value = getLang(); paintText(); paintMusic(); };
 setLang(getLang()); $('plang').value = getLang(); paintText();
 
 let toastTimer;
@@ -42,6 +42,11 @@ $('age-ok').onclick = () => { try { sessionStorage.setItem(AGE_KEY, '1'); } catc
 $('age-no').onclick = () => { $('age-bye').hidden = false; $('age-ok').hidden = true; $('age-no').hidden = true; };
 if (ageOk() && !params.has('age')) boot(); else show('s-age');
 setMusic('menu'); // 主選單的配樂（玩家點過畫面才會響）
+// 右上角：音樂開關（遊戲裡的設定可以細調）
+const musicBtn = document.createElement('button'); musicBtn.id = 'music-toggle'; musicBtn.className = 'chip';
+const paintMusic = () => { const on = getMusicVolume() > 0; musicBtn.textContent = `${on ? '♪' : '✕'} ${t('music_volume')}`; musicBtn.classList.toggle('on', on); };
+musicBtn.onclick = () => { setMusicVolume(getMusicVolume() > 0 ? 0 : 1); paintMusic(); };
+paintMusic(); document.body.append(musicBtn);
 
 // ---------- 登入 ----------
 let me = null;
@@ -302,7 +307,7 @@ function loadingScreen() {
 
 async function startGame() {
   if (game || starting) return;
-  starting = true; setMusic(null);
+  starting = true; setMusic(null); musicBtn.hidden = true;
   const loading = loadingScreen();
   closeStage(); $('backdrop').hidden = true;
   for (const s of screens) $(s).hidden = true;

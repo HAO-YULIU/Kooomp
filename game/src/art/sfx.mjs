@@ -14,7 +14,7 @@ function audio() {
 addEventListener('pointerdown', () => audio(), { once: true }); // 瀏覽器要等玩家點過畫面才能出聲
 addEventListener('keydown', () => audio(), { once: true });
 /** 音量（0～1.5），設定裡調；存在這台裝置 */
-export function setVolume(v) { volume = v; try { localStorage.setItem('ml_volume', String(v)); } catch { /* 無痕 */ } if (master) master.gain.value = 0.55 * v; if (amb.bus) amb.bus.gain.value = AMB_VOL * v; if (M.bus) M.bus.gain.value = MUS_VOL * v; }
+export function setVolume(v) { volume = v; try { localStorage.setItem('ml_volume', String(v)); } catch { /* 無痕 */ } if (master) master.gain.value = 0.55 * v; if (amb.bus) amb.bus.gain.value = AMB_VOL * v; }
 export const getVolume = () => volume;
 // 一個音：頻率、波形、長度、音量、滑音
 function tone(f, { type = 'sine', dur = 0.3, vol = 0.25, at = 0, slide = 0, attack = 0.005 } = {}) {
@@ -70,14 +70,35 @@ const SOUNDS = {
 };
 // ---------- 真的音檔（製作人之後補）：assets/audio/sfx/list.json 列出有哪些，有就用音檔、沒有就用上面合成的 ----------
 // 清單與檔名見 docs/09-audio-wishlist.md。同一種聲音可以有好幾個檔（step_stone_1、step_stone_2…），每次隨機挑一個
-const FILES = {}; let filesLoaded = false;
+// 不要一次把全部音檔解開：解開後的聲音很佔記憶體（三分鐘的配樂就要幾十 MB），一起解會讓比較慢的電腦、手機卡住（2026-10-22）。
+//   短的音效：開頭慢慢解（一次 3 個）｜環境音（amb_）：走到那一區才解｜配樂（music_）：用 <audio> 邊下載邊播，不解開
+const FILES = {}, LAZY = {}, STREAM = {}; let filesLoaded = false;
+const keyOf = (f) => f.replace(/\.(mp3|ogg|wav)$/, '').replace(/_\d+$/, '');
+async function decode(f) { const c = audio(); const buf = await c.decodeAudioData(await (await fetch(`assets/audio/sfx/${f}`)).arrayBuffer()); (FILES[keyOf(f)] ??= []).push(buf); }
 async function loadFiles() {
   if (filesLoaded) return; filesLoaded = true;
   try {
     const list = await (await fetch('assets/audio/sfx/list.json')).json(); const c = audio(); if (!c) return;
-    await Promise.all(list.map(async (f) => { try { const buf = await c.decodeAudioData(await (await fetch(`assets/audio/sfx/${f}`)).arrayBuffer()); const key = f.replace(/\.(mp3|ogg|wav)$/, '').replace(/_\d+$/, ''); (FILES[key] ??= []).push(buf); } catch { /* 這個檔有問題：用合成的 */ } }));
+    const now = [];
+    for (const f of list) { const k = keyOf(f); if (/^music_/.test(k)) STREAM[k] = `assets/audio/sfx/${f}`; else if (/^amb_/.test(k)) (LAZY[k] ??= []).push(f); else now.push(f); }
+    if (M.kind && STREAM[`music_${M.kind}`]) { const k = M.kind; M.kind = null; setMusic(k); } // 配樂有音檔：換成音檔
+    for (let i = 0; i < now.length; i += 3) await Promise.all(now.slice(i, i + 3).map((f) => decode(f).catch(() => { /* 這個檔有問題：用合成的 */ })));
   } catch { /* 沒有清單：全部用合成的 */ }
-  if (M.kind && FILES[`music_${M.kind}`]) { const k = M.kind; M.kind = null; setMusic(k); } // 配樂的音檔到了：換成音檔
+}
+// 環境音：第一次用到才解開；解好時還在同一區就換成音檔
+function wantLazy(key, then) {
+  const fs = LAZY[key]; if (!fs) return; delete LAZY[key];
+  Promise.all(fs.map((f) => decode(f).catch(() => {}))).then(then);
+}
+// 配樂：<audio> 邊下載邊播，接到 Web Audio 調音量。手機有時要等玩家再點一下畫面才肯播
+function playStream(key, { vol = 1, loop = true, dest = null } = {}) {
+  const url = STREAM[key]; const c = audio(); if (!url || !c) return null;
+  const el = new Audio(url); el.loop = loop; el.preload = 'auto';
+  const g = c.createGain(); g.gain.value = vol;
+  try { c.createMediaElementSource(el).connect(g).connect(dest ?? master); } catch { return null; }
+  const go = () => el.play().catch(() => addEventListener('pointerdown', go, { once: true }));
+  go();
+  return { g, src: { stop() { el.pause(); el.removeAttribute('src'); el.load(); } } };
 }
 addEventListener('pointerdown', () => loadFiles(), { once: true });
 /** 播一個音檔（有的話）；回傳有沒有播 */
@@ -100,7 +121,7 @@ export function sfxPan(name, pan = 0, { vol = 1, arg } = {}) {
   } catch { /* 沒有聲音也沒關係 */ }
 }
 /** 有沒有這個音檔（製作人給的） */
-export const hasSound = (name) => !!FILES[name]?.length;
+export const hasSound = (name) => !!FILES[name]?.length || !!STREAM[name];
 export function sfx(name, arg) { try { if (playFile(name, { rate: 0.95 + Math.random() * 0.1 })) return; SOUNDS[name]?.(arg); } catch { /* 沒有聲音也沒關係 */ } }
 
 // ---------- 腳步聲：石地、木地板聲音不同；跑步重一點 ----------
@@ -158,6 +179,7 @@ export function setAmbience(kind) {
   if (!amb.bus) { amb.bus = c.createGain(); amb.bus.gain.value = AMB_VOL * volume; amb.bus.connect(c.destination); }
   for (const l of amb.layers) l.stop(); amb.layers = []; clearTimeout(amb.timer); amb.kind = kind;
   const P = PROFILES[kind]; if (!P) return;
+  if (P.file && LAZY[P.file]) wantLazy(P.file, () => { if (amb.kind === kind) { amb.kind = null; setAmbience(kind); } }); // 還沒解開：先用合成的，解好再換
   const file = P.file && playFile(P.file, { loop: true, dest: amb.bus, vol: 0, rate: P.fileRate ?? 1 }); // 有錄好的環境音就用它當底（鐘塔：時鐘放慢＝大鐘）
   if (file) { file.g.gain.linearRampToValueAtTime(P.fileVol ?? 0.6, c.currentTime + 1.5); amb.layers.push({ stop() { const t = c.currentTime; file.g.gain.setValueAtTime(file.g.gain.value, t); file.g.gain.linearRampToValueAtTime(0, t + 1.5); setTimeout(() => file.src.stop(), 1700); } }); }
   else for (const b of P.beds ?? []) amb.layers.push(bed(b));
@@ -209,11 +231,15 @@ export function wardenVoice({ visible, dist = 99, side = 0, mode = 'patrol', dt 
 // ---------- 配樂：主選單（陰森的長音＋偶爾一兩個音樂盒的音）、被追（低音的脈動＋心跳，越近越快越大聲） ----------
 // 有音檔（music_menu、music_chase）就用音檔；被追的音檔一樣會照緊張程度調大小聲
 const MUS_VOL = 0.45;
+let musicVol = (() => { try { return +(localStorage.getItem('ml_music') ?? 1); } catch { return 1; } })();
+/** 音樂的音量（0～1.5），跟音效分開調 */
+export function setMusicVolume(v) { musicVol = v; try { localStorage.setItem('ml_music', String(v)); } catch { /* 無痕 */ } if (M.bus) M.bus.gain.value = MUS_VOL * musicVol; }
+export const getMusicVolume = () => musicVol;
 const M = { want: null, kind: null, bus: null, mix: null, high: null, hb: null, layers: [], timer: 0, k: 0, next: 0, beat: 0, file: null };
 const BOX = [220, 261.63, 293.66, 329.63, 392, 207.65]; // 守夜人童謠的音（A 小調，最後那個升 Sol 讓人不安）
 function musicNodes() {
   const c = audio(); if (!c) return null;
-  if (!M.bus) { M.bus = c.createGain(); M.bus.gain.value = MUS_VOL * volume; M.bus.connect(c.destination); }
+  if (!M.bus) { M.bus = c.createGain(); M.bus.gain.value = MUS_VOL * musicVol; M.bus.connect(c.destination); }
   return c;
 }
 function stopMusic() {
@@ -241,7 +267,7 @@ export function setMusic(kind) {
     const hb = playFile('heartbeat', { loop: true, dest: M.mix, vol: 0 });
     if (hb) { M.hb = hb; M.layers.push({ stop: () => setTimeout(() => { try { hb.src.stop(); } catch { /* 已停 */ } }, 2500) }); }
   }
-  const file = playFile(`music_${kind}`, { loop: true, dest: M.mix, vol: 0.8 });
+  const file = playStream(`music_${kind}`, { dest: M.mix, vol: 0.8 });
   if (file) { M.file = file; M.layers.push({ stop: () => setTimeout(() => { try { file.src.stop(); } catch { /* 已停 */ } }, 2500) }); return; }
   if (kind === 'menu') {
     // 兩組慢慢飄的低音（A 小調的 A、E 加上一點點走音），經過低通讓它悶悶的
@@ -290,3 +316,12 @@ export function setTension(k) {
 }
 addEventListener('pointerdown', () => { if (M.want) setMusic(M.want); }); // 點過畫面才能出聲：補開
 addEventListener('keydown', () => { if (M.want && !M.kind) setMusic(M.want); });
+
+// ---------- 一直響的聲音（例如躲起來時自己的呼吸）：setLoop(名稱, 音量)，音量 0＝淡出 ----------
+const LOOPS = {};
+export function setLoop(name, vol) {
+  const c = ctx; if (!c) return;
+  let L = LOOPS[name];
+  if (!L) { if (!vol) return; const f = playFile(name, { loop: true, vol: 0 }); if (!f) return; L = LOOPS[name] = f; }
+  L.g.gain.setTargetAtTime(vol, c.currentTime, vol ? 0.4 : 0.25);
+}

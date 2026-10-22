@@ -486,3 +486,7 @@ button, a, input, select, canvas, .choice { touch-action: manipulation; }
 @keyframes shimmer { from { transform: translateX(-100%); } to { transform: translateX(380%); } }
 #loading.failed .loading-circle i { animation-play-state: paused; border-top-color: #ff6a5a; }
 @media (max-height: 500px) { .loading-circle { width: 60px; height: 60px; } #loading .crest { display: none; } }
+
+/* 主選單右上角的音樂開關 */
+#music-toggle { position: fixed; top: max(10px, env(safe-area-inset-top)); right: max(10px, env(safe-area-inset-right)); z-index: 30; background: rgba(12, 10, 18, .7); }
+#music-toggle[hidden] { display: none; }
