@@ -243,3 +243,9 @@ body.modal #a4bound { display: none; }
 .result tr + tr { border-top: 1px solid var(--line); }
 /* 英文介面：用西文字型排英文（中文字型的 ’ “ ” 是全形的，會多出空白） */
 html[lang="en"] body, html[lang="en"] button, html[lang="en"] input, html[lang="en"] select { font-family: Georgia, 'Times New Roman', 'Noto Serif TC', serif; }
+/* 開發者登入（遊戲還沒上架大廳時用） */
+.dev-login { margin-top: 1.2rem; text-align: left; font-size: .9rem; opacity: .85; }
+.dev-login summary { cursor: pointer; color: #9a8f80; }
+.dev-login form { display: grid; gap: .5rem; margin-top: .6rem; }
+.dev-login input { padding: .55rem .7rem; border-radius: 8px; border: 1px solid #3a3330; background: #0e0d0c; color: #eee; font: inherit; }
+.dev-login .err { color: #e06a5a; min-height: 1.2em; margin: 0; }

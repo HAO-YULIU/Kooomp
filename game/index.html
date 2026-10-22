@@ -37,6 +37,15 @@
       <h2 data-t="need_login_title"></h2>
       <p id="login-body"></p>
       <a class="primary" id="to-lobby" data-t="to_lobby"></a>
+      <details class="dev-login">
+        <summary data-t="dev_login"></summary>
+        <form id="dev-login-form">
+          <input id="dev-email" type="email" autocomplete="username" required>
+          <input id="dev-pass" type="password" autocomplete="current-password" required>
+          <button class="primary small" type="submit" data-t="dev_login_go"></button>
+          <p class="err" id="dev-login-err"></p>
+        </form>
+      </details>
     </div>
   </section>
 

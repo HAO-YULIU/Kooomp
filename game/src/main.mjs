@@ -1,7 +1,7 @@
 // 《魔蝕milner》主程式（第 1 批）：18+ 提示 → 登入 → 選單 → 等待室 → 測試場景（隊友同步、聊天、標記、測試作答）。
 import { t, errText, getLang, setLang } from './logic/i18n.mjs';
 import { HOUSES, CHARS, charOfHouse } from './logic/chars.mjs';
-import { signIn, lobbyGate, testPanel, isTest } from './net/platform.mjs';
+import { signIn, lobbyGate, testPanel, isTest, devLogin } from './net/platform.mjs';
 import { createRoom, roomInfo, connectRoom, mySave } from './net/room.mjs';
 import { openSorting } from './ui/sorting.mjs';
 
@@ -39,6 +39,13 @@ async function boot() {
   if (!me || !me.name) {
     $('login-body').textContent = me ? t('need_player_body') : t('need_login_body');
     $('to-lobby').href = lobbyGate();
+    $('dev-email').placeholder = t('dev_email'); $('dev-pass').placeholder = t('dev_pass');
+    $('dev-login-form').onsubmit = async (e) => { // 開發者（大廳管理員）直接登入：遊戲還沒上架大廳時用
+      e.preventDefault(); $('dev-login-err').textContent = '';
+      const r = await devLogin($('dev-email').value.trim(), $('dev-pass').value).catch(() => ({ error: 'bad_login' }));
+      if (r.error) return ($('dev-login-err').textContent = t(r.error === 'not_dev' ? 'dev_not_dev' : 'dev_bad_login'));
+      boot();
+    };
     return show('s-login');
   }
   $('hello').textContent = t('hello', { name: me.name });

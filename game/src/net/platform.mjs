@@ -41,6 +41,15 @@ export async function signIn() {
   return { uid: session.user.id, name: profile?.username ?? null };
 }
 
+// 開發者登入：遊戲還沒放上大廳（未公開）時，製作人直接用大廳的帳號密碼登入。只有大廳的管理員（admins 表裡有自己）才能進
+export async function devLogin(email, password) {
+  const { data, error } = await client().auth.signInWithPassword({ email, password });
+  if (error || !data?.user) return { error: 'bad_login' };
+  const { data: adm } = await client().from('admins').select('user_id').eq('user_id', data.user.id).maybeSingle();
+  if (!adm) { await client().auth.signOut(); return { error: 'not_dev' }; }
+  return { ok: true };
+}
+
 // 每次連線前拿最新的 token（Supabase 會自動更新）
 export async function token() {
   if (devName !== null) return `dev-${encodeURIComponent(devName || '測試玩家')}`;
