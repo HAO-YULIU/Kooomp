@@ -7,7 +7,7 @@
 開始做一件事前在這裡登記；做完就移除。格式：`- 分支名稱：在做什麼（會動到的檔案或資料夾）`
 
 
-- `claude/sweet-goldberg-nklgb6`：場景美術——序幕、第一幕第一版已上（`game/src/art/scene.mjs`），接著修細節、做第二幕（長廊、創辦人的房間）。會動 `game/src/art/`、`game/models/`。
+- `claude/sweet-goldberg-nklgb6`：美術——長廊畫像改成油畫風格（新增 `game/src/art/portraits.mjs`；**會小改帳號一的 `game/src/world/corridor.mjs`：只把畫畫像的 `paint()` 換成呼叫 portraits.mjs，異常的種類、規則都不動**），接著做魔杖的第一人稱外觀。會動 `game/src/art/`、`game/models/`、`game/src/world/corridor.mjs`（只有畫像那段）。
 
 
 ## 等製作人回答
