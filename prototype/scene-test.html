@@ -6,6 +6,8 @@
 <script type="module">
 import * as THREE from 'three';
 import '../game/src/art/index.mjs';
+import { setStaffBase, setStaff, staffCast } from '../game/src/art/staff.mjs';
+setStaffBase('../game/models/staff/'); window.setStaff = setStaff; window.staffCast = staffCast;
 import { buildWorld } from '../game/src/world/greybox.mjs';
 import { ROOMS, DOORS, THINGS } from '../game/src/data/world-ch1.mjs';
 const renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(innerWidth, innerHeight); document.body.appendChild(renderer.domElement);
