@@ -67,6 +67,7 @@ async function boot() {
   }
   $('hello').textContent = t('hello', { name: me.name });
   show('s-menu');
+  setTimeout(() => import('./art/models.mjs').then((m) => m.preloadProps()).catch(() => {}), 1500); // 擺設的模型先在背景下載，按出發時就不用等
   showSave();
   const code = (params.get('room') || '').toUpperCase();
   if (/^[A-Z0-9]{4}$/.test(code)) { $('join-code').value = code; join(code); }

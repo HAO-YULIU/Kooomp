@@ -9,8 +9,10 @@ import { MeshoptDecoder } from '../../../prototype/vendor/addons/libs/meshopt_de
 const T = {}; // 名稱 → 載好的模型（範本）
 let base = 'models/props/';
 
-/** 載入畫面時呼叫：讀清單、載入全部模型（失敗的跳過） */
-export async function preloadProps() {
+/** 讀清單、載入全部模型（失敗的跳過）。主選單時就先在背景開始下載，載入畫面再等它完成；呼叫幾次都只載一次 */
+let loading = null;
+export function preloadProps() { return (loading ||= loadAll()); }
+async function loadAll() {
   let list = {};
   try { const r = await fetch(base + 'list.json'); if (r.ok) list = await r.json(); } catch { return; }
   const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
