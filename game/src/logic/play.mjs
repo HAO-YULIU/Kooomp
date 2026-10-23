@@ -211,7 +211,7 @@ export function startPlay({ conn, getState, myUid, toast, dev, devUser }) {
       el('div', { class: 'row' }, el('span', { text: t('music_volume') }), mus, mval),
       el('button', { text: t('replay_tut'), onclick: () => { closePanel(); openTutorial({ touch }); } }),
       el('button', { text: t('credits'), onclick: () => openPanel(t('credits'), (b) => b.append( // 素材來源（CC BY 要標註作者）
-        el('h3', { text: '3D' }), ...CREDITS.models.map(([n, a, u]) => el('p', { class: 'credit' }, u ? el('a', { href: u, target: '_blank', rel: 'noopener', text: n }) : el('span', { text: n }), el('small', { text: a ? ` — ${a}（CC BY 4.0）` : '' }))),
+        el('h3', { text: '3D' }), ...CREDITS.models.map(([n, a, u, lic = 'CC BY 4.0']) => el('p', { class: 'credit' }, u ? el('a', { href: u, target: '_blank', rel: 'noopener', text: n }) : el('span', { text: n }), el('small', { text: a ? ` — ${a}（${lic}）` : '' }))),
         el('h3', { text: t('credits_sound') }), el('p', { class: 'credit', text: CREDITS.sounds }))) }));
   });
   $('btn-wand').onclick = castWand;

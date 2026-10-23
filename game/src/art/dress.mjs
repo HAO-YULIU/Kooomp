@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { DOORS, THINGS } from '../data/world-ch1.mjs';
 import * as T from './textures.mjs';
-import { placeProp } from './models.mjs';
+import { placeProp, variant } from './models.mjs';
 
 let G = null; // 這個房間的擺設放在哪
 // 有製作人給的模型就用模型：(x, z)＝靠牆那一點，往前 D/2 擺在中間；回傳 true＝擺好了
@@ -115,10 +115,10 @@ const FLOOR = {
     p.cyl(0.015, 0.015, 2.4, L.MAT.darkWood(), 0.32, 1.2, D / 2 + 0.05, 6); p.box(0.02, 0.3, 0.14, steel, 0.32, 2.3, D / 2 + 0.1);
     return 0.9;
   },
-  bust(k, x, z, ry) { // 大理石底座＋胸像
+  bust(k, x, z, ry, ctx, seed) { // 大理石底座＋胸像（製作人給的胸像有好幾款，輪流）
     const p = at(k, x, z, ry), mar = L.std('marble', { color: '#cfc8bc', roughness: 0.35 }), D = 0.45;
     p.box(0.4, 0.06, 0.4, mar, 0, 0.03, D / 2); p.cyl(0.13, 0.15, 1.0, mar, 0, 0.56, D / 2, 12); p.box(0.36, 0.06, 0.36, mar, 0, 1.09, D / 2);
-    if (prop('bust', x, z, ry, 0.42, 0.75, 0.42, 1.12)) return 0.6; // 製作人給的胸像模型放在大理石柱上
+    if (prop(variant('bust', seed), x, z, ry, 0.42, 0.75, 0.42, 1.12)) return 0.6; // 製作人給的胸像模型放在大理石柱上
     p.add(new THREE.SphereGeometry(0.2, 12, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), mar, 0, 1.3, D / 2); // 肩膀
     p.cyl(0.05, 0.06, 0.1, mar, 0, 1.35, D / 2); p.add(new THREE.SphereGeometry(0.11, 14, 10), mar, 0, 1.48, D / 2);
     return 0.6;
@@ -239,6 +239,7 @@ const WALL = {
     return 1.3;
   },
   chains(k, x, z, ry, ctx, seed) { // 從天花板垂下的鐵鍊
+    { const len = Math.min(ctx.h - 0.6, 1.4 + rnd(seed) * 2.2), s = Math.sin(ry), c = Math.cos(ry); let ok = false; for (const dx of [-0.2, 0.25]) ok = !!placeProp(G, 'chain', x + dx * c + 0.25 * s, ctx.h - len * (dx > 0 ? 0.8 : 1), z - dx * s + 0.25 * c, ry + dx, [0.1, len * (dx > 0 ? 0.8 : 1), 0.1]) || ok; if (ok) return 1.2; }
     const p = at(k, x, z, ry), ir = L.MAT.iron(), n = Math.floor(6 + rnd(seed) * 8);
     for (const dx of [-0.2, 0.25]) for (let i = 0; i < n; i++) p.add(new THREE.TorusGeometry(0.05, 0.012, 4, 8), ir, dx, ctx.h - 0.1 - i * 0.085, 0.25, (i % 2) * Math.PI / 2);
     p.box(0.1, 0.25, 0.04, ir, 0.02, ctx.h - 0.3, 0.02);
@@ -415,7 +416,7 @@ export function dressRoof(r, group, lib) {
   // 石像鬼：蹲在矮牆上，往外看
   const gm = L.std('gargoyle', { color: '#5a5650', roughness: 0.9 });
   for (const [x, z, ry] of [[r.x[0] + 0.4, r.z[0] + 6, Math.PI / 2], [r.x[1] - 0.4, r.z[0] + 18, -Math.PI / 2], [r.x[0] + 0.4, r.z[0] + 34, Math.PI / 2], [r.x[1] - 0.4, r.z[0] + 48, -Math.PI / 2]]) {
-    if (placeProp(group, 'gargoyle', x, H, z, ry, [0.8, 1.1, 0.8])) continue;
+    if (placeProp(group, variant('gargoyle', x + z), x, H, z, ry, [0.8, 1.1, 0.8])) continue;
     const p = at(k, x, z, ry);
     p.add(new THREE.SphereGeometry(0.28, 10, 8), gm, 0, H + 0.75, 0.05); p.add(new THREE.SphereGeometry(0.17, 10, 8), gm, 0, H + 1.1, -0.15);
     p.add(new THREE.ConeGeometry(0.05, 0.22, 5), gm, -0.1, H + 1.3, -0.15); p.add(new THREE.ConeGeometry(0.05, 0.22, 5), gm, 0.1, H + 1.3, -0.15);

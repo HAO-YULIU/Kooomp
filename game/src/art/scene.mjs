@@ -246,7 +246,7 @@ const ROOM_DECOR = {
     // 木樁、欄杆、燈籠
     for (let z = 143; z <= 169; z += 4) for (const x of [-5.85, 5.85]) {
       k.cyl(0.14, 0.16, 2.2, MAT.darkWood(), x, -0.1, z, 8);
-      if ((z - 143) % 8 === 0) { k.box(0.24, 0.3, 0.24, MAT.iron(), x, 1.25, z); k.box(0.16, 0.2, 0.16, MAT.flame(), x, 1.25, z); }
+      if ((z - 143) % 8 === 0 && !placeProp(group, 'lantern', x, 1.0, z, x > 0 ? -Math.PI / 2 : Math.PI / 2, [0.32, 0.65, 0.32])) { k.box(0.24, 0.3, 0.24, MAT.iron(), x, 1.25, z); k.box(0.16, 0.2, 0.16, MAT.flame(), x, 1.25, z); } // 碼頭燈柱上的提燈（製作人給的模型）
     }
     for (const x of [-5.85, 5.85]) k.box(0.06, 0.06, 27, MAT.darkWood(), x, 0.95, 156);
     // 城堡正門（大廳那面牆的外側）：拱門、兩邊的火把
@@ -363,10 +363,10 @@ function cobwebs(k, r, s = 0.7) {
     .forEach(([x, z, ry], i) => { if (P.rnd(x, z, i) > 0.35) P.cobweb(k, x, y, z, ry, s * (0.7 + P.rnd(z, x) * 0.6)); });
 }
 const DORM_EXTRA = {
-  eldrin(k, ctx) { P.telescope(k, ctx.cornerX, ctx.cornerZ, ctx.fry + Math.PI); P.globe(k, ctx.deskX - 0.4, ctx.deskTop, ctx.deskZ); P.starChart(k, ctx.cx + 5.5, 2.4, ctx.oppZ, ctx.fry + Math.PI); },
+  eldrin(k, ctx) { P.telescope(k, ctx.cornerX, ctx.cornerZ, ctx.fry + Math.PI); if (!placeProp(ctx.group, 'globe', ctx.deskX - 0.4, ctx.deskTop, ctx.deskZ, ctx.fry, [0.3, 0.42, 0.3])) P.globe(k, ctx.deskX - 0.4, ctx.deskTop, ctx.deskZ); P.starChart(k, ctx.cx + 5.5, 2.4, ctx.oppZ, ctx.fry + Math.PI); },
   grimoire(k, ctx) { P.crystalBall(k, ctx.tableX, ctx.tableTop, ctx.tableZ + 0.1); P.runeStones(k, ctx.deskX - 0.3, ctx.deskTop, ctx.deskZ, 4); P.bottles(k, ctx.cornerX, 0, ctx.cornerZ, 7, 5); P.skull(k, ctx.deskX + 0.45, ctx.deskTop, ctx.deskZ, ctx.fry); },
   belmont(k, ctx) { P.antlers(k, ctx.cx + 2.2, 2.6, ctx.fireZ - ctx.toward * 0.25, ctx.fry); P.crossedSwords(k, ctx.cx - 2.2, 2.4, ctx.fireZ - ctx.toward * 0.25, ctx.fry); P.barrel(k, ctx.cornerX, ctx.cornerZ); P.coatRack(k, ctx.rackX, ctx.rackZ, ['#d1a640', '#3a2410']); },
-  ouroboros(k, ctx) { P.serpent(k, ctx.deskX - 0.35, ctx.deskTop, ctx.deskZ); P.cauldron(k, ctx.cornerX, ctx.cornerZ); P.bottles(k, ctx.tableX, ctx.tableTop, ctx.tableZ, 11, 3); P.skull(k, ctx.deskX + 0.4, ctx.deskTop, ctx.deskZ, ctx.fry); },
+  ouroboros(k, ctx) { P.serpent(k, ctx.deskX - 0.35, ctx.deskTop, ctx.deskZ); if (!placeProp(ctx.group, 'cauldron', ctx.cornerX, 0, ctx.cornerZ, ctx.fry, [0.9, 0.75, 0.9])) P.cauldron(k, ctx.cornerX, ctx.cornerZ); P.bottles(k, ctx.tableX, ctx.tableTop, ctx.tableZ, 11, 3); P.skull(k, ctx.deskX + 0.4, ctx.deskTop, ctx.deskZ, ctx.fry); },
 };
 function dormDetails(r, group, h) {
   const k = new Kit(), flames = [];
@@ -392,7 +392,7 @@ function dormDetails(r, group, h) {
   P.candleStick(k, cx - 0.9, 1.52, fireZ + toward * 0.1, flames); P.candleStick(k, cx + 0.9, 1.52, fireZ + toward * 0.1, flames);
   // 學院的特色小物
   const cornerX = h === 'ouroboros' ? r.x[0] + 0.8 : r.x[1] - 0.8, cornerZ = fireZ + toward * 1.4;
-  DORM_EXTRA[h](k, { cx, fry, toward, fireZ, oppZ, tableX, tableZ, tableTop, deskX, deskZ, deskTop, cornerX, cornerZ, rackX: r.x[0] + 0.5, rackZ: fireZ + toward * 2.8 });
+  DORM_EXTRA[h](k, { group, cx, fry, toward, fireZ, oppZ, tableX, tableZ, tableTop, deskX, deskZ, deskTop, cornerX, cornerZ, rackX: r.x[0] + 0.5, rackZ: fireZ + toward * 2.8 });
   cobwebs(k, r, 0.5);
   k.build(group); candles(group, flames, { h: 0.12, r: 0.018 });
 }

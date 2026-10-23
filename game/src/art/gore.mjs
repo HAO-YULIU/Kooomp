@@ -4,6 +4,7 @@
 //   buildSenior(parent, x, z)：去年搜救隊的高年級生——趴在地上往前爬的樣子，下半身結晶化長在地板上，背上被啃開露出肋骨，手裡握著提燈
 import * as THREE from 'three';
 import { loadCharacter } from './characters.mjs';
+import { placeProp } from './models.mjs';
 
 // 固定的亂數（每次進遊戲血跡都長一樣）
 function rng(seed) { let s = seed >>> 0; return () => { s = (s + 0x6d2b79f5) >>> 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t ^= t + Math.imul(t ^ (t >>> 7), 61 | t); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -177,10 +178,13 @@ export async function buildSenior(parent, x, z) {
   }
   // 提燈：右手握著（燈已經熄了，只剩一點點暖光）
   const lantern = new THREE.Group();
-  const frame = new THREE.MeshStandardMaterial({ color: '#2a2420', metalness: 0.7, roughness: 0.45 });
-  lantern.add(new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.2, 8), new THREE.MeshStandardMaterial({ color: '#4a3a20', emissive: '#ffb050', emissiveIntensity: 0.35, transparent: true, opacity: 0.8, roughness: 0.1 })));
-  const cap = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.07, 8), frame); cap.position.y = 0.13; lantern.add(cap);
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.008, 4, 10), frame); ring.position.y = 0.2; lantern.add(ring);
+  const lanternModel = placeProp(lantern, 'lantern_old', 0, -0.13, 0, 0, [0.2, 0.34, 0.2]); // 製作人給的舊提燈模型
+  if (!lanternModel) {
+    const frame = new THREE.MeshStandardMaterial({ color: '#2a2420', metalness: 0.7, roughness: 0.45 });
+    lantern.add(new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.2, 8), new THREE.MeshStandardMaterial({ color: '#4a3a20', emissive: '#ffb050', emissiveIntensity: 0.35, transparent: true, opacity: 0.8, roughness: 0.1 })));
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.07, 8), frame); cap.position.y = 0.13; lantern.add(cap);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.008, 4, 10), frame); ring.position.y = 0.2; lantern.add(ring);
+  }
   const hand = bones.R_Hand;
   const hp = hand ? W(hand) : new THREE.Vector3(x + 0.9, 0.1, z + 0.3);
   lantern.position.set(hp.x + 0.12, 0.1, hp.z); lantern.rotation.z = -0.5; // 倒在地上，手還握著提把

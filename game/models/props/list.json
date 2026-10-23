@@ -27,5 +27,21 @@
   "armor": "armor.glb",
   "rowboat": "rowboat.glb",
   "crate": "crate2.glb",
-  "crate_open": "crate_open.glb"
+  "crate_open": "crate_open.glb",
+  "plant": "plant.glb",
+  "globe": "globe.glb",
+  "cauldron": "cauldron.glb",
+  "bust2": "bust2.glb",
+  "bust3": "bust3.glb",
+  "gargoyle2": {
+    "file": "gargoyle2.glb",
+    "ry": -1.5708
+  },
+  "statue": "statue.glb",
+  "chain": "chain.glb",
+  "lantern": {
+    "file": "lantern.glb",
+    "glow": "#ffcf8a"
+  },
+  "lantern_old": "lantern_old.glb"
 }

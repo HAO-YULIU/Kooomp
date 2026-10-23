@@ -15,11 +15,11 @@ export async function preloadProps() {
   try { const r = await fetch(base + 'list.json'); if (r.ok) list = await r.json(); } catch { return; }
   const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
   await Promise.all(Object.entries(list).map(async ([name, ent]) => {
-    const { file, ry = 0, tint } = typeof ent === 'string' ? { file: ent } : ent;
+    const { file, ry = 0, tint, glow } = typeof ent === 'string' ? { file: ent } : ent;
     try {
       const g = await loader.loadAsync(base + file), root = g.scene;
       root.rotation.y = ry; root.updateMatrixWorld(true);
-      root.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = true; for (const m of [o.material].flat()) { if (m.map) m.map.anisotropy = 4; if (tint) m.color?.set(tint); } } }); // tint：整個染色（例如白色的石像鬼染成石頭灰）
+      root.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = true; for (const m of [o.material].flat()) { if (m.map) m.map.anisotropy = 4; if (tint) m.color?.set(tint); if (glow && m.map) { m.emissive?.set(glow); m.emissiveMap = m.map; m.emissiveIntensity = 0.9; } } } }); // tint：整個染色（例如白色的石像鬼染成石頭灰）；glow：亮的地方自己發光（提燈的玻璃）
       // 量好大小：底部中間對齊原點
       const box = new THREE.Box3().setFromObject(root), size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
       const holder = new THREE.Group(); root.position.x -= c.x; root.position.y -= box.min.y; root.position.z -= c.z; holder.add(root);
@@ -28,6 +28,8 @@ export async function preloadProps() {
   }));
 }
 export const hasProp = (name) => !!T[name];
+/** 同一種東西有好幾款（bust、bust2、bust3…）：依 seed 挑一款 */
+export function variant(name, seed) { const list = [name, name + '2', name + '3', name + '4'].filter((n) => T[n]); return list.length ? list[Math.abs(Math.floor(seed)) % list.length] : name; }
 
 /**
  * 擺一個模型：parent 裡、(x, y, z)、面向 ry（模型的正面要朝 +z）。fit＝[寬, 高, 深]：縮放到放得進這個大小（等比例）。
@@ -38,5 +40,5 @@ export function placeProp(parent, name, x, y, z, ry, fit) {
   const o = t.holder.clone(true);
   const [w, h, d] = fit, s = Math.min(w / (t.size.x || 1), h / (t.size.y || 1), d / (t.size.z || 1));
   o.scale.setScalar(s); o.position.set(x, y, z); o.rotation.y = ry;
-  parent.add(o); return { w: t.size.x * s, h: t.size.y * s, d: t.size.z * s };
+  parent.add(o); return { w: t.size.x * s, h: t.size.y * s, d: t.size.z * s, obj: o };
 }
