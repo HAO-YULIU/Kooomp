@@ -67,7 +67,8 @@ export function createLibrary(scene, colliders) {
   bloodSplat(root, 100.18, 1.6, 13.4, { size: 1.4, name: 'drip', normal: [1, 0, 0], spin: Math.PI });
   bloodSplat(root, 106.1, 1.2, 14.82, { size: 1.0, name: 'drip', normal: [0, 0, -1], spin: Math.PI });
   let lantern = null, lanternTaken = false;
-  buildSenior(root, 112, 4).then((r) => { lantern = r.lantern; if (lanternTaken) lantern.visible = false; }).catch((e) => console.warn('屍體的模型載入失敗', e));
+  let seniorAsked = false; // 屍體的模型（2MB）到第三幕才下載，不拖慢開場
+  const wake = () => { if (seniorAsked) return; seniorAsked = true; buildSenior(root, 112, 4).then((r) => { lantern = r.lantern; if (lanternTaken) lantern.visible = false; }).catch((e) => console.warn('屍體的模型載入失敗', e)); };
 
   // ---- 暗室的石板：摸到才會微微發光（由 act3.mjs 控制） ----
   const tiles = [];
@@ -79,6 +80,7 @@ export function createLibrary(scene, colliders) {
   return {
     setPhase, nearestFree, blocked,
     lightTile(i, on) { if (tiles[i]) tiles[i].material.color.set(on ? '#7aa0ff' : '#0a0a12'); },
+    wake,
     takeLantern() { lanternTaken = true; if (lantern) lantern.visible = false; },
   };
 }

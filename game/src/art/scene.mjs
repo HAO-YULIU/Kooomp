@@ -7,7 +7,7 @@ import { decorators } from '../world/art-hooks.mjs';
 import { DOORS } from '../data/world-ch1.mjs';
 import * as T from './textures.mjs';
 import * as P from './props.mjs';
-import { dressRoom, dressRoof, dressDock } from './dress.mjs';
+import { dressRoom, dressRoof, dressDock, chandelierFlames } from './dress.mjs';
 import { placeProp } from './models.mjs';
 
 // ---------- 材質 ----------
@@ -277,10 +277,14 @@ const ROOM_DECOR = {
     const hs = ['eldrin', 'grimoire', 'belmont', 'ouroboros'];
     hs.forEach((h, i) => banner(k, HOUSE[h].banner, i < 2 ? -9.75 : 9.75, 8, 116 + (i % 2) * 14, i < 2 ? Math.PI / 2 : -Math.PI / 2, 1.6, 5));
     // 吊燈（一圈蠟燭）
-    k.add(new THREE.TorusGeometry(2.2, 0.06, 6, 32), MAT.iron(), cx, 9, 126, 0, Math.PI / 2);
-    for (let i = 0; i < 4; i++) k.box(0.03, 6, 0.03, MAT.iron(), cx + Math.cos(i * Math.PI / 2) * 2.2, 12, 126 + Math.sin(i * Math.PI / 2) * 2.2);
+    const ch = placeProp(group, 'chandelier', cx, 7.2, 126, 0, [4.6, 7.8, 4.6]);
+    if (ch) candles(group, chandelierFlames(cx, 7.2, 126, ch), { h: 0.02, r: 0.03 });
+    else { // 製作人給的吊燈模型；沒有就用一圈蠟燭
+      k.add(new THREE.TorusGeometry(2.2, 0.06, 6, 32), MAT.iron(), cx, 9, 126, 0, Math.PI / 2);
+      for (let i = 0; i < 4; i++) k.box(0.03, 6, 0.03, MAT.iron(), cx + Math.cos(i * Math.PI / 2) * 2.2, 12, 126 + Math.sin(i * Math.PI / 2) * 2.2);
+      candles(group, Array.from({ length: 16 }, (_, i) => [cx + Math.cos(i / 16 * Math.PI * 2) * 2.2, 9.05, 126 + Math.sin(i / 16 * Math.PI * 2) * 2.2]));
+    }
     k.build(group);
-    candles(group, Array.from({ length: 16 }, (_, i) => [cx + Math.cos(i / 16 * Math.PI * 2) * 2.2, 9.05, 126 + Math.sin(i / 16 * Math.PI * 2) * 2.2]));
     // 紅地毯：從大門到分院鏡
     const runner = new THREE.Mesh(new THREE.PlaneGeometry(3, 20), std('runner', { map: T.tile(T.rug('#5a1418', '#c8a24a'), 1, 1), roughness: 1 }));
     runner.rotation.x = -Math.PI / 2; runner.position.set(0, 0.012, 129); group.add(runner);
@@ -338,7 +342,8 @@ for (const h of ['eldrin', 'grimoire', 'belmont', 'ouroboros']) {
     const toward = north ? 1 : -1;
     for (const s of [-1, 1]) { const ry = fry - s * (north ? 0.5 : -0.5) + Math.PI; if (!placeProp(group, 'armchair', cx + s * 1.6, 0, fz + toward * 1.6, ry - Math.PI, [0.9, 1.2, 0.9])) armchair(k, HOUSE[h].rug[0], cx + s * 1.6, fz + toward * 1.6, ry); } // 有製作人給的模型就用模型
     // 書架：靠在火爐那面牆的兩邊
-    for (const dx of [-3.4, 3.4]) if (Math.abs(dx) + 1 < (r.x[1] - r.x[0]) / 2) bookshelf(k, cx + dx, north ? r.z[0] + 0.4 : r.z[1] - 0.4, fry, 1.6, Math.min(2.4, r.h - 0.8));
+    for (const dx of [-3.4, 3.4]) if (Math.abs(dx) + 1 < (r.x[1] - r.x[0]) / 2) { const bz = north ? r.z[0] + 0.4 : r.z[1] - 0.4; if (!placeProp(group, 'bookshelf', cx + dx, 0, bz, fry, [1.7, Math.min(2.6, r.h - 0.6), 0.5])) bookshelf(k, cx + dx, bz, fry, 1.6, Math.min(2.4, r.h - 0.8)); }
+    placeProp(group, 'sofa', cx, 0, fz + toward * 3.75, fry + Math.PI, [2.1, 1.0, 1.0]); // 沙發：在小圓桌後面、面向火爐（有模型才有）
     // 學院旗：火爐上方
     banner(k, HOUSE[h].banner, cx, Math.min(r.h - 1.4, 3.9), north ? r.z[0] + 0.2 : r.z[1] - 0.2, fry, 1.2, 1.6);
     k.build(group);
@@ -370,9 +375,13 @@ function dormDetails(r, group, h) {
   const tableX = cx, tableZ = fireZ + toward * 2.3, tableTop = P.roundTable(k, tableX, tableZ, 0.32, 0.5);
   P.teapot(k, tableX - 0.1, tableTop, tableZ - 0.08); P.teacup(k, tableX + 0.14, tableTop, tableZ + 0.05); P.teacup(k, tableX - 0.12, tableTop, tableZ + 0.15);
   // 對面牆邊的書桌（門在對面那面牆的中間，書桌放旁邊）
-  const deskX = cx + (r.x[1] - r.x[0] > 10 ? 3.6 : 2.6), deskZ = oppZ - toward * 0.55, deskTop = P.desk(k, deskX, deskZ, north ? Math.PI : 0);
-  P.openBook(k, deskX, deskTop, deskZ, fry); P.inkQuill(k, deskX + 0.35, deskTop, deskZ - toward * 0.15); P.bookStack(k, deskX - 0.5, deskTop, deskZ + toward * 0.1, 4, r.x[0]);
-  P.candleStick(k, deskX + 0.5, deskTop, deskZ + toward * 0.15, flames);
+  const deskX = cx + (r.x[1] - r.x[0] > 10 ? 3.6 : 2.6), deskZ = oppZ - toward * 0.55;
+  let deskTop = 0.8; // 模型書桌的桌面高度（學院的小東西放上面）
+  if (!placeProp(group, 'desk', deskX, 0, deskZ, north ? Math.PI : 0, [1.4, 0.95, 0.75])) { // 製作人給的書桌模型（上面本來就有書、紙、羽毛筆）；沒有就用拼的
+    deskTop = P.desk(k, deskX, deskZ, north ? Math.PI : 0);
+    P.openBook(k, deskX, deskTop, deskZ, fry); P.inkQuill(k, deskX + 0.35, deskTop, deskZ - toward * 0.15); P.bookStack(k, deskX - 0.5, deskTop, deskZ + toward * 0.1, 4, r.x[0]);
+    P.candleStick(k, deskX + 0.5, deskTop, deskZ + toward * 0.15, flames);
+  }
   // 書架前地上的書、捲軸
   P.bookStack(k, cx - 3.4 + 0.7, 0, fireZ + toward * 0.75, 3, r.z[0]); P.scroll(k, cx - 3.4 - 0.2, 0, fireZ + toward * 0.9, 0.6);
   // 角落的箱子（行李）

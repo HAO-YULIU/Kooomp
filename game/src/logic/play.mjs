@@ -14,6 +14,7 @@ import { SCRIPT } from '../data/story-ch1.mjs';
 import { SPAWNS, DOORS, ROOMS, RUMORS, THINGS } from '../data/world-ch1.mjs';
 const THINGS_BY_ID = Object.fromEntries(THINGS.map((x) => [x.id, x]));
 import { HEADMASTERS } from '../data/story-ch1.mjs';
+import { CREDITS } from '../data/credits.mjs';
 import { createAct2 } from './act2.mjs';
 import { createAct3 } from './act3.mjs';
 import { createAct4 } from './act4.mjs';
@@ -208,7 +209,10 @@ export function startPlay({ conn, getState, myUid, toast, dev, devUser }) {
     mus.oninput = () => { setMusicVolume(+mus.value); mval.textContent = `${Math.round(+mus.value * 100)}%`; };
     body.append(el('div', { class: 'row' }, el('span', { text: t('brightness') }), slider, val), el('div', { class: 'row' }, el('span', { text: t('volume') }), vol, vval),
       el('div', { class: 'row' }, el('span', { text: t('music_volume') }), mus, mval),
-      el('button', { text: t('replay_tut'), onclick: () => { closePanel(); openTutorial({ touch }); } }));
+      el('button', { text: t('replay_tut'), onclick: () => { closePanel(); openTutorial({ touch }); } }),
+      el('button', { text: t('credits'), onclick: () => openPanel(t('credits'), (b) => b.append( // 素材來源（CC BY 要標註作者）
+        el('h3', { text: '3D' }), ...CREDITS.models.map(([n, a, u]) => el('p', { class: 'credit' }, u ? el('a', { href: u, target: '_blank', rel: 'noopener', text: n }) : el('span', { text: n }), el('small', { text: a ? ` — ${a}（CC BY 4.0）` : '' }))),
+        el('h3', { text: t('credits_sound') }), el('p', { class: 'credit', text: CREDITS.sounds }))) }));
   });
   $('btn-wand').onclick = castWand;
   $('btn-notebook').onclick = notebook;
@@ -250,6 +254,7 @@ export function startPlay({ conn, getState, myUid, toast, dev, devUser }) {
       } else world.placeAvatar(key, 0, 0, 0, false);
     });
     if (segment === 'act2') act2.frame(dt, mine);
+    if (segment?.startsWith('act3') || segment === 'act4') act3.wake();
     if (segment?.startsWith('act3')) act3.frame(dt, mine, segment);
     const hideState = act4.frame(dt, mine, segment);
     // 「調查」提示

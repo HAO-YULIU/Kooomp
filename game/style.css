@@ -490,3 +490,6 @@ button, a, input, select, canvas, .choice { touch-action: manipulation; }
 /* 主選單右上角的音樂開關 */
 #music-toggle { position: fixed; top: max(10px, env(safe-area-inset-top)); right: max(10px, env(safe-area-inset-right)); z-index: 30; background: rgba(12, 10, 18, .7); }
 #music-toggle[hidden] { display: none; }
+
+/* 素材來源 */
+.credit { margin: 4px 0; font-size: 13px; line-height: 1.4; } .credit a { color: #d8c48a; } .credit small { opacity: .75; }

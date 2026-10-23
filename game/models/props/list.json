@@ -1,1 +1,27 @@
-{}
+{
+  "armchair": "armchair.glb",
+  "sofa": "sofa.glb",
+  "wardrobe": {
+    "file": "wardrobe.glb",
+    "ry": 3.1416
+  },
+  "bookshelf": "bookcase.glb",
+  "desk": {
+    "file": "desk.glb",
+    "ry": -1.5708
+  },
+  "clock": "clock.glb",
+  "chandelier": "chandelier.glb",
+  "candelabra": "candelabra.glb",
+  "gargoyle": {
+    "file": "gargoyle.glb",
+    "tint": "#6e6a62"
+  },
+  "skull": "skull.glb",
+  "bones": {
+    "file": "bones.glb",
+    "tint": "#a8987e"
+  },
+  "bust": "bust.glb",
+  "skulls": "skulls.glb"
+}

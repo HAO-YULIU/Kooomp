@@ -16,6 +16,7 @@ export function createAct3({ world, conn, toast, say, S, myChar, solvedByMe, ser
   }
 
   return {
+    wake: () => lib.wake(), // 第三幕、第四幕：載入屍體的模型
     lib,
     interact(tg) {
       if (tg.kind === 'note') {

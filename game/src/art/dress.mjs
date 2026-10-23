@@ -86,10 +86,12 @@ const FLOOR = {
     p.box(1.4, 0.36, 0.02, w2, 0, 0.36, D + 0.01);
     for (const sx of [-0.7, 0.7]) p.box(0.06, 0.08, 0.06, wd, sx, 0.04, D - 0.06);
     const top = 0.91, [cx, , cz] = p.pt(-0.45, 0, D / 2);
-    candelabra(k, cx, top, cz, ctx.flames);
+    const cm = placeProp(G, 'candelabra', cx, top, cz, ry, [0.4, 0.5, 0.3]); // 製作人給的燭台模型：三根蠟燭的頂端點火
+    if (cm) { const s = Math.sin(ry), c = Math.cos(ry); for (const [dx, dy] of [[0, 1], [-0.43, 0.8], [0.43, 0.8]]) ctx.flames.push([cx + dx * cm.w * c, top + cm.h * dy + 0.005, cz - dx * cm.w * s]); }
+    else candelabra(k, cx, top, cz, ctx.flames);
     const [bx, , bz] = p.pt(0.15, 0, D / 2); L.P.bookStack(k, bx, top, bz, 2 + (seed % 3), seed);
     const [ox, , oz] = p.pt(0.55, 0, D / 2 + 0.05);
-    if (seed % 3 === 0) L.P.skull(k, ox, top, oz, ry); else if (seed % 3 === 1) L.P.bottles(k, ox, top, oz, seed, 3); else L.P.goblet(k, ox, top, oz);
+    if (seed % 3 === 0) { if (!placeProp(G, 'skull', ox, top, oz, ry + 0.3, [0.16, 0.2, 0.2])) L.P.skull(k, ox, top, oz, ry); } else if (seed % 3 === 1) L.P.bottles(k, ox, top, oz, seed, 3); else L.P.goblet(k, ox, top, oz);
     return 1.7;
   },
   clock(k, x, z, ry, ctx) { // 落地鐘
@@ -114,9 +116,9 @@ const FLOOR = {
     return 0.9;
   },
   bust(k, x, z, ry) { // 大理石底座＋胸像
-    if (prop('bust', x, z, ry, 0.5, 1.6, 0.45)) return 0.6;
     const p = at(k, x, z, ry), mar = L.std('marble', { color: '#cfc8bc', roughness: 0.35 }), D = 0.45;
     p.box(0.4, 0.06, 0.4, mar, 0, 0.03, D / 2); p.cyl(0.13, 0.15, 1.0, mar, 0, 0.56, D / 2, 12); p.box(0.36, 0.06, 0.36, mar, 0, 1.09, D / 2);
+    if (prop('bust', x, z, ry, 0.42, 0.75, 0.42, 1.12)) return 0.6; // 製作人給的胸像模型放在大理石柱上
     p.add(new THREE.SphereGeometry(0.2, 12, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), mar, 0, 1.3, D / 2); // 肩膀
     p.cyl(0.05, 0.06, 0.1, mar, 0, 1.35, D / 2); p.add(new THREE.SphereGeometry(0.11, 14, 10), mar, 0, 1.48, D / 2);
     return 0.6;
@@ -296,6 +298,18 @@ const EXTRA = {
   lib_reading: () => ({ keep: [[124.5, -41, 128.5, -35]] }),
   dock: (r) => ({ walls: [], keep: [] }),
 };
+// 頭骨堆：蝕巢的角落、井室（x, z, 大小, 方向）
+const SKULL_PILES = { a4_nest: [[171.6, -0.8, 1.6, 0.4], [171.8, 4.8, 1.2, 2.1], [166.2, 5.2, 0.9, 1]], lib_well: [[137.6, -64.6, 1.3, 0.7]] };
+// 吊燈模型上蠟燭的位置（一圈 8 根，跟模型的燭台對齊）
+export const chandelierFlames = (x, y, z, m) => Array.from({ length: 8 }, (_, i) => { const a = (i / 8) * Math.PI * 2 + Math.PI / 8; return [x + Math.cos(a) * m.w * 0.41, y + m.h * 0.14, z + Math.sin(a) * m.w * 0.41]; });
+// 吊燈：哪幾個房間、掛在哪（x, z, 寬）
+const mid = (r) => [(r.x[0] + r.x[1]) / 2, (r.z[0] + r.z[1]) / 2];
+const CHANDELIER = {
+  banquet: (r) => [[-22, 112, 2.6], [-22, 125, 2.6], [-22, 138, 2.6]],
+  dorm_eldrin: (r) => [[mid(r)[0], mid(r)[1] + 1.5, 1.5]], dorm_grimoire: (r) => [[mid(r)[0], mid(r)[1] + 1.5, 1.5]],
+  dorm_belmont: (r) => [[mid(r)[0], mid(r)[1] - 1.5, 1.4]], dorm_ouroboros: (r) => [[mid(r)[0], mid(r)[1] - 1.5, 1.4]],
+  founder: (r) => [[0, -72, 2.2]], lib_reading: (r) => [[126.5, -38, 1.8]], lib_entry: (r) => [[107.5, 7.5, 2.0]],
+};
 const pick = (list, s) => { const tot = list.reduce((a, e) => a + e[1], 0); let v = rnd(s, 7) * tot; for (const [n, w] of list) if ((v -= w) < 0) return n; return list[0][0]; };
 
 /** 一個房間的擺設加強 */
@@ -354,6 +368,8 @@ export function dressRoom(r, group, lib) {
       }
     }
   }
+  if (CHANDELIER[r.id]) for (const [x, z, w] of CHANDELIER[r.id](r)) { const H = Math.min(r.h * 0.55, w * 1.8), m = placeProp(group, 'chandelier', x, r.h - H, z, 0, [w, H, w]); if (m) flames.push(...chandelierFlames(x, r.h - m.h, z, m)); } // 吊燈（有模型才有）
+  for (const [x, z, s, ry] of SKULL_PILES[r.id] ?? []) placeProp(group, 'skulls', x, 0, z, ry, [s, s * 0.35, s]); // 頭骨堆（有模型才有）
   if (K.beams) { // 天花板的木樑
     const wd = L.MAT.darkWood(), alongX = r.x[1] - r.x[0] < r.z[1] - r.z[0];
     if (alongX) for (let z = r.z[0] + 1.5; z < r.z[1] - 1; z += 2.4) k.box(r.x[1] - r.x[0], 0.25, 0.22, wd, (r.x[0] + r.x[1]) / 2, r.h - 0.14, z);

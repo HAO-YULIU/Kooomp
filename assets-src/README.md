@@ -52,3 +52,8 @@
 - 莉安娜的錄音切出中文或英文段，前後淡入淡出、音量標準化（-20 LUFS）。
 - 接上 1.2 秒靜音和呼吸聲，得到 `p15_*_preview.mp3`。
 - 遊戲用的 `assets/audio/ch1/p15_liana_zh.mp3`、`p15_liana_en.mp3`：把 preview **加速 2 倍（音高跟著升高）再倒放**。遊戲裡把聲音「反轉＋0.5 倍」播放，就剛好還原成 preview。
+
+## 3D 模型（2026-10-23，製作人從 Sketchfab 下載）
+遊戲用的是處理過的版本 `game/models/props/*.glb`（glTF、貼圖縮成 1K WebP、太多面的減面、meshopt 壓縮），清單 `game/models/props/list.json`。作者與網址列在 `game/src/data/credits.mjs`（遊戲設定裡的「素材來源」會顯示，CC BY 要標註）。
+- 沒有用的：`macabre_gargoyle_statue`（Sketchfab Standard 授權）、`marcus_aurelius`、`colossal_marble_bust_of_zeus`（CC BY-NC-SA，不能商用）、`heavy_knight`（沒有授權說明，等製作人確認來源）。
+- `vintage-black-wooden-desk`（書桌）沒有附授權說明，等製作人確認來源。
