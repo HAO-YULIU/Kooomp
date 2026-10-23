@@ -185,6 +185,8 @@ function retexture(group) {
 }
 
 // ---------- 房間的擺設 ----------
+// 木箱：有製作人給的模型就用模型（open＝打開的那個）
+function crate(k, group, x, z, s = 0.6, y = 0, ry = 0, open = false) { if (!placeProp(group, open ? 'crate_open' : 'crate', x, y, z, ry, [s, s, s])) P.crate(k, x, z, s, y, ry); }
 function banner(kit, color, x, y, z, ry, w = 1.2, h = 3) {
   kit.box(w, h, 0.03, MAT.cloth(color), x, y, z, ry);
   kit.box(w + 0.2, 0.06, 0.06, MAT.brass(), x, y + h / 2 + 0.03, z, ry);
@@ -398,7 +400,7 @@ const DETAILS = {
   dock(r, group) { // 新生的行李、木箱、木桶、繩子
     const k = new Kit();
     [[-4.6, 144], [4.5, 145.2], [-4.4, 152], [4.7, 158]].forEach(([x, z], i) => P.trunk(k, x, z, P.rnd(i) * 0.6, ['#5a2a1a', '#2a3a5a', '#3a2a10', '#1a3a2a'][i]));
-    P.crate(k, 4.6, 147, 0.7); P.crate(k, 4.6, 147, 0.5, 0.7, 0.4); P.crate(k, -4.7, 160, 0.6);
+    crate(k, group, 4.6, 147, 0.7); crate(k, group, 4.6, 147, 0.5, 0.7, 0.4, true); crate(k, group, -4.7, 160, 0.6);
     P.barrel(k, -4.8, 147.5); P.barrel(k, -4.3, 148.4); P.ropeCoil(k, 4.3, 163);
     k.build(group);
   },
@@ -444,11 +446,11 @@ Object.assign(DETAILS, {
   },
   lib_ante(r, group) { const k = new Kit(); cobwebs(k, r, 1.2); P.skull(k, 125.5, 0, -59.4, 0.4); P.bookStack(k, 122, 0, -51, 2, 3); k.build(group); },
   lib_well(r, group) { const k = new Kit(); cobwebs(k, r, 1.6); P.ropeCoil(k, 132.5, -60); P.barrel(k, 138, -65); k.build(group); },
-  a4_pass(r, group) { const k = new Kit(); P.crate(k, 120, 7.9, 0.5); P.barrel(k, 136, 7.9); P.broom(k, 141, 8.2); cobwebs(k, r, 0.6); k.build(group); },
+  a4_pass(r, group) { const k = new Kit(); crate(k, group, 120, 7.9, 0.5, 0, 0, true); P.barrel(k, 136, 7.9); P.broom(k, 141, 8.2); cobwebs(k, r, 0.6); k.build(group); },
   a4_gears(r, group) { // 機械室：工作台、油桶、齒輪零件
     const k = new Kit(); k.box(2, 0.08, 0.8, MAT.wood(), 163, 0.9, 1); for (const sx of [-0.9, 0.9]) k.box(0.08, 0.86, 0.7, MAT.darkWood(), 163 + sx, 0.43, 1);
     for (let i = 0; i < 4; i++) k.add(new THREE.TorusGeometry(0.12 + i * 0.03, 0.03, 4, 12), std('gearIron', { color: '#4a3e30', metalness: 0.6, roughness: 0.5 }), 162.4 + i * 0.35, 0.97, 1, 0, Math.PI / 2);
-    P.barrel(k, 147, 8); P.barrel(k, 147.6, 8.7); P.crate(k, 163.5, 12, 0.7);
+    P.barrel(k, 147, 8); P.barrel(k, 147.6, 8.7); crate(k, group, 163.5, 12, 0.7);
     cobwebs(k, r, 2); k.build(group);
   },
 });

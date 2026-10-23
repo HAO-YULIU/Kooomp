@@ -57,3 +57,4 @@
 遊戲用的是處理過的版本 `game/models/props/*.glb`（glTF、貼圖縮成 1K WebP、太多面的減面、meshopt 壓縮），清單 `game/models/props/list.json`。作者與網址列在 `game/src/data/credits.mjs`（遊戲設定裡的「素材來源」會顯示，CC BY 要標註）。
 - 沒有用的：`macabre_gargoyle_statue`（Sketchfab Standard 授權）、`marcus_aurelius`、`colossal_marble_bust_of_zeus`（CC BY-NC-SA，不能商用）、`heavy_knight`（沒有授權說明，等製作人確認來源）。
 - `vintage-black-wooden-desk`（書桌）沒有附授權說明，等製作人確認來源。
+- `helmet_with_beaked_visor`（CC BY，The Royal Armoury）：博物館掃描、面太多，減面後形狀壞掉，沒有用。

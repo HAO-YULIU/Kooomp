@@ -23,5 +23,9 @@
     "tint": "#a8987e"
   },
   "bust": "bust.glb",
-  "skulls": "skulls.glb"
+  "skulls": "skulls.glb",
+  "armor": "armor.glb",
+  "rowboat": "rowboat.glb",
+  "crate": "crate2.glb",
+  "crate_open": "crate_open.glb"
 }
