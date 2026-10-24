@@ -211,6 +211,7 @@ function ladder(k, x, z, ry, h) { // 靠在書架上的梯子
 const WALL = {
   painting(k, x, z, ry, ctx, seed) {
     const p = at(k, x, z, ry), w = 0.7 + (seed % 3) * 0.25, h = w * (seed % 2 ? 1.25 : 0.8), y = Math.min(ctx.h - h / 2 - 0.4, 1.9 + h / 2 - 0.3);
+    if (placeProp(G, variant('painting', seed >> 1), x + Math.sin(ry) * 0.04, y - h / 2, z + Math.cos(ry) * 0.04, ry, [w + 0.2, h + 0.2, 0.1])) return w + 0.6; // 製作人給的畫（四幅輪流）
     const gold = L.std('frameGold', { color: '#8a6a2a', metalness: 0.7, roughness: 0.4 });
     for (const sy of [-1, 1]) p.box(w + 0.16, 0.08, 0.06, gold, 0, y + sy * (h / 2 + 0.04), 0.04);
     for (const sx of [-1, 1]) p.box(0.08, h + 0.08, 0.06, gold, sx * (w / 2 + 0.04), y, 0.04);
@@ -234,6 +235,8 @@ const WALL = {
   },
   window(k, x, z, ry, ctx) { // 尖拱窗：窗框、窗格、外面的夜空
     const p = at(k, x, z, ry), st = L.MAT.stone(), ir = L.MAT.iron(), w = 1.1, h = Math.min(2.2, ctx.h - 2), y = 1.4 + h / 2;
+    const wm = placeProp(G, variant('window', x + z), x + Math.sin(ry) * 0.1, 1.3, z + Math.cos(ry) * 0.1, ry, [w + 0.3, h + w / 2 + 0.3, 0.3]); // 製作人給的哥德式窗（三款輪流）
+    if (wm) { p.add(new THREE.PlaneGeometry(wm.w * 0.85, wm.h * 0.9), L.MAT.glass(), 0, 1.3 + wm.h / 2, 0.015); return w + 1.2; } // 窗後面的夜空
     p.add(new THREE.PlaneGeometry(w, h), L.MAT.glass(), 0, y, 0.02);
     p.add(new THREE.CircleGeometry(w / 2, 16, 0, Math.PI), L.MAT.glass(), 0, y + h / 2, 0.02);
     for (const sx of [-1, 1]) p.box(0.14, h + 0.1, 0.16, st, sx * (w / 2 + 0.07), y, 0.06);

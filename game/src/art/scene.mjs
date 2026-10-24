@@ -278,6 +278,7 @@ const ROOM_DECOR = {
       k.cyl(0.55, 0.55, r.h - 1.2, MAT.stone(), x, (r.h - 1.2) / 2 + 0.6, z, 12);
       k.box(1.5, 0.6, 1.5, MAT.stone(), x, 0.3, z); k.box(1.6, 0.6, 1.6, MAT.stone(), x, r.h - 0.3, z);
     }
+    placeProp(group, 'banners', 0, 0, 110.6, 0, [4.6, 3.2, 0.5]); // 製作人給的四面旗（大廳盡頭，有模型才有）
     // 四個學院的旗子
     const hs = ['eldrin', 'grimoire', 'belmont', 'ouroboros'];
     hs.forEach((h, i) => banner(k, HOUSE[h].banner, i < 2 ? -9.75 : 9.75, 8, 116 + (i % 2) * 14, i < 2 ? Math.PI / 2 : -Math.PI / 2, 1.6, 5));

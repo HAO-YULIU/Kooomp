@@ -76,5 +76,22 @@
   "potions": "potions.glb",
   "potions2": "potions2.glb",
   "potions3": "potions3.glb",
-  "bench": "bench.glb"
+  "bench": "bench.glb",
+  "painting": {
+    "file": "paint1.glb",
+    "ry": -1.5708
+  },
+  "painting2": "paint2.glb",
+  "painting3": "paint3.glb",
+  "painting4": "witch.glb",
+  "banners": "banners.glb",
+  "window": "win1.glb",
+  "window2": {
+    "file": "win2.glb",
+    "glow": "#6a6aa0"
+  },
+  "window3": {
+    "file": "win3.glb",
+    "ry": -1.5708
+  }
 }
