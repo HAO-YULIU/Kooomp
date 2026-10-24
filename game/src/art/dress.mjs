@@ -97,7 +97,10 @@ const FLOOR = {
     else candelabra(k, cx, top, cz, ctx.flames);
     const [bx, , bz] = p.pt(0.15, 0, D / 2); if (!placeProp(G, 'books', bx, top, bz, ry + seed, [0.3, 0.25, 0.3])) L.P.bookStack(k, bx, top, bz, 2 + (seed % 3), seed);
     const [ox, , oz] = p.pt(0.55, 0, D / 2 + 0.05);
-    if (seed % 3 === 0) { if (!placeProp(G, 'skull', ox, top, oz, ry + 0.3, [0.16, 0.2, 0.2])) L.P.skull(k, ox, top, oz, ry); } else if (seed % 3 === 1) L.P.bottles(k, ox, top, oz, seed, 3); else L.P.goblet(k, ox, top, oz);
+    // 檯面右邊：頭骨／藥水／巫毒娃娃（製作人給的模型），沒有就用拼的
+    if (seed % 3 === 0) { if (!placeProp(G, 'skull', ox, top, oz, ry + 0.3, [0.16, 0.2, 0.2])) L.P.skull(k, ox, top, oz, ry); }
+    else if (seed % 3 === 1) { if (!placeProp(G, variant('potions', seed >> 2), ox, top, oz, ry, [0.3, 0.3, 0.2])) L.P.bottles(k, ox, top, oz, seed, 3); }
+    else if (!placeProp(G, 'voodoo', ox, top, oz, ry + seed, [0.22, 0.1, 0.22])) L.P.goblet(k, ox, top, oz);
     return 1.7;
   },
   clock(k, x, z, ry, ctx) { // 落地鐘
@@ -153,7 +156,7 @@ const FLOOR = {
     if (seed % 2) L.P.teacup(k, tx, top, tz); else L.P.openBook(k, tx, top, tz, ry);
     return 2.1;
   },
-  bench(k, x, z, ry) { const p = at(k, x, z, ry); const [bx, , bz] = p.pt(0, 0, 0.3); L.P.bench(k, bx, bz, ry, 1.8); return 2.0; },
+  bench(k, x, z, ry) { const p = at(k, x, z, ry); const [bx, , bz] = p.pt(0, 0, 0.3); if (!placeProp(G, 'bench', bx, 0, bz, ry, [1.9, 1.0, 0.7])) L.P.bench(k, bx, bz, ry, 1.8); return 2.0; },
   crates(k, x, z, ry, ctx, seed) { // 木箱、木桶、麻袋
     const p = at(k, x, z, ry), sack = L.std('sack', { color: '#4a3e2a', roughness: 1 });
     const [a, , b] = p.pt(-0.4, 0, 0.4); if (!placeProp(G, 'crate', a, 0, b, ry + rnd(seed), [0.7, 0.7, 0.7])) L.P.crate(k, a, b, 0.7, 0, rnd(seed));
@@ -242,7 +245,7 @@ const WALL = {
   shelf(k, x, z, ry, ctx, seed) { // 牆上的小架子：瓶瓶罐罐、書
     const p = at(k, x, z, ry), y = 1.6;
     p.box(1.0, 0.04, 0.25, L.MAT.darkWood(), 0, y, 0.13); for (const sx of [-0.4, 0.4]) p.box(0.04, 0.16, 0.2, L.MAT.darkWood(), sx, y - 0.1, 0.1);
-    const [bx, by, bz] = p.pt(-0.2, y + 0.02, 0.13); L.P.bottles(k, bx, by, bz, seed, 4);
+    const [bx, by, bz] = p.pt(-0.2, y + 0.02, 0.13); if (!placeProp(G, variant('potions', seed), bx, by, bz, ry, [0.45, 0.35, 0.22])) L.P.bottles(k, bx, by, bz, seed, 4);
     const [cx, cy, cz] = p.pt(0.28, y + 0.02, 0.13); L.P.bookStack(k, cx, cy, cz, 2, seed + 3);
     return 1.4;
   },
@@ -467,3 +470,7 @@ export function dressDock(r, group, lib) {
   mm.map.wrapS = mm.map.wrapT = THREE.RepeatWrapping; mm.map.repeat.set(3, 3);
   for (const [y, sc] of [[-0.5, 1], [-0.32, 1.3]]) { const m = new THREE.Mesh(new THREE.PlaneGeometry(90, 90), mm); m.rotation.x = -Math.PI / 2; m.position.set(0, y, 150); m.scale.setScalar(sc); m.renderOrder = 2; group.add(m); m.onBeforeRender = () => { mm.map.offset.x = performance.now() / 90000; }; }
 }
+
+// 蜘蛛娃娃：坐在陰暗角落（有模型才有）。x, z, 面向
+const DOLLS = { north_stairs: [[-1.55, -90.8, 0.5]], lib_ante: [[121.6, -59.4, 0.6]] };
+export function dressDolls(r, group) { for (const [x, z, ry] of DOLLS[r.id] ?? []) placeProp(group, 'spider_doll', x, 0, z, ry, [0.5, 0.55, 0.45]); }

@@ -70,5 +70,11 @@
   "sideboard2": {
     "file": "cabinet.glb",
     "ry": 1.5708
-  }
+  },
+  "voodoo": "voodoo.glb",
+  "spider_doll": "spider.glb",
+  "potions": "potions.glb",
+  "potions2": "potions2.glb",
+  "potions3": "potions3.glb",
+  "bench": "bench.glb"
 }

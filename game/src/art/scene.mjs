@@ -7,7 +7,7 @@ import { decorators } from '../world/art-hooks.mjs';
 import { DOORS } from '../data/world-ch1.mjs';
 import * as T from './textures.mjs';
 import * as P from './props.mjs';
-import { dressRoom, dressRoof, dressDock, chandelierFlames } from './dress.mjs';
+import { dressRoom, dressRoof, dressDock, dressDolls, chandelierFlames } from './dress.mjs';
 import { placeProp } from './models.mjs';
 
 // ---------- 材質 ----------
@@ -412,7 +412,7 @@ const DETAILS = {
   },
   hall(r, group) { // 石柱之間的長凳、角落的石甕、門邊的公告板
     const k = new Kit();
-    for (const z of [116.75, 127.75]) for (const s of [-1, 1]) P.bench(k, s * 9.4, z, s > 0 ? -Math.PI / 2 : Math.PI / 2, 2.4);
+    for (const z of [116.75, 127.75]) for (const s of [-1, 1]) if (!placeProp(group, 'bench', s * 9.4, 0, z, s > 0 ? -Math.PI / 2 : Math.PI / 2, [2.4, 1.1, 0.85])) P.bench(k, s * 9.4, z, s > 0 ? -Math.PI / 2 : Math.PI / 2, 2.4); // 長椅（製作人給的模型）
     for (const [x, z] of [[-9.3, 111], [9.3, 111], [-9.3, 139.2], [9.3, 139.2]]) P.urn(k, x, z);
     // 公告板：一塊木板＋幾張羊皮紙
     k.box(1.6, 1.1, 0.06, MAT.darkWood(), 5.5, 1.7, 139.7);
@@ -475,6 +475,7 @@ decorators.room.push(safe(({ room, group }) => {
   dressRoom(room, group, lib); // 沿著牆再多擺一些家具、牆上的東西（dress.mjs）
   if (room.id === 'a4_roof') dressRoof(room, group, lib); // 屋頂看起來要像露天
   if (room.id === 'dock') dressDock(room, group, lib); // 碼頭：小船、湖上的燈和霧
+  dressDolls(room, group); // 角落的蜘蛛娃娃
 }));
 
 // ---------- 門：木門＋鐵條，跟著灰盒門板一起開關；門框一直都在 ----------
