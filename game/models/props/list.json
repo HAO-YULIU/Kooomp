@@ -43,5 +43,9 @@
     "file": "lantern.glb",
     "glow": "#ffcf8a"
   },
-  "lantern_old": "lantern_old.glb"
+  "lantern_old": "lantern_old.glb",
+  "table": "table.glb",
+  "chair": "chair.glb",
+  "barrel": "barrel.glb",
+  "telescope": "telescope.glb"
 }

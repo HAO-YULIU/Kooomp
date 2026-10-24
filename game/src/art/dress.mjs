@@ -152,7 +152,7 @@ const FLOOR = {
     const p = at(k, x, z, ry), sack = L.std('sack', { color: '#4a3e2a', roughness: 1 });
     const [a, , b] = p.pt(-0.4, 0, 0.4); if (!placeProp(G, 'crate', a, 0, b, ry + rnd(seed), [0.7, 0.7, 0.7])) L.P.crate(k, a, b, 0.7, 0, rnd(seed));
     if (seed % 2) { const [c, , d] = p.pt(-0.4, 0, 0.4); if (!placeProp(G, 'crate_open', c, 0.7, d, ry + rnd(seed, 2), [0.5, 0.5, 0.5])) L.P.crate(k, c, d, 0.45, 0.7, rnd(seed, 2)); }
-    const [e, , f] = p.pt(0.45, 0, 0.35); L.P.barrel(k, e, f);
+    const [e, , f] = p.pt(0.45, 0, 0.35); if (!placeProp(G, 'barrel', e, 0, f, seed, [0.6, 0.85, 0.6])) L.P.barrel(k, e, f);
     p.add(new THREE.SphereGeometry(0.25, 8, 6), sack, 0.1, 0.18, 0.85, 0, 0, 0); p.add(new THREE.SphereGeometry(0.22, 8, 6), sack, -0.25, 0.16, 0.95, 0, 0, 0.3);
     return 1.5;
   },
