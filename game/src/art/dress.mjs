@@ -81,11 +81,17 @@ const FLOOR = {
   },
   sideboard(k, x, z, ry, ctx, seed) { // 邊櫃：上面擺燭台、書、瓶子、頭骨
     const p = at(k, x, z, ry), wd = L.MAT.darkWood(), w2 = L.MAT.wood(), b = L.MAT.brass(), D = 0.5;
-    p.box(1.5, 0.78, D, wd, 0, 0.47, D / 2); p.box(1.6, 0.05, D + 0.06, w2, 0, 0.885, D / 2);
-    for (let i = 0; i < 3; i++) { p.box(0.44, 0.2, 0.02, w2, -0.48 + i * 0.48, 0.7, D + 0.01); p.box(0.08, 0.025, 0.03, b, -0.48 + i * 0.48, 0.7, D + 0.03); }
-    p.box(1.4, 0.36, 0.02, w2, 0, 0.36, D + 0.01);
-    for (const sx of [-0.7, 0.7]) p.box(0.06, 0.08, 0.06, wd, sx, 0.04, D - 0.06);
-    const top = 0.91, [cx, , cz] = p.pt(-0.45, 0, D / 2);
+    // 製作人給的邊櫃模型兩款輪流（維多利亞邊櫃：檯面在 62% 高、後面是鏡子；綠色老櫥櫃：檯面在最上面）
+    const name = variant('sideboard', seed), m = prop(name, x, z, ry, 1.6, name === 'sideboard' ? 1.45 : 0.95, 0.55);
+    let top = 0.91;
+    if (m) top = name === 'sideboard' ? 1.45 * 0.6 : 0.95;
+    else {
+      p.box(1.5, 0.78, D, wd, 0, 0.47, D / 2); p.box(1.6, 0.05, D + 0.06, w2, 0, 0.885, D / 2);
+      for (let i = 0; i < 3; i++) { p.box(0.44, 0.2, 0.02, w2, -0.48 + i * 0.48, 0.7, D + 0.01); p.box(0.08, 0.025, 0.03, b, -0.48 + i * 0.48, 0.7, D + 0.03); }
+      p.box(1.4, 0.36, 0.02, w2, 0, 0.36, D + 0.01);
+      for (const sx of [-0.7, 0.7]) p.box(0.06, 0.08, 0.06, wd, sx, 0.04, D - 0.06);
+    }
+    const [cx, , cz] = p.pt(-0.45, 0, D / 2 + (m && name === 'sideboard' ? 0.06 : 0));
     const cm = placeProp(G, 'candelabra', cx, top, cz, ry, [0.4, 0.5, 0.3]); // 製作人給的燭台模型：三根蠟燭的頂端點火
     if (cm) { const s = Math.sin(ry), c = Math.cos(ry); for (const [dx, dy] of [[0, 1], [-0.43, 0.8], [0.43, 0.8]]) ctx.flames.push([cx + dx * cm.w * c, top + cm.h * dy + 0.005, cz - dx * cm.w * s]); }
     else candelabra(k, cx, top, cz, ctx.flames);

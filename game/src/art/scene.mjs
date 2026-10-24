@@ -344,7 +344,8 @@ for (const h of ['eldrin', 'grimoire', 'belmont', 'ouroboros']) {
     // 火爐：艾爾德林、格里莫瓦在北牆中間；貝爾蒙特、烏洛波斯在南牆中間
     const north = h === 'eldrin' || h === 'grimoire';
     const fz = north ? r.z[0] + 0.45 : r.z[1] - 0.45, fry = north ? 0 : Math.PI;
-    fireplace(k, cx, fz, fry);
+    if (placeProp(group, 'fireplace', cx, 0, fz + (north ? 0.05 : -0.05), fry, [2.6, 1.5, 0.85])) k.box(1.6, 1.6, 0.4, MAT.stone(), cx, 2.3, fz + (north ? -0.15 : 0.15)); // 製作人給的大理石壁爐（裡面有火）＋上面的煙囪
+    else fireplace(k, cx, fz, fry);
     const toward = north ? 1 : -1;
     for (const s of [-1, 1]) { const ry = fry - s * (north ? 0.5 : -0.5) + Math.PI; if (!placeProp(group, 'armchair', cx + s * 1.6, 0, fz + toward * 1.6, ry - Math.PI, [0.9, 1.2, 0.9])) armchair(k, HOUSE[h].rug[0], cx + s * 1.6, fz + toward * 1.6, ry); } // 有製作人給的模型就用模型
     // 書架：靠在火爐那面牆的兩邊
@@ -378,7 +379,7 @@ function dormDetails(r, group, h) {
   const fireZ = north ? r.z[0] + 0.45 : r.z[1] - 0.45, fry = north ? 0 : Math.PI;
   const oppZ = north ? r.z[1] - 0.2 : r.z[0] + 0.2; // 對面那面牆
   // 火爐前的小圓桌：茶壺、茶杯、一本攤開的書
-  const tableX = cx, tableZ = fireZ + toward * 2.3, tableTop = P.roundTable(k, tableX, tableZ, 0.32, 0.5);
+  const tableX = cx, tableZ = fireZ + toward * 2.3, st = placeProp(group, 'sidetable', tableX, 0, tableZ, 0, [0.75, 0.62, 0.75]), tableTop = st ? st.h : P.roundTable(k, tableX, tableZ, 0.32, 0.5); // 小圓桌（製作人給的模型）
   P.teapot(k, tableX - 0.1, tableTop, tableZ - 0.08); P.teacup(k, tableX + 0.14, tableTop, tableZ + 0.05); P.teacup(k, tableX - 0.12, tableTop, tableZ + 0.15);
   // 對面牆邊的書桌（門在對面那面牆的中間，書桌放旁邊）
   const deskX = cx + (r.x[1] - r.x[0] > 10 ? 3.6 : 2.6), deskZ = oppZ - toward * 0.55;

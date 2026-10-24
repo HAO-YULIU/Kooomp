@@ -60,5 +60,15 @@
   "coffins": "coffins.glb",
   "coffin_broken": "coffinb.glb",
   "books": "books1.glb",
-  "rug": "rug1.glb"
+  "rug": "rug1.glb",
+  "fireplace": "fireplace.glb",
+  "sidetable": "sidetable.glb",
+  "sideboard": {
+    "file": "sideboard.glb",
+    "tint": "#5a3a26"
+  },
+  "sideboard2": {
+    "file": "cabinet.glb",
+    "ry": 1.5708
+  }
 }
