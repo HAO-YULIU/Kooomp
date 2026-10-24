@@ -476,4 +476,9 @@ export function dressDock(r, group, lib) {
 
 // 蜘蛛娃娃：坐在陰暗角落（有模型才有）。x, z, 面向
 const DOLLS = { north_stairs: [[-1.55, -90.8, 0.5]], lib_ante: [[121.6, -59.4, 0.6]] };
-export function dressDolls(r, group) { for (const [x, z, ry] of DOLLS[r.id] ?? []) placeProp(group, 'spider_doll', x, 0, z, ry, [0.5, 0.55, 0.45]); }
+// 稻草人：鐘塔機械室最暗的角落，張著手、咧嘴笑（第四幕被追時突然看到）
+const SCARECROWS = { a4_gears: [[163.0, 17.2, -2.36]] };
+export function dressDolls(r, group) {
+  for (const [x, z, ry] of DOLLS[r.id] ?? []) placeProp(group, 'spider_doll', x, 0, z, ry, [0.5, 0.55, 0.45]);
+  for (const [x, z, ry] of SCARECROWS[r.id] ?? []) placeProp(group, 'scarecrow', x, 0, z, ry, [1.6, 2.3, 0.7]); // 張開雙臂站在角落，面向房間
+}

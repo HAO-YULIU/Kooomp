@@ -4,6 +4,7 @@
 // world.frame 每一格呼叫 tickHaunt；world.haunting＝false 時不發生（第四幕、尾聲）。
 import * as THREE from 'three';
 import { sfx, sfxPan } from './sfx.mjs';
+import { placeProp } from './models.mjs';
 
 const H = { next: 45 + Math.random() * 45, figure: null, shade: null, flicker: null, force: null };
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -14,7 +15,11 @@ function makeShade(scene) {
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.19, 12, 8), black); head.position.set(0, 2.08, 0.03); head.scale.set(1, 1.25, 1);
   const eyeMat = new THREE.MeshBasicMaterial({ color: '#ffb08a', fog: false });
   const eyes = [-0.065, 0.065].map((x) => { const e = new THREE.Mesh(new THREE.SphereGeometry(0.018, 6, 4), eyeMat); e.position.set(x, 2.12, 0.19); return e; });
-  g.add(body, head, ...eyes);
+  // 製作人給的「戴兜帽的恐怖女人」模型：有的話就用她（比黑影嚇人很多），沒有才用黑影
+  const woman = placeProp(g, 'horror_woman', 0, 0, 0, 0, [0.9, 1.85, 0.8]);
+  if (!woman) g.add(body, head, ...eyes);
+  // 走廊很暗會看不到她：讓她自己微微發出慘白的光（材質複製一份，不影響別的地方）
+  else woman.obj.traverse((o) => { if (!o.isMesh) return; const ms = [o.material].flat().map((m) => { const c = m.clone(); c.emissive?.set('#9aa4b0'); if (c.map) c.emissiveMap = c.map; c.emissiveIntensity = 0.55; c.fog = false; return c; }); o.material = Array.isArray(o.material) ? ms : ms[0]; });
   g.position.set(0, -100, 0); // 先放在地底下讓畫面先編譯好材質，出現時才不會卡一下
   scene.add(g); return g;
 }

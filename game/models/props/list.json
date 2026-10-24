@@ -93,5 +93,7 @@
   "window3": {
     "file": "win3.glb",
     "ry": -1.5708
-  }
+  },
+  "horror_woman": "woman.glb",
+  "scarecrow": "scarecrow.glb"
 }

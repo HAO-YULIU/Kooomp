@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from '../../../prototype/vendor/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from '../../../prototype/vendor/addons/libs/meshopt_decoder.module.js';
+import { clone as cloneSkinned } from '../../../prototype/vendor/addons/utils/SkeletonUtils.js';
 
 const T = {}; // 名稱 → 載好的模型（範本）
 let base = 'models/props/';
@@ -28,7 +29,8 @@ async function loadAll() {
       // 最高的那一點（蠟燭的燭芯）：點火用
       let top = null; holder.updateMatrixWorld(true); const v = new THREE.Vector3();
       holder.traverse((o) => { if (!o.isMesh) return; const pos = o.geometry.attributes.position; for (let i = 0; i < pos.count; i += 3) { v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld); if (!top || v.y > top.y) top = v.clone(); } });
-      T[name] = { holder, size, top };
+      let skinned = false; holder.traverse((o) => { if (o.isSkinnedMesh) { skinned = true; o.frustumCulled = false; } }); // 有骨架的（恐怖女人、稻草人）：複製時骨架也要跟著複製
+      T[name] = { holder, size, top, skinned };
     } catch (e) { console.warn('模型載入失敗', name, e); }
   }));
 }
@@ -42,7 +44,7 @@ export function variant(name, seed) { const list = [name, name + '2', name + '3'
  */
 export function placeProp(parent, name, x, y, z, ry, fit) {
   const t = T[name]; if (!t || !parent) return false;
-  const o = t.holder.clone(true);
+  const o = t.skinned ? cloneSkinned(t.holder) : t.holder.clone(true);
   const [w, h, d] = fit, s = Math.min(w / (t.size.x || 1), h / (t.size.y || 1), d / (t.size.z || 1));
   o.scale.setScalar(s); o.position.set(x, y, z); o.rotation.y = ry;
   parent.add(o); o.updateMatrixWorld(true);
