@@ -89,7 +89,7 @@ const FLOOR = {
     const cm = placeProp(G, 'candelabra', cx, top, cz, ry, [0.4, 0.5, 0.3]); // 製作人給的燭台模型：三根蠟燭的頂端點火
     if (cm) { const s = Math.sin(ry), c = Math.cos(ry); for (const [dx, dy] of [[0, 1], [-0.43, 0.8], [0.43, 0.8]]) ctx.flames.push([cx + dx * cm.w * c, top + cm.h * dy + 0.005, cz - dx * cm.w * s]); }
     else candelabra(k, cx, top, cz, ctx.flames);
-    const [bx, , bz] = p.pt(0.15, 0, D / 2); L.P.bookStack(k, bx, top, bz, 2 + (seed % 3), seed);
+    const [bx, , bz] = p.pt(0.15, 0, D / 2); if (!placeProp(G, 'books', bx, top, bz, ry + seed, [0.3, 0.25, 0.3])) L.P.bookStack(k, bx, top, bz, 2 + (seed % 3), seed);
     const [ox, , oz] = p.pt(0.55, 0, D / 2 + 0.05);
     if (seed % 3 === 0) { if (!placeProp(G, 'skull', ox, top, oz, ry + 0.3, [0.16, 0.2, 0.2])) L.P.skull(k, ox, top, oz, ry); } else if (seed % 3 === 1) L.P.bottles(k, ox, top, oz, seed, 3); else L.P.goblet(k, ox, top, oz);
     return 1.7;
@@ -174,6 +174,10 @@ const FLOOR = {
   },
   cauldronStand(k, x, z, ry) { if (prop('cauldron', x, z, ry, 0.9, 0.9, 0.9)) return 1.0; const p = at(k, x, z, ry); const [cx, , cz] = p.pt(0, 0, 0.5); L.P.cauldron(k, cx, cz); return 1.0; },
   globeStand(k, x, z, ry) { if (prop('globe', x, z, ry, 0.6, 1.2, 0.6)) return 0.8; const p = at(k, x, z, ry), wd = L.MAT.darkWood(); p.cyl(0.04, 0.06, 0.8, wd, 0, 0.4, 0.4, 8); for (let i = 0; i < 3; i++) p.box(0.05, 0.03, 0.4, wd, 0, 0.03, 0.4, i * 2.1); const [gx, , gz] = p.pt(0, 0, 0.4); L.P.globe(k, gx, 0.8, gz); return 0.8; },
+  coffin(k, x, z, ry, ctx, seed) { // 棺材（製作人給的模型；沒有就不放）：直立靠牆的兩具，或倒在地上的破棺材
+    if (seed % 2) return prop('coffins', x, z, ry, 1.5, 2.0, 0.6) ? 1.6 : 0.6;
+    return placeProp(G, 'coffin_broken', x + Math.sin(ry) * 0.5, 0, z + Math.cos(ry) * 0.5, ry + Math.PI / 2, [1.8, 0.5, 0.9]) ? 1.9 : 0.6;
+  },
   bones(k, x, z, ry, ctx, seed) { // 角落的骨頭（蝕巢、井室）
     if (prop('bones', x, z, ry, 0.9, 0.5, 0.8)) return 1.0;
     const p = at(k, x, z, ry), bm = L.std('boneMat', { color: '#c8bca4', roughness: 0.6 });
@@ -204,8 +208,11 @@ const WALL = {
     p.add(new THREE.PlaneGeometry(w, h), L.std('paintMat' + (seed % PAINT.length), { map: paintingTex(seed % PAINT.length), roughness: 0.75 }), 0, y, 0.03);
     return w + 0.6;
   },
-  sconce(k, x, z, ry, ctx) { // 壁燈：鐵架＋兩根蠟燭
-    const p = at(k, x, z, ry), ir = L.MAT.iron(), y = Math.min(2.1, ctx.h - 0.8);
+  sconce(k, x, z, ry, ctx, seed = 0) { // 壁燈：鐵架＋兩根蠟燭（製作人給的壁燈模型兩款輪流：鐵架蠟燭點火、提燈自己發光）
+    const y = Math.min(2.1, ctx.h - 0.8), name = variant('sconce', seed);
+    const m = placeProp(G, name, x + Math.sin(ry) * 0.12, y - 0.3, z + Math.cos(ry) * 0.12, ry, [0.3, 0.5, 0.25]);
+    if (m) { if (name === 'sconce' && m.top) ctx.flames.push([m.top.x, m.top.y, m.top.z]); return 0.6; }
+    const p = at(k, x, z, ry), ir = L.MAT.iron();
     p.box(0.12, 0.3, 0.03, ir, 0, y, 0.015); p.box(0.04, 0.04, 0.22, ir, 0, y - 0.05, 0.12); p.box(0.3, 0.03, 0.04, ir, 0, y - 0.05, 0.22);
     for (const dx of [-0.13, 0.13]) { p.cyl(0.035, 0.03, 0.03, ir, dx, y - 0.03, 0.22, 8); ctx.flames.push(p.pt(dx, y - 0.02, 0.22)); }
     return 0.6;
@@ -277,10 +284,10 @@ const KINDS = {
   library: { floor: [['tallShelf', 6], ['candelabraFloor', 1], ['globeStand', 1], ['sideboard', 1]], wall: [['sconce', 2]] },
   maze: { floor: [['tallShelf', 1]], wall: [] },
   ante: { floor: [['tallShelf', 2], ['bust', 2], ['candelabraFloor', 1]], wall: [['sconce', 2], ['chains', 1]] },
-  well: { floor: [['crates', 2], ['bones', 2]], wall: [['chains', 3], ['sconce', 1]] },
+  well: { floor: [['crates', 2], ['bones', 2], ['coffin', 2]], wall: [['chains', 3], ['sconce', 1]] },
   pass: { floor: [], wall: [['pipes', 3], ['sconce', 1], ['chains', 1]] },
   gears: { floor: [['crates', 3], ['bones', 1]], wall: [['gearWall', 3], ['pipes', 2], ['chains', 2]] },
-  nest: { floor: [['bones', 4]], wall: [['roots', 5], ['chains', 1]] },
+  nest: { floor: [['bones', 4], ['coffin', 2]], wall: [['roots', 5], ['chains', 1]] },
   dock: { floor: [['crates', 3]], wall: [] },
 };
 const ROOM_KIND = {
@@ -344,7 +351,7 @@ export function dressRoom(r, group, lib) {
     if (K.floor.length && len > 2.5 && (!ex.walls || ex.walls.includes(wn))) {
       let t = 0.9;
       while (t < len - 0.9) {
-        seed++; const name = pick(K.floor, seed), w = { wardrobe: 1.3, sideboard: 1.7, clock: 0.7, armor: 0.9, bust: 0.6, plant: 0.6, candelabraFloor: 0.5, bookshelf: 1.7, tallShelf: 1.9, chairs: 2.1, bench: 2.0, crates: 1.5, statue: 1.3, weapons: 1.4, cauldronStand: 1.0, globeStand: 0.8, bones: 1.0 }[name] ?? 1;
+        seed++; const name = pick(K.floor, seed), w = { wardrobe: 1.3, sideboard: 1.7, clock: 0.7, armor: 0.9, bust: 0.6, plant: 0.6, candelabraFloor: 0.5, bookshelf: 1.7, tallShelf: 1.9, chairs: 2.1, bench: 2.0, crates: 1.5, statue: 1.3, weapons: 1.4, cauldronStand: 1.0, globeStand: 0.8, bones: 1.0, coffin: 1.9 }[name] ?? 1;
         const deep = name === 'chairs' ? 1.6 : name === 'crates' ? 1.2 : 0.8;
         const mid = t + w / 2, probe = [P(t, 0.3), P(t + w, 0.3), P(mid, deep), P(t, deep), P(t + w, deep)];
         if (t + w <= len - 0.6 && free(probe, false) && rnd(seed, 3) > 0.15) {

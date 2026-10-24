@@ -25,7 +25,10 @@ async function loadAll() {
       // 量好大小：底部中間對齊原點
       const box = new THREE.Box3().setFromObject(root), size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
       const holder = new THREE.Group(); root.position.x -= c.x; root.position.y -= box.min.y; root.position.z -= c.z; holder.add(root);
-      T[name] = { holder, size };
+      // 最高的那一點（蠟燭的燭芯）：點火用
+      let top = null; holder.updateMatrixWorld(true); const v = new THREE.Vector3();
+      holder.traverse((o) => { if (!o.isMesh) return; const pos = o.geometry.attributes.position; for (let i = 0; i < pos.count; i += 3) { v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld); if (!top || v.y > top.y) top = v.clone(); } });
+      T[name] = { holder, size, top };
     } catch (e) { console.warn('模型載入失敗', name, e); }
   }));
 }
@@ -42,5 +45,6 @@ export function placeProp(parent, name, x, y, z, ry, fit) {
   const o = t.holder.clone(true);
   const [w, h, d] = fit, s = Math.min(w / (t.size.x || 1), h / (t.size.y || 1), d / (t.size.z || 1));
   o.scale.setScalar(s); o.position.set(x, y, z); o.rotation.y = ry;
-  parent.add(o); return { w: t.size.x * s, h: t.size.y * s, d: t.size.z * s, obj: o };
+  parent.add(o); o.updateMatrixWorld(true);
+  return { w: t.size.x * s, h: t.size.y * s, d: t.size.z * s, obj: o, top: t.top ? o.localToWorld(t.top.clone()) : null }; // top：模型最高點在世界的位置（蠟燭頂端，點火用）
 }

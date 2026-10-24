@@ -47,5 +47,18 @@
   "table": "table.glb",
   "chair": "chair.glb",
   "barrel": "barrel.glb",
-  "telescope": "telescope.glb"
+  "telescope": "telescope.glb",
+  "sconce": {
+    "file": "sconce1.glb",
+    "ry": 1.5708
+  },
+  "sconce2": {
+    "file": "sconce2.glb",
+    "ry": 1.5708,
+    "glow": "#ffcf8a"
+  },
+  "coffins": "coffins.glb",
+  "coffin_broken": "coffinb.glb",
+  "books": "books1.glb",
+  "rug": "rug1.glb"
 }

@@ -445,9 +445,10 @@ Object.assign(DETAILS, {
     for (const z of [-40, -36]) {
       k.box(3, 0.06, 1, MAT.wood(), 126.5, 0.76, z); for (const sx of [-1, 1]) k.box(0.08, 0.73, 0.9, MAT.darkWood(), 126.5 + sx * 1.4, 0.365, z);
       for (const sx of [-0.9, 0.9]) { k.cyl(0.07, 0.08, 0.02, MAT.brass(), 126.5 + sx, 0.8, z, 10); k.cyl(0.01, 0.01, 0.3, MAT.brass(), 126.5 + sx, 0.95, z, 6); k.add(new THREE.CylinderGeometry(0.06, 0.13, 0.1, 10, 1, true), std('bankerGreen', { color: '#1a5a2a', emissive: '#0a3a14', emissiveIntensity: 0.5, side: THREE.DoubleSide }), 126.5 + sx, 1.1, z); }
-      P.openBook(k, 126.2, 0.79, z, P.rnd(z)); P.bookStack(k, 127.3, 0.79, z, 3, z);
+      P.openBook(k, 126.2, 0.79, z, P.rnd(z)); if (!placeProp(group, 'books', 127.3, 0.79, z, z, [0.3, 0.25, 0.3])) P.bookStack(k, 127.3, 0.79, z, 3, z);
       for (const sx of [-0.8, 0.8]) for (const sd of [-1, 1]) placeProp(group, 'chair', 126.5 + sx, 0, z + sd * 0.75, sd > 0 ? Math.PI : 0, [0.5, 1.2, 0.5]); // 椅子（有模型才有）
     }
+    placeProp(group, 'rug', 126.5, 0.008, -38, 0, [3.6, 0.05, 6]); // 長桌下的波斯地毯（有模型才有）
     cobwebs(k, r, 1); k.build(group); candles(group, flames);
   },
   lib_ante(r, group) { const k = new Kit(); cobwebs(k, r, 1.2); P.skull(k, 125.5, 0, -59.4, 0.4); P.bookStack(k, 122, 0, -51, 2, 3); k.build(group); },
