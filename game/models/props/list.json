@@ -1,99 +1,122 @@
 {
-  "armchair": "armchair.glb",
-  "sofa": "sofa.glb",
-  "wardrobe": {
-    "file": "wardrobe.glb",
-    "ry": 3.1416
-  },
-  "bookshelf": "bookcase.glb",
-  "desk": {
-    "file": "desk.glb",
-    "ry": -1.5708
-  },
-  "clock": "clock.glb",
-  "chandelier": "chandelier.glb",
-  "candelabra": "candelabra.glb",
-  "gargoyle": {
-    "file": "gargoyle.glb",
-    "tint": "#6e6a62"
-  },
-  "skull": "skull.glb",
-  "bones": {
-    "file": "bones.glb",
-    "tint": "#a8987e"
-  },
-  "bust": "bust.glb",
-  "skulls": "skulls.glb",
-  "armor": "armor.glb",
-  "rowboat": "rowboat.glb",
-  "crate": "crate2.glb",
-  "crate_open": "crate_open.glb",
-  "plant": "plant.glb",
-  "globe": "globe.glb",
-  "cauldron": "cauldron.glb",
-  "bust2": "bust2.glb",
-  "bust3": "bust3.glb",
-  "gargoyle2": {
-    "file": "gargoyle2.glb",
-    "ry": -1.5708
-  },
-  "statue": "statue.glb",
-  "chain": "chain.glb",
-  "lantern": {
-    "file": "lantern.glb",
-    "glow": "#ffcf8a"
-  },
-  "lantern_old": "lantern_old.glb",
-  "table": "table.glb",
-  "chair": "chair.glb",
-  "barrel": "barrel.glb",
-  "telescope": "telescope.glb",
-  "sconce": {
-    "file": "sconce1.glb",
-    "ry": 1.5708
-  },
-  "sconce2": {
-    "file": "sconce2.glb",
-    "ry": 1.5708,
-    "glow": "#ffcf8a"
-  },
-  "coffins": "coffins.glb",
-  "coffin_broken": "coffinb.glb",
-  "books": "books1.glb",
-  "rug": "rug1.glb",
-  "fireplace": "fireplace.glb",
-  "sidetable": "sidetable.glb",
-  "sideboard": {
-    "file": "sideboard.glb",
-    "tint": "#5a3a26"
-  },
-  "sideboard2": {
-    "file": "cabinet.glb",
-    "ry": 1.5708
-  },
-  "voodoo": "voodoo.glb",
-  "spider_doll": "spider.glb",
-  "potions": "potions.glb",
-  "potions2": "potions2.glb",
-  "potions3": "potions3.glb",
-  "bench": "bench.glb",
-  "painting": {
-    "file": "paint1.glb",
-    "ry": -1.5708
-  },
-  "painting2": "paint2.glb",
-  "painting3": "paint3.glb",
-  "painting4": "witch.glb",
-  "banners": "banners.glb",
-  "window": "win1.glb",
-  "window2": {
-    "file": "win2.glb",
-    "glow": "#6a6aa0"
-  },
-  "window3": {
-    "file": "win3.glb",
-    "ry": -1.5708
-  },
-  "horror_woman": "woman.glb",
-  "scarecrow": "scarecrow.glb"
+ "armchair": "armchair.glb",
+ "sofa": "sofa.glb",
+ "wardrobe": {
+  "file": "wardrobe.glb",
+  "ry": 3.1416
+ },
+ "bookshelf": "bookcase.glb",
+ "desk": {
+  "file": "desk.glb",
+  "ry": -1.5708
+ },
+ "clock": "clock.glb",
+ "chandelier": "chandelier.glb",
+ "candelabra": "candelabra.glb",
+ "gargoyle": {
+  "file": "gargoyle.glb",
+  "tint": "#6e6a62"
+ },
+ "skull": "skull.glb",
+ "bones": {
+  "file": "bones.glb",
+  "tint": "#a8987e"
+ },
+ "bust": "bust.glb",
+ "skulls": "skulls.glb",
+ "armor": "armor.glb",
+ "rowboat": "rowboat.glb",
+ "crate": "crate2.glb",
+ "crate_open": "crate_open.glb",
+ "plant": "plant.glb",
+ "globe": "globe.glb",
+ "cauldron": "cauldron.glb",
+ "bust2": "bust2.glb",
+ "bust3": "bust3.glb",
+ "gargoyle2": {
+  "file": "gargoyle2.glb",
+  "ry": -1.5708
+ },
+ "statue": "statue.glb",
+ "chain": "chain.glb",
+ "lantern": {
+  "file": "lantern.glb",
+  "glow": "#ffcf8a"
+ },
+ "lantern_old": "lantern_old.glb",
+ "table": "table.glb",
+ "chair": "chair.glb",
+ "barrel": "barrel.glb",
+ "telescope": "telescope.glb",
+ "sconce": {
+  "file": "sconce1.glb",
+  "ry": 1.5708
+ },
+ "sconce2": {
+  "file": "sconce2.glb",
+  "ry": 1.5708,
+  "glow": "#ffcf8a"
+ },
+ "coffins": "coffins.glb",
+ "coffin_broken": "coffinb.glb",
+ "books": "books1.glb",
+ "rug": "rug1.glb",
+ "fireplace": "fireplace.glb",
+ "sidetable": "sidetable.glb",
+ "sideboard": {
+  "file": "sideboard.glb",
+  "tint": "#5a3a26"
+ },
+ "sideboard2": {
+  "file": "cabinet.glb",
+  "ry": 1.5708
+ },
+ "voodoo": "voodoo.glb",
+ "spider_doll": "spider.glb",
+ "potions": "potions.glb",
+ "potions2": "potions2.glb",
+ "potions3": "potions3.glb",
+ "bench": "bench.glb",
+ "painting": {
+  "file": "paint1.glb",
+  "ry": -1.5708
+ },
+ "painting2": "paint2.glb",
+ "painting3": "paint3.glb",
+ "painting4": "witch.glb",
+ "banners": "banners.glb",
+ "window": "win1.glb",
+ "window2": {
+  "file": "win2.glb",
+  "glow": "#6a6aa0"
+ },
+ "window3": {
+  "file": "win3.glb",
+  "ry": -1.5708
+ },
+ "horror_woman": "woman.glb",
+ "scarecrow": "scarecrow.glb",
+ "roundtable": "roundtable.glb",
+ "roundtable2": "roundtable2.glb",
+ "teapot": "teapot.glb",
+ "teacup": "teacup.glb",
+ "teacup2": "teacup2.glb",
+ "hourglass": "hourglass.glb",
+ "lectern": "lectern.glb",
+ "hangbanner": {
+  "file": "hangbanner.glb",
+  "split": "hangbanner"
+ },
+ "warbanner": "warbanner.glb",
+ "parkbench": "parkbench.glb",
+ "rosewindow": {
+  "file": "rosewindow.glb",
+  "glow": "#6a5a8a"
+ },
+ "paintpack": {
+  "file": "paintpack.glb",
+  "split": "painting"
+ },
+ "ghost_woman": "ghost_woman.glb",
+ "faceless": "faceless.glb"
 }

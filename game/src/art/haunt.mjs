@@ -9,20 +9,25 @@ import { placeProp } from './models.mjs';
 const H = { next: 45 + Math.random() * 45, figure: null, shade: null, flicker: null, force: null };
 const rnd = (a, b) => a + Math.random() * (b - a);
 
-function makeShade(scene) {
+// 製作人給的「戴兜帽的恐怖女人」：走廊很暗會看不到她，讓她自己微微發出慘白的光（材質複製一份，不影響別的地方）。也用在 P30（world/northhall.mjs）
+export function ghostWoman(parent, name = 'horror_woman') {
+  const woman = placeProp(parent, name, 0, 0, 0, 0, [0.9, 1.85, 0.8]);
+  if (woman) woman.obj.traverse((o) => { if (!o.isMesh) return; const ms = [o.material].flat().map((m) => { const c = m.clone(); if (c.emissive) { c.emissive.set('#9aa4b0'); if (c.map) c.emissiveMap = c.map; c.emissiveIntensity = 0.55; } c.fog = false; return c; }); o.material = Array.isArray(o.material) ? ms : ms[0]; });
+  return woman;
+}
+
+function makeShade(scene, name) {
   const g = new THREE.Group(), black = new THREE.MeshBasicMaterial({ color: '#020203' }); g.name = 'haunt-shade';
   const body = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.42, 1.95, 10, 1, true), black); body.position.y = 0.98;
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.19, 12, 8), black); head.position.set(0, 2.08, 0.03); head.scale.set(1, 1.25, 1);
   const eyeMat = new THREE.MeshBasicMaterial({ color: '#ffb08a', fog: false });
   const eyes = [-0.065, 0.065].map((x) => { const e = new THREE.Mesh(new THREE.SphereGeometry(0.018, 6, 4), eyeMat); e.position.set(x, 2.12, 0.19); return e; });
-  // 製作人給的「戴兜帽的恐怖女人」模型：有的話就用她（比黑影嚇人很多），沒有才用黑影
-  const woman = placeProp(g, 'horror_woman', 0, 0, 0, 0, [0.9, 1.85, 0.8]);
-  if (!woman) g.add(body, head, ...eyes);
-  // 走廊很暗會看不到她：讓她自己微微發出慘白的光（材質複製一份，不影響別的地方）
-  else woman.obj.traverse((o) => { if (!o.isMesh) return; const ms = [o.material].flat().map((m) => { const c = m.clone(); c.emissive?.set('#9aa4b0'); if (c.map) c.emissiveMap = c.map; c.emissiveIntensity = 0.55; c.fog = false; return c; }); o.material = Array.isArray(o.material) ? ms : ms[0]; });
+  // 製作人給的嚇人人物（戴兜帽的女人、長髮鬼女人、無臉男）：有的話就用（比黑影嚇人很多），沒有才用黑影
+  if (!ghostWoman(g, name)) { if (name !== 'horror_woman') return null; g.add(body, head, ...eyes); }
   g.position.set(0, -100, 0); // 先放在地底下讓畫面先編譯好材質，出現時才不會卡一下
   scene.add(g); return g;
 }
+const FIGURES = ['horror_woman', 'ghost_woman', 'faceless'];
 
 // 在同一個房間裡、玩家現在沒在看的地方，找一個離玩家 6～12 公尺的點
 function spotFor(room, cam) {
@@ -46,7 +51,7 @@ function pick() { let s = Math.random() * EVENTS.reduce((a, e) => a + e[1], 0); 
 
 /** 每一格：dt、現在的房間（{x:[..], z:[..]}）、相機、場景、房間的燈、現在忙不忙（看謎題、對話中就不嚇） */
 export function tickHaunt(dt, { room, camera, scene, roomLight, busy, on }) {
-  if (!H.shade && scene) H.shade = makeShade(scene);
+  if (!H.shades && scene) { H.shades = FIGURES.map((n) => makeShade(scene, n)).filter(Boolean); H.shade = H.shades[0]; } // 每次出現的人輪流挑
   // 燈忽明忽暗（1.5 秒）
   if (H.flicker) {
     const f = H.flicker; f.t += dt;
@@ -74,7 +79,7 @@ export function tickHaunt(dt, { room, camera, scene, roomLight, busy, on }) {
   switch (kind) {
     case 'knock': for (let i = 0; i < 3; i++) setTimeout(() => sfxPan('knock', side * 0.8, { vol: 0.5, arg: true }), i * 520 + (i === 2 ? 300 : 0)); break;
     case 'flicker': if (roomLight.intensity > 0) { H.flicker = { t: 0, base: roomLight.intensity, last: roomLight.intensity }; sfx('hum'); } break;
-    case 'shade': { const p = spotFor(room, camera); if (!p) { H.next = 5; break; } H.shade.position.copy(p); H.figure = { pos: p, t: 0, seen: 0 }; break; }
+    case 'shade': { const p = spotFor(room, camera); if (!p) { H.next = 5; break; } H.shade.position.y = -100; H.shade = H.shades[Math.floor(Math.random() * H.shades.length)]; H.shade.position.copy(p); H.figure = { pos: p, t: 0, seen: 0 }; break; }
     case 'whisper': sfxPan('whisper', side, { vol: 0.8 }); break;
     case 'steps': sfxPan('steps', side * 0.3, { vol: 1 }); break;
     case 'slam': sfxPan('slam', side * 0.6, { vol: 0.5 }); break;

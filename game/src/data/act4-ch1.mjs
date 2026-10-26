@@ -54,6 +54,13 @@ export const AXLE_GAPS = [6, 7, 9];
 export const LYRIC = L(['提', '著', '綠', '燈', '走', '長', '廊'], ['Green', 'lamp', 'glow', 'ing', 'down', 'the', 'hall']); // docs/06-audio-ch1.md
 export const LYRIC_MARKS = { 0: 'L', 3: 'L', 6: 'L' };
 
+// P32 稻草人：機械室地上六塊刻羅馬數字的石板（I～VI），稻草人一開始站在角落。不看他的時候，他依 SCARECROW.route 換一塊石板站，走完一輪回到角落
+export const SCARECROW = {
+  corner: [163, 17.2],
+  slabs: [[149, 4], [162.2, 8.6], [150.2, 14.6], [156, 15.8], [161.6, 12.8], [148.6, 9.8]], // I、II、III、IV、V、VI
+  route: [3, 0, 5, 1],
+};
+
 export const A4_THINGS = [
   // ---- 入口大廳：躲藏點（書架縫） ----
   { id: 'hide_e1', room: 'lib_entry', kind: 'hide', x: 101, z: 3, size: [1, 2.2, 1.2], solid: false, label: L('書架之間的縫', 'A gap between shelves') },
@@ -69,6 +76,7 @@ export const A4_THINGS = [
   { id: 'hide_g3', room: 'a4_gears', kind: 'hide', x: 164, z: 16, size: [1.2, 2, 0.8], solid: false, label: L('工具櫃', 'A tool cabinet') },
   { id: 'hide_g4', room: 'a4_gears', kind: 'hide', x: 152, z: 11.5, size: [1.4, 2, 1], solid: false, label: L('大齒輪後面', 'Behind a great gear') },
   { id: 'hide_g5', room: 'a4_gears', kind: 'hide', x: 160, z: 4, size: [1.4, 2, 1], solid: false, label: L('大齒輪後面', 'Behind a great gear') },
+  { id: 'toolbox', hidden: true, room: 'a4_gears', kind: 'puzzle', puzzle: 'P32', x: 150.6, z: 17.4, size: [0.9, 0.6, 0.6], solid: true, label: L('上鎖的鐘塔工具箱', 'The clock keeper’s locked toolbox') },
   // ---- 蝕巢：被綁住的同伴 ----
   { id: 'roots', room: 'a4_nest', kind: 'nest', x: 170, z: 2, size: [2.4, 2, 2.4], solid: false, label: L('纏住同伴的黑根', 'The black roots binding your friend') },
   // ---- 屋頂 ----

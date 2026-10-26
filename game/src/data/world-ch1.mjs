@@ -39,7 +39,7 @@ export const DOORS = [
   { id: 'belmont-star', a: 'dorm_belmont', b: 'starhall', x: -4.5, z: 9, w: 2.4, axis: 'x', lock: { puzzle: 'P05' } },
   { id: 'ouroboros-star', a: 'dorm_ouroboros', b: 'starhall', x: 4.5, z: 9, w: 2.4, axis: 'x', lock: { puzzle: 'P06' } },
   { id: 'star-north', a: 'starhall', b: 'north_hall', x: 0, z: -9, w: 3, axis: 'x', lock: { segment: 'act2' } },
-  { id: 'north-corridor', a: 'north_hall', b: 'corridor', x: 0, z: -20, w: 5, axis: 'x', lock: null },
+  { id: 'north-corridor', a: 'north_hall', b: 'corridor', x: 0, z: -20, w: 5, axis: 'x', lock: { puzzle: 'P30' } },
   { id: 'corridor-founder', a: 'corridor', b: 'founder', x: 0, z: -64, w: 2.4, axis: 'x', lock: { puzzle: 'P09' } },
   { id: 'founder-stairs', a: 'founder', b: 'north_stairs', x: 0, z: -80, w: 2.4, axis: 'x', lock: { segment: 'act3a' } },
 ];
@@ -56,6 +56,17 @@ export const SPAWNS = {
   act2: { x: 0, z: -12, yaw: 0 },
   act3a: { x: 0, z: -84, yaw: 0 },
 };
+
+// P30：往北翼的走廊兩側，六幅「沒有畢業」的女學生畫像（西牆三幅、東牆三幅）。閃電時她依 LIGHTNING_AT 的順序站在畫旁邊
+export const NORTH_PORTRAITS = [
+  { x: -2.38, z: -11.6, zh: '蘿娜・維爾', en: 'Lorna Vale', year: 1849 },
+  { x: -2.38, z: -14.6, zh: '米拉・霍爾特', en: 'Mira Holt', year: 1852 },
+  { x: -2.38, z: -17.6, zh: '艾妲・克雷恩', en: 'Ada Crane', year: 1858 },
+  { x: 2.38, z: -11.6, zh: '諾拉・芬奇', en: 'Nora Finch', year: 1861 },
+  { x: 2.38, z: -14.6, zh: '伊妮絲・馬洛', en: 'Ines Marlow', year: 1866 },
+  { x: 2.38, z: -17.6, zh: '艾格妮絲・里德', en: 'Agnes Reed', year: 1870 },
+];
+export const LIGHTNING_AT = [0, 4, 2, 3, 5];
 
 // 場景裡可以調查的東西。kind：
 //   prop    擺設（可以調查，會顯示 text）
@@ -118,6 +129,17 @@ export const THINGS = [
   { id: 'north_door', room: 'starhall', kind: 'prop', x: 0, z: -8.6, size: [3, 3, 0.3], solid: false, label: L('往北翼的門', 'The door to the North Wing'),
     text: L('門很重，上面沒有鎖孔，只有四個學院的徽章。', 'A heavy door with no keyhole — only the crests of the four houses.') },
 
+  // 往北翼的走廊（P30 閃電中的她）：熄掉油燈等閃電；畫像和銘牌在下面的 NORTH_PORTRAITS（world/northhall.mjs 畫）
+  { id: 'nh_lamp', hidden: true, room: 'north_hall', kind: 'lightning', x: 2.2, z: -10.2, size: [0.4, 0.6, 0.4], y: 1.5, solid: false,
+    label: L('牆上的油燈：熄掉它', 'The oil lamp on the wall: put it out') },
+  { id: 'nh_lock', hidden: true, room: 'north_hall', kind: 'puzzle', puzzle: 'P30', x: 0, z: -19.6, size: [3, 2.4, 0.3], solid: false,
+    label: L('門上的五格字母鎖', 'The five-letter lock on the door') },
+  ...[0, 1, 2, 3, 4, 5].map((i) => {
+    const p = NORTH_PORTRAITS[i];
+    return { id: `nh_portrait${i}`, hidden: true, room: 'north_hall', kind: 'prop', x: p.x, z: p.z, size: [0.3, 1.4, 1.1], y: 1, solid: false,
+      label: L(`畫像：${p.zh}`, `Portrait: ${p.en}`),
+      text: L(`銘牌：「${p.zh}（${p.en}），${p.year} 年入學。未畢業。」畫裡的女孩笑得很僵硬。`, `The plaque: “${p.en}, enrolled ${p.year}. Did not graduate.” The girl in the painting smiles a stiff smile.`) };
+  }),
   // 肖像畫長廊（P09）：盡頭的門。位置會跟著「走廊變長」的異常移動（corridor.mjs 會改 z）
   { id: 'loop_door', hidden: true, room: 'corridor', kind: 'loopdoor', x: 0, z: -55.7, size: [2.4, 2.6, 0.3], solid: false,
     label: L('推開盡頭的門（往前走）', 'Push the door at the end (go on)') },

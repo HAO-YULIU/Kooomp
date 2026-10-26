@@ -68,6 +68,10 @@ const SOUNDS = {
   steps: () => { for (let i = 0; i < 4; i++) { const v = 0.05 + i * 0.03; noise({ dur: 0.07, vol: v, type: 'bandpass', freq: 1100, q: 1.2, at: i * 0.62 }); tone(70, { dur: 0.08, vol: v * 0.9, slide: 0.6, at: i * 0.62 }); } },
   // 小孩的笑聲（很短、很遠，三聲往上飄的音）
   giggle: () => { for (let i = 0; i < 3; i++) tone(820 + i * 90, { type: 'triangle', dur: 0.12, vol: 0.035, slide: 1.25, at: i * 0.16 }); noise({ dur: 0.5, vol: 0.012, type: 'bandpass', freq: 2500, q: 2 }); },
+  // 雷聲：一聲裂開的脆響，接著很長的低沉轟隆
+  thunder: () => { noise({ dur: 0.25, vol: 0.3, type: 'highpass', freq: 1200, sweep: 0.3 }); noise({ dur: 3.2, vol: 0.4, freq: 160, q: 0.6, at: 0.05, sweep: 0.5 }); tone(42, { dur: 2.6, vol: 0.3, slide: 0.7, attack: 0.1, at: 0.08 }); },
+  // 小孩的啜泣（P31）：抽一口氣、哭兩聲往下掉的音
+  sob: () => { noise({ dur: 0.25, vol: 0.05, type: 'bandpass', freq: 1800, q: 1.5, sweep: 1.6 }); for (let i = 0; i < 2; i++) { tone(620 - i * 40, { type: 'triangle', dur: 0.45, vol: 0.09, slide: 0.72, attack: 0.04, at: 0.35 + i * 0.55 }); tone(1240 - i * 80, { dur: 0.4, vol: 0.025, slide: 0.72, attack: 0.04, at: 0.35 + i * 0.55 }); } },
   hum: () => { tone(110, { dur: 1.5, vol: 0.08, attack: 0.3 }); tone(165, { dur: 1.5, vol: 0.05, attack: 0.3 }); },
 };
 // ---------- 真的音檔（製作人之後補）：assets/audio/sfx/list.json 列出有哪些，有就用音檔、沒有就用上面合成的 ----------

@@ -100,7 +100,7 @@ const FLOOR = {
     // 檯面右邊：頭骨／藥水／巫毒娃娃（製作人給的模型），沒有就用拼的
     if (seed % 3 === 0) { if (!placeProp(G, 'skull', ox, top, oz, ry + 0.3, [0.16, 0.2, 0.2])) L.P.skull(k, ox, top, oz, ry); }
     else if (seed % 3 === 1) { if (!placeProp(G, variant('potions', seed >> 2), ox, top, oz, ry, [0.3, 0.3, 0.2])) L.P.bottles(k, ox, top, oz, seed, 3); }
-    else if (!placeProp(G, 'voodoo', ox, top, oz, ry + seed, [0.22, 0.1, 0.22])) L.P.goblet(k, ox, top, oz);
+    else if (!(seed % 2 && placeProp(G, 'hourglass', ox, top, oz, ry, [0.16, 0.26, 0.16])) && !placeProp(G, 'voodoo', ox, top, oz, ry + seed, [0.22, 0.1, 0.22])) L.P.goblet(k, ox, top, oz); // 沙漏或巫毒娃娃
     return 1.7;
   },
   clock(k, x, z, ry, ctx) { // 落地鐘
@@ -152,10 +152,18 @@ const FLOOR = {
   chairs(k, x, z, ry, ctx, seed) { // 兩張扶手椅＋小圓桌
     const p = at(k, x, z, ry), col = ctx.cloth ?? '#3a1a1a';
     for (const sx of [-0.65, 0.65]) { const [ax, , az] = p.pt(sx, 0, 0.75); if (!placeProp(G, 'armchair', ax, 0, az, ry - sx * 0.5, [0.85, 1.2, 0.85])) L.armchair(k, col, ax, az, ry + Math.PI - sx * 0.5); }
-    const [tx, , tz] = p.pt(0, 0, 0.55); const top = L.P.roundTable(k, tx, tz, 0.25, 0.55);
-    if (seed % 2) L.P.teacup(k, tx, top, tz); else L.P.openBook(k, tx, top, tz, ry);
+    const [tx, , tz] = p.pt(0, 0, 0.55);
+    const rt = placeProp(G, variant('roundtable', seed), tx, 0, tz, ry, [0.6, 0.62, 0.6]); // 製作人給的圓桌（兩款）
+    const top = rt ? rt.h : L.P.roundTable(k, tx, tz, 0.25, 0.55);
+    if (seed % 2) { // 茶壺＋茶杯（兩款）
+      if (!placeProp(G, variant('teacup', seed >> 1), tx + 0.12, top, tz + 0.04, ry, [0.13, 0.08, 0.13])) L.P.teacup(k, tx, top, tz);
+      placeProp(G, 'teapot', tx - 0.1, top, tz - 0.06, ry + 2.2, [0.2, 0.2, 0.15]);
+    } else L.P.openBook(k, tx, top, tz, ry);
     return 2.1;
   },
+  warBanner(k, x, z, ry) { prop('warbanner', x, z, ry, 1.0, 2.7, 0.8); return 1.4; }, // 破爛的戰旗（插在地上）
+  lectern(k, x, z, ry) { prop('lectern', x, z, ry, 0.55, 1.35, 0.55); return 1.0; }, // 放書的講台
+  parkBench(k, x, z, ry) { prop('parkbench', x, z, ry, 1.9, 1.0, 0.75); return 2.3; }, // 碼頭的木長椅
   bench(k, x, z, ry) { const p = at(k, x, z, ry); const [bx, , bz] = p.pt(0, 0, 0.3); if (!placeProp(G, 'bench', bx, 0, bz, ry, [1.9, 1.0, 0.7])) L.P.bench(k, bx, bz, ry, 1.8); return 2.0; },
   crates(k, x, z, ry, ctx, seed) { // 木箱、木桶、麻袋
     const p = at(k, x, z, ry), sack = L.std('sack', { color: '#4a3e2a', roughness: 1 });
@@ -228,6 +236,7 @@ const WALL = {
     return 0.6;
   },
   tapestry(k, x, z, ry, ctx, seed) {
+    if (placeProp(G, variant('hangbanner', seed), x + Math.sin(ry) * 0.06, 0.9, z + Math.cos(ry) * 0.06, ry, [1.3, Math.min(3.4, ctx.h - 1.4), 0.1])) return 2.0; // 製作人給的文藝復興掛旗（紅、白）
     const p = at(k, x, z, ry), [c1, c2] = ctx.tap ?? ['#3a1a1a', '#c8a24a'], h = Math.min(2.6, ctx.h - 1.2), w = 1.3, y = 1.0 + h / 2;
     p.add(new THREE.PlaneGeometry(w, h, 1, 6), L.std('tapMat' + c1 + c2, { map: tapestryTex(c1, c2), roughness: 1, side: THREE.DoubleSide }), 0, y, 0.04);
     p.box(w + 0.2, 0.04, 0.04, L.MAT.brass(), 0, y + h / 2 + 0.02, 0.06);
@@ -288,19 +297,19 @@ const WALL = {
 // ---------- 每種房間要擺什麼（權重） ----------
 const KINDS = {
   dorm: { floor: [['wardrobe', 2], ['sideboard', 3], ['clock', 1], ['plant', 2], ['candelabraFloor', 1], ['chairs', 1]], wall: [['painting', 6], ['sconce', 3], ['shelf', 1], ['mirror', 1], ['window', 2]], beams: true, floatN: 10 },
-  hall: { floor: [['armor', 3], ['statue', 2], ['candelabraFloor', 2], ['plant', 1], ['bust', 2]], wall: [['painting', 4], ['sconce', 4], ['tapestry', 2]], floatN: 60, chandelier: true },
+  hall: { floor: [['armor', 3], ['statue', 2], ['candelabraFloor', 2], ['plant', 1], ['bust', 2], ['warBanner', 2]], wall: [['painting', 4], ['sconce', 4], ['tapestry', 2]], floatN: 60, chandelier: true },
   banquet: { floor: [['armor', 2], ['candelabraFloor', 2], ['sideboard', 2], ['statue', 1]], wall: [['painting', 4], ['sconce', 3], ['tapestry', 2]] },
-  starhall: { floor: [['bookshelf', 2], ['globeStand', 1], ['candelabraFloor', 2], ['bust', 1], ['sideboard', 1]], wall: [['painting', 3], ['sconce', 3], ['shelf', 1]], floatN: 24 },
-  founder: { floor: [['bookshelf', 3], ['armor', 1], ['bust', 2], ['candelabraFloor', 1]], wall: [['painting', 2], ['sconce', 3]], beams: true },
+  starhall: { floor: [['bookshelf', 2], ['globeStand', 1], ['candelabraFloor', 2], ['bust', 1], ['sideboard', 1], ['lectern', 1]], wall: [['painting', 3], ['sconce', 3], ['shelf', 1]], floatN: 24 },
+  founder: { floor: [['bookshelf', 3], ['armor', 1], ['bust', 2], ['candelabraFloor', 1], ['lectern', 1]], wall: [['painting', 2], ['sconce', 3]], beams: true },
   stairs: { floor: [], wall: [['sconce', 3], ['chains', 1], ['painting', 1]] },
-  library: { floor: [['tallShelf', 6], ['candelabraFloor', 1], ['globeStand', 1], ['sideboard', 1]], wall: [['sconce', 2]] },
+  library: { floor: [['tallShelf', 6], ['candelabraFloor', 1], ['globeStand', 1], ['sideboard', 1], ['lectern', 1]], wall: [['sconce', 2]] },
   maze: { floor: [['tallShelf', 1]], wall: [] },
   ante: { floor: [['tallShelf', 2], ['bust', 2], ['candelabraFloor', 1]], wall: [['sconce', 2], ['chains', 1]] },
   well: { floor: [['crates', 2], ['bones', 2], ['coffin', 2]], wall: [['chains', 3], ['sconce', 1]] },
   pass: { floor: [], wall: [['pipes', 3], ['sconce', 1], ['chains', 1]] },
-  gears: { floor: [['crates', 3], ['bones', 1]], wall: [['gearWall', 3], ['pipes', 2], ['chains', 2]] },
+  gears: { floor: [['crates', 3], ['bones', 1], ['warBanner', 1]], wall: [['gearWall', 3], ['pipes', 2], ['chains', 2]] },
   nest: { floor: [['bones', 4], ['coffin', 2]], wall: [['roots', 5], ['chains', 1]] },
-  dock: { floor: [['crates', 3]], wall: [] },
+  dock: { floor: [['crates', 3], ['parkBench', 1]], wall: [] },
 };
 const ROOM_KIND = {
   dorm_eldrin: 'dorm', dorm_grimoire: 'dorm', dorm_belmont: 'dorm', dorm_ouroboros: 'dorm', hall: 'hall', banquet: 'banquet', starhall: 'starhall', founder: 'founder', north_stairs: 'stairs', north_hall: 'stairs',
@@ -477,8 +486,8 @@ export function dressDock(r, group, lib) {
 // 蜘蛛娃娃：坐在陰暗角落（有模型才有）。x, z, 面向
 const DOLLS = { north_stairs: [[-1.55, -90.8, 0.5]], lib_ante: [[121.6, -59.4, 0.6]] };
 // 稻草人：鐘塔機械室最暗的角落，張著手、咧嘴笑（第四幕被追時突然看到）
-const SCARECROWS = { a4_gears: [[163.0, 17.2, -2.36]] };
 export function dressDolls(r, group) {
   for (const [x, z, ry] of DOLLS[r.id] ?? []) placeProp(group, 'spider_doll', x, 0, z, ry, [0.5, 0.55, 0.45]);
-  for (const [x, z, ry] of SCARECROWS[r.id] ?? []) placeProp(group, 'scarecrow', x, 0, z, ry, [1.6, 2.3, 0.7]); // 張開雙臂站在角落，面向房間
+  // 典禮廳北牆高處（教師席上方）：製作人給的玫瑰窗（連著一段拱形的石牆）
+  if (r.id === 'banquet') { const m = placeProp(group, 'rosewindow', -22, 7.2, 102, 0, [8, 6, 5]); if (m) m.obj.position.z += m.d / 2; }
 }

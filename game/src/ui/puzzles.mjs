@@ -449,6 +449,23 @@ const BUILD = {
     body.append(el('p', { text: t('p25_intro') }), view, el('button', { text: t('answer'), onclick: () => submit(rings.join(',')) }));
   },
 
+  // P30：鐵柵門的五格字母鎖（A～Z 轉輪）
+  P30(body, { submit }) {
+    const wheels = [0, 0, 0, 0, 0], AZ = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const view = el('div', { class: 'rings' });
+    const paint = () => { view.innerHTML = ''; wheels.forEach((v, i) => view.append(el('div', {},
+      el('button', { text: '−', onclick: () => { wheels[i] = (v + 25) % 26; react('wheel', { i }); paint(); } }), el('b', { text: AZ[v] }),
+      el('button', { text: '+', onclick: () => { wheels[i] = (v + 1) % 26; react('wheel', { i }); paint(); } })))); };
+    paint();
+    body.append(el('p', { text: t('p30_intro') }), view, el('button', { text: t('answer'), onclick: () => submit(wheels.map((v) => AZ[v]).join('')) }));
+  },
+
+  // P31：閱覽室的油燈（吹熄之後，在黑暗中找到正在哭的娃娃；場景裡的事由 logic/act3.mjs 處理）
+  sobLamp(body, { solved }) {
+    body.append(el('p', { text: t('p31_intro') }));
+    if (!solved) body.append(el('button', { text: t('p31_blow'), onclick: () => { closePanel(); dispatchEvent(new Event('ml-sob')); } }));
+  },
+
   // ---- 第四幕 ----
   // P26：拉桿切換門閂（門閂的狀態照拉桿算，這是題目本身）
   P26(body, { submit }) {
@@ -507,6 +524,11 @@ const BUILD = {
         el('button', { class: 'small', text: t('p28_short'), onclick: () => { if (seq.length < 7) seq.push('S'); react('tap', { kind: 'S' }); paint(); } }),
         el('button', { class: 'small', text: t('reset'), onclick: () => { seq.length = 0; paint(); } }),
         el('button', { text: t('p28_knock'), onclick: async () => { const r = await submit(seq.join('')); if (r && r.t !== 'error' && !r.solved) noise?.(); seq.length = 0; paint(); } })));
+  },
+  // P32：稻草人的工具箱（四位數密碼鎖）。解開：鐘塔的時間多 60 秒
+  P32(body, { submit, toast }) {
+    const go = async (v) => { const r = await submit(v); if (r?.solved) toast(t('p32_bonus')); return r; };
+    body.append(el('p', { text: t('p32_intro') }), numberInput(go, '????'));
   },
   // P29：屋頂入口的刻字（石板本身在場景裡踩）
   roofsign(body) { body.append(el('blockquote', { text: t('p29_quote') }), el('p', { class: 'dim', text: t('p29_sign') })); },

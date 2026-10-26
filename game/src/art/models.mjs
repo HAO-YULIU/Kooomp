@@ -18,25 +18,31 @@ async function loadAll() {
   try { const r = await fetch(base + 'list.json'); if (r.ok) list = await r.json(); } catch { return; }
   const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
   await Promise.all(Object.entries(list).map(async ([name, ent]) => {
-    const { file, ry = 0, tint, glow } = typeof ent === 'string' ? { file: ent } : ent;
+    const { file, ry = 0, tint, glow, split } = typeof ent === 'string' ? { file: ent } : ent;
     try {
       const g = await loader.loadAsync(base + file), root = g.scene;
       root.rotation.y = ry; root.updateMatrixWorld(true);
-      root.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = true; for (const m of [o.material].flat()) { if (m.map) m.map.anisotropy = 4; if (tint) m.color?.set(tint); if (glow && m.map) { m.emissive?.set(glow); m.emissiveMap = m.map; m.emissiveIntensity = 0.9; } } } }); // tint：整個染色（例如白色的石像鬼染成石頭灰）；glow：亮的地方自己發光（提燈的玻璃）
-      // 量好大小：底部中間對齊原點
-      const box = new THREE.Box3().setFromObject(root), size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
-      const holder = new THREE.Group(); root.position.x -= c.x; root.position.y -= box.min.y; root.position.z -= c.z; holder.add(root);
-      // 最高的那一點（蠟燭的燭芯）：點火用
-      let top = null; holder.updateMatrixWorld(true); const v = new THREE.Vector3();
-      holder.traverse((o) => { if (!o.isMesh) return; const pos = o.geometry.attributes.position; for (let i = 0; i < pos.count; i += 3) { v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld); if (!top || v.y > top.y) top = v.clone(); } });
-      let skinned = false; holder.traverse((o) => { if (o.isSkinnedMesh) { skinned = true; o.frustumCulled = false; } }); // 有骨架的（恐怖女人、稻草人）：複製時骨架也要跟著複製
-      T[name] = { holder, size, top, skinned };
+      root.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = true; for (const m of [o.material].flat()) { if (m.map) m.map.anisotropy = 4; if (tint) m.color?.set(tint); if (glow && m.map && m.emissive) { m.emissive.set(glow); m.emissiveMap = m.map; m.emissiveIntensity = 0.9; } } } }); // tint：整個染色（例如白色的石像鬼染成石頭灰）；glow：亮的地方自己發光（提燈的玻璃）
+      if (!split) { T[name] = template(root); return; }
+      // split：一個檔案裡有好幾件（畫作組的 23 幅畫）：每一件各自一個名字 name#0、name#1…（variant 會一起挑）
+      const parts = root.children.length === 1 && !root.children[0].isMesh ? root.children[0].children : root.children;
+      [...parts].forEach((part, i) => { const one = new THREE.Group(); one.add(part.clone()); one.children[0].applyMatrix4(part.parent.matrixWorld); T[`${typeof split === 'string' ? split : name}#${i}`] = template(one); }); // split 是字串：用那個名字（畫作組 → painting#0…，跟原本的畫一起輪流）
     } catch (e) { console.warn('模型載入失敗', name, e); }
   }));
 }
+// 量好大小、底部中間對齊原點，記下最高點（蠟燭的燭芯，點火用）、有沒有骨架
+function template(root) {
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(root), size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+  const holder = new THREE.Group(); root.position.x -= c.x; root.position.y -= box.min.y; root.position.z -= c.z; holder.add(root);
+  let top = null; holder.updateMatrixWorld(true); const v = new THREE.Vector3();
+  holder.traverse((o) => { if (!o.isMesh) return; const pos = o.geometry.attributes.position; for (let i = 0; i < pos.count; i += 3) { v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld); if (!top || v.y > top.y) top = v.clone(); } });
+  let skinned = false; holder.traverse((o) => { if (o.isSkinnedMesh) { skinned = true; o.frustumCulled = false; } }); // 有骨架的（恐怖女人、稻草人）：複製時骨架也要跟著複製
+  return { holder, size, top, skinned };
+}
 export const hasProp = (name) => !!T[name];
 /** 同一種東西有好幾款（bust、bust2、bust3…）：依 seed 挑一款 */
-export function variant(name, seed) { const list = [name, name + '2', name + '3', name + '4'].filter((n) => T[n]); return list.length ? list[Math.abs(Math.floor(seed)) % list.length] : name; }
+export function variant(name, seed) { const list = [name, name + '2', name + '3', name + '4'].filter((n) => T[n]).concat(Object.keys(T).filter((k) => k.startsWith(name + '#')).sort()); return list.length ? list[Math.abs(Math.floor(seed)) % list.length] : name; }
 
 /**
  * 擺一個模型：parent 裡、(x, y, z)、面向 ry（模型的正面要朝 +z）。fit＝[寬, 高, 深]：縮放到放得進這個大小（等比例）。

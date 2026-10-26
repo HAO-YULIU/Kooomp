@@ -1,5 +1,6 @@
 // 第二幕的玩法：肖像畫長廊（P09）的「往前／回頭」判斷、同步隊友、異常的聲音；創辦人房間的熄燈（P10）。
 import { createGallery } from '../world/corridor.mjs';
+import { createNorthHall } from '../world/northhall.mjs';
 import { setRain, playLullaby, playFile, scream, chime } from '../world/sound.mjs';
 import { sfx, hasSound } from '../art/sfx.mjs';
 import { t, errText } from './i18n.mjs';
@@ -9,6 +10,8 @@ const DEEP_Z = -30; // 走過這裡才算「走進長廊」，之後退回北翼
 
 export function createAct2({ world, conn, toast, play, S, house, solo, lang }) {
   const gallery = createGallery(world.scene, world.world.colliders, { house, solo, lang });
+  const northHall = createNorthHall(world.scene); // P30：閃電中的她
+  if (new URLSearchParams(location.search).has('dev')) window.__nh = northHall;
   let loop = 0, anomaly = null, deep = false, busy = false, familiarView = false, breathed = false, open = false, darkUntil = 0;
 
   function show(next, n) {
@@ -52,6 +55,10 @@ export function createAct2({ world, conn, toast, play, S, house, solo, lang }) {
     toggleFamiliar() { if (!solo) return; familiarView = !familiarView; gallery.setLoop(anomaly, loop, { familiarView }); toast(familiarView ? t('familiar_on') : t('familiar_off')); },
     interact(tg) {
       if (tg.kind === 'loopdoor') { decide('forward'); return true; }
+      if (tg.kind === 'lightning') { // P30：熄掉油燈，等閃電
+        if (northHall.storm(() => world.setDark(false))) { world.setDark(true); toast(t('p30_dark')); }
+        return true;
+      }
       if (tg.kind === 'snuff') {
         world.setDark(true); gallery.setDark(true); darkUntil = performance.now() + 9000; play('snuff');
         return true;
@@ -67,6 +74,7 @@ export function createAct2({ world, conn, toast, play, S, house, solo, lang }) {
       if (anomaly?.id === 'armor_breath' && !breathed && (house === 'belmont' || (solo && familiarView)) && gallery.nearArmor(pos)) {
         breathed = true; playFile('assets/audio/ch1/breath_monster.mp3', { volume: 0.5 });
       }
+      northHall.update(dt, world.camera);
       if (darkUntil && performance.now() > darkUntil) { darkUntil = 0; world.setDark(false); gallery.setDark(false); }
       if (gallery.update(dt, pos, mine.z === 'corridor', mine.y) === 'rush') {
         if (hasSound('grab_scream')) sfx('grab_scream'); else scream(); sfx('stinger'); const f = document.getElementById('flash'); f.classList.add('on'); setTimeout(() => f.classList.remove('on'), 160);

@@ -83,6 +83,9 @@ export function simulateHourglass(glasses, actions) {
   return { events, knock };
 }
 
+// ---------- 哭泣的娃娃（P31）：第 round 次是哪一個在哭 ----------
+export const cryingDoll = (seed, round, count) => Math.floor(rng(seed, `P31:${round}`)() * count);
+
 // ---------- 拉桿（P26） ----------
 export function simulateLevers(def, pulls) {
   const locked = new Set(def.locked);
@@ -217,6 +220,13 @@ export function judge(pid, value, ctx) {
         return { ok: true, solved: ok, reply: ok ? {} : { reshuffled: true } };
       }
       return { ok: false, error: 'bad_value' };
+    }
+    case 'doll': { // P31：value＝{ pick: 娃娃編號 }
+      const st = ctx.state; st.round ??= 0;
+      if (!value || !('pick' in value)) return { ok: false, error: 'bad_value' };
+      const ok = +value.pick === cryingDoll(ctx.seed, st.round, def.count);
+      if (!ok) st.round++; // 抱錯了：換另一個娃娃哭
+      return { ok: true, solved: ok, reply: ok ? {} : { reshuffled: true } };
     }
     case 'roof': { // P29：value＝{ cell: [欄, 排] }；每個人自己的進度。踩錯石板就碎掉，從頭來
       if (value?.reset) { ctx.state[ctx.uid] = { at: null, i: 0 }; return { ok: true, solved: false, reply: { reset: true } }; } // 退回起點（離開石板）

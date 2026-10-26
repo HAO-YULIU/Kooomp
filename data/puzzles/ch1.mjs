@@ -68,6 +68,25 @@ export const CHAPTER1 = {
              ['When the lights go out, see where every portrait is looking.', 'The second headmaster’s plaque mentions how long the founder served.', '1659 − 33 = 1626.']),
   },
 
+  // ---- 2026-10-26 新增的謎題（帳號二設計，等製作人確認）----
+  P30: {
+    seg: 'act2', diff: 7, kind: 'text', ans: 'LIANA', // 閃電時她站在哪幅畫旁邊，依序取名字的第一個字母
+    hints: H(['等閃電。每次亮起來的時候，看她站在哪一幅畫旁邊。', '每幅畫下面的銘牌都有名字。只看英文名字的第一個字母。', '她依序站在 Lorna、Ines、Ada、Nora、Agnes 旁邊。'],
+             ['Wait for the lightning. Each time it flashes, see which portrait she is standing beside.', 'Every portrait has a name plaque. Take only the first letter of each name.', 'She stands beside Lorna, Ines, Ada, Nora and Agnes, in that order.']),
+  },
+
+  P31: {
+    seg: 'act3b', diff: 8, kind: 'doll', count: 5, // 閱覽室的五個娃娃：熄燈後哪一個在哭，由房間的亂數決定；抱錯了就換另一個哭
+    hints: H(['先吹熄桌上的油燈。燈亮著的時候，娃娃不會出聲。', '戴上耳機。哭聲從左邊來就往左轉，越走越大聲就對了。', '一直轉身，直到哭聲在正前方，再往前走到聲音最大的那一個。'],
+             ['Blow out the oil lamp on the table first. While it burns, the dolls stay silent.', 'Wear headphones. If the crying comes from the left, turn left — louder means closer.', 'Keep turning until the crying is straight ahead, then walk to where it is loudest.']),
+  },
+
+  P32: {
+    seg: 'act4', diff: 7, kind: 'text', ans: '4162', // 稻草人離開角落後依序站上的石板（IV、I、VI、II）；解開多 60 秒（每次第四幕一次）
+    hints: H(['不要一直盯著稻草人。你轉開視線，他就會換個地方站。', '他每次都站在一塊刻著羅馬數字的石板上。從他離開角落開始記，回到角落就是一輪。', '他依序站上 IV、I、VI、II。'],
+             ['Don’t keep staring at the scarecrow. Look away and he moves.', 'He always stops on a stone slab carved with a Roman numeral. Start counting when he leaves his corner; back in the corner means one full round.', 'He stands on IV, I, VI, II, in that order.']),
+  },
+
   P11: {
     seg: 'act3a', diff: 6, kind: 'text', ans: '257', gives: 'lantern',
     hints: H(['公告上有生還者的名字。', '名單上不在公告裡的人，就是沒有回來的人。', '沒有回來的是 2、5、7 號。'],
@@ -187,7 +206,7 @@ export const ROOF = [
   'ᛁᛗᛒᚹᛗᚺ',
 ];
 // 第四幕的倒數（docs/04-map-ch1.md）：35 分鐘；卡住齒輪（P27）多 90 秒，只有一次
-export const ACT4 = { duration: 35 * 60 * 1000, gearBonus: 90 * 1000, grab: 1500, repelCool: 60 * 1000, repelFor: 5000, selfSwap: 3 * 60 * 1000 };
+export const ACT4 = { duration: 35 * 60 * 1000, gearBonus: 90 * 1000, scareBonus: 60 * 1000, grab: 1500, repelCool: 60 * 1000, repelFor: 5000, selfSwap: 3 * 60 * 1000 };
 
 // 學院的時辰（P03～P08、R3 用）
 export const HOUSE_HOUR = { eldrin: 8, grimoire: 11, belmont: 9, ouroboros: 3 };

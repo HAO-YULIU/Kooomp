@@ -6,7 +6,7 @@
 //   A. 玩家只在開始走、轉彎、停下時送位置，其他人的畫面自己推算中間的位置（game/src/net/sync.mjs）
 //   B. 詳細位置只轉送給「同一個區域」的人；換區域時才通知所有人
 import { DurableObject } from 'cloudflare:workers';
-import { PUZZLES, HOUSES, judge, hint, rescueContent, corridorLoop, corridorFocus, morseHours, bookPage, brailleDoor, rng } from './judge.mjs';
+import { PUZZLES, HOUSES, judge, hint, rescueContent, corridorLoop, corridorFocus, morseHours, bookPage, brailleDoor, rng, cryingDoll } from './judge.mjs';
 import { ACT4 } from '../data/puzzles/ch1.mjs';
 
 export const CHARS = { yuexi: 'grimoire', vaughn: 'belmont', elora: 'eldrin', cyril: 'ouroboros' };
@@ -16,12 +16,12 @@ const WRONG_COOLDOWN = 3000; // 答錯後同一題要等多久（毫秒）
 // 第一章的段落（docs/07-system.md 第 5 節）。解開「結尾題」就進到下一段
 export const SEGMENTS = ['prologue', 'act1', 'act2', 'act3a', 'act3b', 'act3c', 'act4', 'epilogue'];
 const SEG_END = { P02: 'act1', P08: 'act2', P10: 'act3a', P29: 'epilogue' };
-const ACT4_PUZZLES = ['P26', 'P27', 'P28', 'P29'];
+const ACT4_PUZZLES = ['P26', 'P27', 'P28', 'P29', 'P32'];
 const RESCUE_IDS = ['R1', 'R2', 'R3', 'R4'], SELF_IDS = ['S1', 'S2', 'S3', 'S4'];
 // 第三幕：這一段的題目全部解開，才進到下一段（P22 是西里爾的抉擇，不算）
 const SEG_GATES = {
   act3a: { need: ['P11', 'P12', 'P13', 'P14'], next: 'act3b' },
-  act3b: { need: ['P15', 'P16', 'P17'], next: 'act3c' },
+  act3b: { need: ['P15', 'P16', 'P17', 'P31'], next: 'act3c' },
   act3c: { need: ['P18', 'P19', 'P20', 'P21', 'P23', 'P24', 'P25'], next: 'act4' },
 };
 // 玩家自己撿到的東西（莉安娜的筆記、髮夾）；其他道具由解開題目得到（data/puzzles/ch1.mjs 的 gives）
@@ -312,12 +312,13 @@ export class Room extends DurableObject {
           if (res.reveal) ((r.notes ??= {})[uid] ??= {})[pid] = res.reveal; // 只有作答者知道
           if (def.gives) (r.items ??= {})[def.gives] = uid;
           if (pid === 'P27' && r.act4 && !r.act4.bonus) { r.act4.bonus = true; r.act4.deadline += ACT4.gearBonus; this.ctx.storage.setAlarm(r.act4.deadline); } // 卡住鐘槌：多 90 秒
+          if (pid === 'P32' && r.act4 && !r.act4.bonus2) { r.act4.bonus2 = true; r.act4.deadline += ACT4.scareBonus; this.ctx.storage.setAlarm(r.act4.deadline); } // 稻草人的工具箱：多 60 秒
           const gate = SEG_GATES[r.segment];
           const next = SEG_END[pid] ?? (gate && gate.need.every((p) => r.solved[p]) ? gate.next : null);
           if (next && SEGMENTS.indexOf(next) > SEGMENTS.indexOf(r.segment)) this.enterSegment(next);
           await this.save();
           this.broadcast({ t: 'solved', pid, by: uid, gives: def.gives ?? null }, (u) => u !== uid);
-          if (next || def.gives || pid === 'P27') this.broadcastState();
+          if (next || def.gives || pid === 'P27' || pid === 'P32') this.broadcastState();
           return reply({ t: 'result', pid, solved: true, reveal: res.reveal ?? null, reply: res.reply ?? null });
         }
         const sim = ['corridor', 'balance', 'roof'].includes(def.kind);
@@ -339,6 +340,7 @@ export class Room extends DurableObject {
         if (def.kind === 'hours') return reply({ t: 'peek', pid, content: { morse: morseHours(this.aiHouses()) } });
         if (pid === 'P14') { const b = Math.trunc(+msg.value?.book), p = Math.trunc(+msg.value?.page); if (!(b >= 1 && b <= 12 && p >= 1 && p <= 120)) return err('bad_value'); return reply({ t: 'peek', pid, content: { words: bookPage(r.seed, r.lang, b, p) } }); }
         if (pid === 'P12') { if (!r.items?.lantern) return err('need_item'); return reply({ t: 'peek', pid, content: { shadows: def.ans.split(',') } }); } // 站在標記上舉燈才看得到影子
+        if (def.kind === 'doll') return reply({ t: 'peek', pid, content: { doll: cryingDoll(r.seed, st.round ?? 0, def.count) } }); // 哪一個在哭（聲音從那裡傳出來）
         if (pid === 'P24') return reply({ t: 'peek', pid, content: { cells: brailleDoor() } });
         if (def.kind === 'corridor') return reply({ t: 'peek', pid, loop: st.n ?? 0, streak: st.streak ?? 0, next: corridorLoop(r.seed, st.attempt ?? 0, st.n ?? 0, { rate: def.rate, skip: r.mode === 'solo' ? [] : this.aiHouses() }) });
         return err('bad_puzzle');

@@ -2,6 +2,7 @@
 // 屋頂的符文石板（P29）、判定輸與重來、高潮與尾聲。謎題畫面在 ui/puzzles.mjs。
 import { createWarden } from '../world/warden.mjs';
 import { createAct4Scene } from '../world/act4scene.mjs';
+import { createScarecrow } from '../world/scarecrow.mjs';
 import { createWardenAI } from './warden-ai.mjs';
 import { A4_SPAWN, CHECKPOINTS, NEST_SPOT, NEST_EXIT, WARDEN, WARDEN_POINTS, WARDEN_START, ROOF_AT, roofCell } from '../data/act4-ch1.mjs';
 import { ROOMS, DOORS, SPAWNS } from '../data/world-ch1.mjs';
@@ -28,6 +29,7 @@ function summary(r) {
 export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar, receiver, serverNow, holding, solvedByMe, playScript, dev }) {
   const warden = createWarden(world.scene, { view: WARDEN.view, fov: WARDEN.fov });
   const scenery = createAct4Scene(world.scene);
+  const scarecrow = createScarecrow(world.scene); // P32
   const newAI = () => createWardenAI({ rooms: ROOMS, doors: DOORS, points: WARDEN_POINTS, params: WARDEN, start: WARDEN_START });
   let ai = newAI();
   let shown = { x: WARDEN_START.x, z: WARDEN_START.z, yaw: 0, mode: 'idle', zone: WARDEN_START.zone }, target = { ...shown };
@@ -118,7 +120,7 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
         }
         return 0;
       }
-      scenery.frame(dt, mine.z);
+      scenery.frame(dt, mine.z); scarecrow.update(dt, world.camera, mine.z);
       const now = serverNow(), st = S();
       if (st.act4?.lost && lost.hidden) showLost(st.act4.lost); // 重新整理後也要看得到「重來」
       else if (!st.act4?.lost && !lost.hidden) lost.hidden = true;

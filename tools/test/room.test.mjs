@@ -163,6 +163,7 @@ test('多人：加入、選角色、準備、開始、同步、聊天、作答',
     peek = { loop: res.reply.loop, next: res.reply.next };
     if (i === 7) assert.equal(res.solved, true);
   }
+  assert.equal((await a.request({ t: 'answer', pid: 'P30', value: 'liana' })).solved, true); // 閃電中的她：大小寫都可以
   assert.equal((await a.request({ t: 'answer', pid: 'P10', value: 'NW|1626' })).solved, true);
   assert.equal((await b.wait((m) => m.t === 'state' && m.segment === 'act3a')).segment, 'act3a');
   assert.equal((await b.request({ t: 'answer', pid: 'P05', value: '9' })).error, 'already_solved');
@@ -249,6 +250,13 @@ test('第三幕：道具、書本密碼、段落一段一段推進、西里爾�
   assert.equal((await p.request({ t: 'collect', item: 'note1' })).t, 'ok');
   assert.equal((await p.request({ t: 'collect', item: 'mirror' })).error, 'bad_value'); // 道具不能自己撿
   for (const [pid, v] of [['P15', '3141'], ['P16', 'XXXIII'], ['P17', '110111']]) assert.equal((await ans(pid, v)).solved, true, pid);
+  // 哭泣的娃娃：伺服器說哪一個在哭；抱錯了換另一個（重新問）
+  let doll = (await p.request({ t: 'peek', pid: 'P31' })).content.doll;
+  const wrong = await ans('P31', { pick: (doll + 1) % 5 });
+  assert.equal(wrong.solved, false); assert.equal(wrong.reply.reshuffled, true);
+  await sleep(3100);
+  doll = (await p.request({ t: 'peek', pid: 'P31' })).content.doll;
+  assert.equal((await ans('P31', { pick: doll })).solved, true);
   const s3c = await p.wait((m) => m.t === 'state' && m.segment === 'act3c');
   assert.ok(s3c.solved.includes('P22')); assert.equal(s3c.flags.P22, 'hide'); // 沒人扮演西里爾：電腦替他收起徽章
   assert.deepEqual(['chartpage', 'lantern', 'mirror', 'note1', 'note3'].every((i) => s3c.items.includes(i)), true);
@@ -291,6 +299,8 @@ test('第四幕單人：倒數、齒輪多 90 秒、被抓到復活 3 次、用�
   assert.equal((await ans('P27', '12,24,18,36')).solved, true);
   s = await p.wait((m) => m.t === 'state' && m.act4?.bonus);
   assert.ok(s.act4.deadline - s.now > 36 * 60000); // 多了 90 秒
+  assert.equal((await ans('P32', '4162')).solved, true); // 稻草人的工具箱：再多 60 秒
+  s = await p.wait((m) => m.t === 'state' && m.act4 && m.act4.deadline - m.now > 37 * 60000);
   // 貝爾蒙特擊退守夜人：冷卻 60 秒
   assert.equal((await p.request({ t: 'repel' })).t, 'ok');
   assert.equal((await p.request({ t: 'repel' })).error, 'cooldown');
@@ -390,12 +400,13 @@ test('整章：單人從序幕玩到尾聲，存檔記下結果，可以回來�
     const r = await p.request({ t: 'answer', pid: 'P09', value: { loop: pk.loop, choice: pk.next ? 'back' : 'forward' } });
     if (r.solved) break;
   }
-  await ans('P10', 'NW|1626'); await seg('act3a');
+  await ans('P30', 'LIANA'); await ans('P10', 'NW|1626'); await seg('act3a');
   // 第三幕
   await ans('P11', '257'); await p.request({ t: 'collect', item: 'note1' }); await p.request({ t: 'collect', item: 'note2' });
   for (const [pid, v] of [['P12', 'wind,fire,earth,water'], ['P13', 'exit'], ['P14', '鐘在井底']]) await ans(pid, v);
   await seg('act3b');
   for (const [pid, v] of [['P15', '3141'], ['P16', 'XXXIII'], ['P17', '110111']]) await ans(pid, v);
+  await ans('P31', { pick: (await p.request({ t: 'peek', pid: 'P31' })).content.doll });
   await seg('act3c');
   let w = (await p.request({ t: 'answer', pid: 'P21', value: { weigh: { left: [0, 1, 2], right: [3, 4, 5] } } })).reply.result;
   const g = w === 'left' ? [0, 1, 2] : w === 'right' ? [3, 4, 5] : [6, 7, 8];

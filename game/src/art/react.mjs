@@ -577,7 +577,7 @@ decorators.thing.push(({ thing: t, group }) => {
 
 // 每種操作的聲音（沒有機關的題目也有聲音）
 const SOUND = {
-  zodiac: () => sfx('click'), digits: () => sfx('tick'), flip: () => sfx('whoosh'), reset: () => sfx('sand'), ring: () => sfx('stone'), page: () => sfx('paper'),
+  zodiac: () => sfx('click'), wheel: () => sfx('click'), digits: () => sfx('tick'), flip: () => sfx('whoosh'), reset: () => sfx('sand'), ring: () => sfx('stone'), page: () => sfx('paper'),
   bars: () => sfx('wood'), runes: (d) => d.seq?.length && sfx('chime', d.seq.length - 1), board: () => sfx('stone'), vials: () => sfx('glass'), weigh: () => sfx('metal'),
   pick: () => sfx('glass'), rings: () => sfx('stone'), pull: () => sfx('lever'), gears: () => sfx('gear'), tap: (d) => sfx('knock', d.kind === 'L'),
   elements: (d) => d.pick?.length && sfx('note', d.pick.length), book: () => sfx('paper'), play: (d) => !d.off && sfx('hum'), feel: () => sfx('tick'), mirror: () => sfx('glass'),

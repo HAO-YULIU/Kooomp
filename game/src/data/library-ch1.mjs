@@ -37,6 +37,9 @@ export function mazeLayout(phase) {
   return MAZE.base.map((row, r) => { const k = r % 2 === 0 ? phase : -phase; return Array.from({ length: 5 }, (_, c) => row[(((c - k) % 5) + 5) % 5]).join(''); });
 }
 
+// P31：閱覽室裡五個娃娃的位置 [x, z, 面向]
+export const DOLLS = [[120.8, -31.4, 2.4], [131.3, -41.8, -1.57], [120.8, -43.6, 1.57], [128.2, -49.3, 0], [126.6, -34.8, 3.14]];
+
 export const LIB_THINGS = [
   // ---- 入口大廳（P11、P12） ----
   { id: 'cat', room: 'lib_entry', kind: 'prop', x: 103, z: 11, size: [0.6, 0.35, 0.3], solid: false, label: L('貓的屍體', 'A cat’s corpse'),
@@ -55,6 +58,11 @@ export const LIB_THINGS = [
   { id: 'note2', room: 'lib_maze', kind: 'note', note: 2, x: 127, z: -9, size: [0.4, 0.05, 0.3], solid: false, label: L('地上的紙頁', 'A page on the floor') },
   { id: 'books', room: 'lib_maze', kind: 'puzzle', puzzle: 'P14', x: 115, z: -15, size: [2.4, 1.2, 0.8], solid: false, label: L('有編號的書（書背上寫著號碼）', 'Numbered books (numbers on the spines)') },
   // ---- 閱覽室（P15、P16、P17） ----
+  // P31 哭泣的娃娃：吹熄第七張桌上的油燈，黑暗中循哭聲找到正在哭的那一個（娃娃的模型由 world/weeping.mjs 擺）
+  { id: 'sob_lamp', hidden: true, room: 'lib_reading', kind: 'puzzle', puzzle: 'P31', panel: 'sobLamp', x: 129.5, z: -44.1, size: [0.4, 0.5, 0.4], y: 0.8, solid: false,
+    label: L('桌上的油燈：吹熄它', 'The oil lamp on the table: blow it out') },
+  ...DOLLS.map(([x, z], i) => ({ id: `doll${i}`, hidden: true, room: 'lib_reading', kind: 'doll', doll: i, x, z, size: [0.6, 0.6, 0.6], solid: false,
+    label: L('縫補過的娃娃：抱起來', 'A stitched-up doll: pick it up') })),
   { id: 'crystal', room: 'lib_reading', kind: 'puzzle', puzzle: 'P15', panel: 'recording', x: 123, z: -36, size: [0.6, 1.2, 0.6], solid: true, label: L('留聲水晶', 'The echo crystal') },
   { id: 'desk7', room: 'lib_reading', kind: 'puzzle', puzzle: 'P15', x: 129, z: -44, size: [1.6, 0.8, 0.9], solid: true, label: L('第七張桌子的抽屜', 'The drawer of the seventh table') },
   { id: 'flipbook', room: 'lib_reading', kind: 'puzzle', puzzle: 'P16', x: 123, z: -46, size: [0.8, 0.9, 0.6], solid: true, label: L('自己翻頁的書', 'A book turning its own pages') },
