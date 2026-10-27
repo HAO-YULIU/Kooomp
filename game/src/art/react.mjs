@@ -235,7 +235,7 @@ const RIGS = {
   'P17:eastern'(t, group) {
     const g = rigAt(t, group), [, h, d] = t.size;
     const drawer = new THREE.Group(); drawer.position.set(d * 0.125, h * (2.5 / 6), 0.31); g.add(drawer);
-    mesh(new THREE.BoxGeometry(d / 4 - 0.04, h / 6 - 0.04, 0.03), std('lacquerDrawerLive', { color: '#9a2420', roughness: 0.35 }), 0, 0, 0, drawer);
+    mesh(new THREE.BoxGeometry(d / 4 - 0.04, h / 6 - 0.04, 0.03), std('lacquerDrawerLive', { color: '#2e0907', roughness: 0.5 }), 0, 0, 0, drawer);
     mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.04, 8), MAT.brass(), 0, 0, 0.03, drawer).rotation.x = Math.PI / 2;
     const inside = halo('#ffd27a', 0.45); inside.position.set(0, 0.02, -0.08); drawer.add(inside);
     const tw = new Tween(); let rattle = 0;

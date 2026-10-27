@@ -11,7 +11,7 @@ const rnd = (a, b) => a + Math.random() * (b - a);
 
 // 製作人給的「戴兜帽的恐怖女人」：走廊很暗會看不到她，讓她自己微微發出慘白的光（材質複製一份，不影響別的地方）。也用在 P30（world/northhall.mjs）
 export function ghostWoman(parent, name = 'horror_woman') {
-  const woman = placeProp(parent, name, 0, 0, 0, 0, [0.9, 1.85, 0.8]);
+  const woman = placeProp(parent, name, 0, 0, 0, 0, [2.2, 1.85, 1]); // 依身高縮放（張開雙臂的模型不會被縮矮）
   if (woman) woman.obj.traverse((o) => { if (!o.isMesh) return; const ms = [o.material].flat().map((m) => { const c = m.clone(); if (c.emissive) { c.emissive.set('#9aa4b0'); if (c.map) c.emissiveMap = c.map; c.emissiveIntensity = 0.55; } c.fog = false; return c; }); o.material = Array.isArray(o.material) ? ms : ms[0]; });
   return woman;
 }

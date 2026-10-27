@@ -583,9 +583,11 @@ const ACT3 = {
     const k = new Kit(); k.box(0.12, 0.85, 0.12, MAT.darkWood(), t.x, 0.42, t.z); k.add(new THREE.BoxGeometry(0.5, 0.04, 0.4), MAT.darkWood(), t.x, 0.88, t.z, 0, -0.35); P.openBook(k, t.x, 0.9, t.z, 0); k.build(group); hideBox(mesh);
   },
   eastern(t, mesh, group) { // 「東方典藏」櫃：紅漆木櫃、很多小抽屜
-    const [, h, d] = t.size, k = new Kit(), lac = std('lacquer', { color: '#6a1414', roughness: 0.4 });
+    const [, h, d] = t.size, k = new Kit(), lac = std('lacquer', { color: '#200605', roughness: 0.55, metalness: 0.1 }), wd = MAT.darkWood();
     k.box(0.4, h, d, lac, t.x - 0.1, h / 2, t.z);
-    for (let r = 0; r < 6; r++) for (let c = 0; c < 4; c++) { k.box(0.02, h / 6 - 0.04, d / 4 - 0.04, std('lacquerDrawer', { color: '#8a1e1a', roughness: 0.4 }), t.x - 0.31, (r + 0.5) * h / 6, t.z - d / 2 + (c + 0.5) * d / 4); k.cyl(0.015, 0.015, 0.03, MAT.brass(), t.x - 0.33, (r + 0.5) * h / 6, t.z - d / 2 + (c + 0.5) * d / 4, 6); }
+    k.box(0.48, 0.08, d + 0.12, wd, t.x - 0.12, h + 0.04, t.z); k.box(0.46, 0.12, d + 0.06, wd, t.x - 0.11, 0.06, t.z); // 頂蓋、底座（深色木頭）
+    for (const s of [-1, 1]) k.box(0.44, h, 0.04, wd, t.x - 0.11, h / 2, t.z + s * (d / 2 + 0.02)); // 兩側的木框
+    for (let r = 0; r < 6; r++) for (let c = 0; c < 4; c++) { k.box(0.02, h / 6 - 0.04, d / 4 - 0.04, std('lacquerDrawer', { color: '#2e0907', roughness: 0.5 }), t.x - 0.31, (r + 0.5) * h / 6, t.z - d / 2 + (c + 0.5) * d / 4); k.cyl(0.015, 0.015, 0.03, MAT.brass(), t.x - 0.33, (r + 0.5) * h / 6, t.z - d / 2 + (c + 0.5) * d / 4, 6); }
     k.build(group); hideBox(mesh);
   },
   familychart(t, mesh, group) { const m = new THREE.Mesh(new THREE.PlaneGeometry(t.size[2], t.size[1]), MAT.parchment()); m.position.set(t.x - 0.12, (t.y ?? 0) + t.size[1] / 2, t.z); m.rotation.y = -Math.PI / 2; group.add(m); hideBox(mesh); },
