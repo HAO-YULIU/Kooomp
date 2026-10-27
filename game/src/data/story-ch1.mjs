@@ -67,9 +67,13 @@ export const SCRIPT = {
   ],
   // ---- 第二幕：肖像畫長廊 ----
   'segment:act2': [
-    [null, '北翼的門後是一條長長的走廊，牆上掛滿了畫像。', 'Beyond the North Wing door stretches a long corridor hung with portraits.'],
-    ['yuexi', '這些是……歷代的學生？每一幅下面都有名字。', 'These are… students from every year? Each one has a name beneath it.'],
-    ['cyril', '畫得真差。走吧，盡頭有門。', 'Badly painted. Come on — there’s a door at the end.'],
+    [null, '北翼的門後是一條窄窄的走廊。兩側掛著六幅女學生的畫像，盡頭的門上了鎖。', 'Beyond the North Wing door is a narrow corridor. Six portraits of girls line the walls; the door at the end is locked.'],
+    ['yuexi', '每一幅下面都有名牌……「未畢業」？六個都是。', 'Each one has a name plate… “Did not graduate”? All six of them.'],
+    ['cyril', '門上是五格的字母鎖。還有那盞油燈……窗外好像要打雷了。', 'Five letter wheels on the door. And that oil lamp… sounds like a storm is coming.'],
+  ],
+  'solved:P30': [
+    [null, '最後一格轉到位，鎖喀的一聲開了。門後是一條更長的走廊，牆上掛滿了畫像。', 'The last wheel clicks into place and the lock gives. Beyond the door, a much longer corridor, hung wall to wall with portraits.'],
+    ['elora', '（盯著那五個字母，手在發抖）……走吧。', '(staring at the five letters, her hands shaking) …Let’s go.'],
   ],
   'enter:corridor': [
     [null, '燭火輕輕搖晃。你有種奇怪的感覺：這條走廊，好像走不完。', 'The candles flicker. You have the strangest feeling that this corridor never ends.'],
@@ -111,6 +115,7 @@ export const SCRIPT = {
   'enter:lib_reading': [
     ['yuexi', '閱覽室……這些書還在自己翻頁。', 'The reading room… the books are still turning their own pages.'],
     [null, '角落的水晶發出微弱的聲音，像有人在說話。', 'A crystal in the corner murmurs faintly, like someone speaking.'],
+    ['vaughn', '這裡怎麼到處都是娃娃……一、二、三……五個。', 'Why are there dolls everywhere… one, two, three… five.'],
   ],
   'solved:P15': [[null, '抽屜裡是莉安娜筆記的第三頁。', 'Inside the drawer is the third page of Liana’s notes.']],
   'solved:P16': [[null, '夾在第 33 頁裡的，是一張符文表殘頁。', 'Pressed between the pages is a fragment of a rune chart.']],
@@ -151,6 +156,10 @@ export const SCRIPT = {
     [null, '（Shift／搖桿推到底跑步，跑太久會喘。躲進櫃子、書架縫，按住 Q／「屏息」保持安靜。被抓住時連點掙脫。）', '(Shift / push the stick fully to run — you’ll tire. Hide in cabinets and gaps; hold Q / “Hold breath” to stay silent. If caught, mash to break free.)'],
   ],
   'act4:retry': [[null, '……你們又站在入口大廳裡。鐘聲重新開始倒數，綠燈從樓梯上下來。', '…You stand in the entrance hall again. The tolling begins its count anew, and the green lamp descends the stairs.']],
+  'enter:a4_gears': [
+    ['vaughn', '那個稻草人……剛剛是不是動了一下？', 'That scarecrow… did it just move?'],
+    [null, '地上的石板刻著羅馬數字。南牆邊有一個上鎖的工具箱。', 'The floor stones are carved with Roman numerals. A locked toolbox sits by the south wall.'],
+  ],
   'solved:P26': [[null, '門閂一根根彈開，鐵門被推開了。', 'The bolts snap back one by one, and the iron door gives way.']],
   'solved:P27': [[null, '齒輪咬死了。頭頂的鐘槌卡在半空——鐘聲停了一下。（多了 90 秒）', 'The gears seize. Overhead the hammer jams in mid-swing — the tolling falters. (+90 seconds)']],
   'solved:P28': [[null, '石板隨著節奏一塊塊亮起，通往屋頂的門開了。冷風和月光灌了進來。', 'The stones light up with the rhythm, and the way to the roof opens. Cold wind and moonlight pour in.']],
