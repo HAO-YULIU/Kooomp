@@ -2,6 +2,7 @@
 import { t, getLang } from '../logic/i18n.mjs';
 import { SPEAKERS } from '../data/story-ch1.mjs';
 import { CHARS, HOUSES } from '../logic/chars.mjs';
+import { playVoice } from '../art/voice.mjs';
 
 const $ = (id) => document.getElementById(id);
 let pause = () => {}; // 由 main 設定：pause(true/false) 暫停／恢復操作
@@ -28,6 +29,7 @@ function next() {
   $('dialog-who').style.color = color;
   $('dialog-text').textContent = getLang() === 'en' ? en : zh;
   $('dialog-text').classList.toggle('narration', !who);
+  playVoice(line, getLang()); // 製作人錄的配音（有的話）
 }
 export function advanceDialog() { if (showing) next(); }
 
