@@ -18,6 +18,7 @@ import { CREDITS } from '../data/credits.mjs';
 import { createAct2 } from './act2.mjs';
 import { createAct3 } from './act3.mjs';
 import { createAct4 } from './act4.mjs';
+import { createScares } from '../world/scares.mjs';
 
 const $ = (id) => document.getElementById(id);
 const HOUR_PID = { P03: 'eldrin', P04: 'grimoire', P05: 'belmont', P06: 'ouroboros' };
@@ -65,6 +66,8 @@ export function startPlay({ conn, getState, myUid, toast, dev, devUser }) {
   });
   const act2 = createAct2({ world, conn, toast, play, S, house: myHouse(), solo: S().mode === 'solo', lang: getLang() });
   $('btn-familiar').hidden = S().mode !== 'solo';
+  const scares = createScares(world.scene); // 一次性的驚嚇演出（碼頭、星盤廳、創辦人的房間）
+  if (dev) window.__scares = scares;
   const act3 = createAct3({ world, conn, toast, say, S, myChar: () => me()?.char, solvedByMe: (pid, r) => { onSolved(pid, myUid, r.reveal); toast(t('solved', { pid })); }, serverNow: () => Date.now() + clockOffset });
   const act4 = createAct4({ world, conn, toast, say, talking, S, myUid, myChar: () => me()?.char, receiver, serverNow: () => Date.now() + clockOffset, holding: () => holding, dev, playScript: (k) => play(k),
     solvedByMe: (pid, r) => { onSolved(pid, myUid, r.reveal); toast(t('solved', { pid })); } });
@@ -263,6 +266,7 @@ export function startPlay({ conn, getState, myUid, toast, dev, devUser }) {
     $('btn-inspect').classList.toggle('ready', !!tg);
     // 同步、畫面
     sender.update({ ...mine, h: hideState }, now);
+    scares.update(dt, { segment, zone: mine.z, cam: world.camera, dark: world.isDark(), busy: talking() || panelOpen() });
     world.haunting = !!segment && segment !== 'act4' && segment !== 'epilogue' && segment !== 'prologue'; world.busy = panelOpen() || talking();
     world.frame(dt, receiver.update(dt, now), mine.z);
     requestAnimationFrame(loop);

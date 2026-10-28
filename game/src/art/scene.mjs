@@ -345,7 +345,7 @@ for (const h of ['eldrin', 'grimoire', 'belmont', 'ouroboros']) {
     // 火爐：艾爾德林、格里莫瓦在北牆中間；貝爾蒙特、烏洛波斯在南牆中間
     const north = h === 'eldrin' || h === 'grimoire';
     const fz = north ? r.z[0] + 0.45 : r.z[1] - 0.45, fry = north ? 0 : Math.PI;
-    if (placeProp(group, 'fireplace', cx, 0, fz + (north ? 0.05 : -0.05), fry, [2.6, 1.5, 0.85])) k.box(1.6, 1.6, 0.4, MAT.stone(), cx, 2.3, fz + (north ? -0.15 : 0.15)); // 製作人給的大理石壁爐（裡面有火）＋上面的煙囪
+    if (placeProp(group, 'fireplace', cx, 0, fz + (north ? 0.05 : -0.05), fry, [2.6, 1.5, 0.85])) { const ch = r.h - 1.48; k.box(1.5, ch, 0.45, std('chimneyStone', { map: T.tile(T.stoneWall('#5a5048'), 0.8, ch / 1.5), roughness: 0.95 }), cx, 1.48 + ch / 2, fz + (north ? -0.15 : 0.15)); } // 製作人給的大理石壁爐（裡面有火）＋上面的煙囪（深色石頭，一路到天花板）
     else fireplace(k, cx, fz, fry);
     const toward = north ? 1 : -1;
     for (const s of [-1, 1]) { const ry = fry - s * (north ? 0.5 : -0.5) + Math.PI; if (!placeProp(group, 'armchair', cx + s * 1.6, 0, fz + toward * 1.6, ry - Math.PI, [0.9, 1.2, 0.9])) armchair(k, HOUSE[h].rug[0], cx + s * 1.6, fz + toward * 1.6, ry); } // 有製作人給的模型就用模型

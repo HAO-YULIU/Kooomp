@@ -94,7 +94,7 @@ export function createAct3({ world, conn, toast, say, S, myChar, solvedByMe, ser
         // 迷宮裡第一次熄燈時，黑暗中有呼吸聲
         if (dark && !scared && mine.z === 'lib_maze') { scared = true; playFile('assets/audio/ch1/breath_monster.mp3', { volume: 0.35 }); setTimeout(() => sfx('whisper'), 2500); }
       } else if (wasDark) { wasDark = false; world.setDark(false); }
-      dolls.update(dt, world.camera);
+      dolls.update(dt, world.camera, { solved: S().solved.includes('P31'), zone: mine.z });
       // 暗室：完全沒有光
       const d = mine.z === 'lib_dark';
       if (d !== inDark) { inDark = d; world.setDark(d); if (d) { say([[null, t('dark_enter'), t('dark_enter')]]); setTimeout(() => sfx('whisper'), 4000); } }

@@ -9,7 +9,7 @@ const LIMIT = 45; // 黑暗最多幾秒（沒找到就點回燈）
 
 export function createWeeping(scene) {
   const group = new THREE.Group(); group.name = 'weeping-dolls'; scene.add(group);
-  DOLLS.forEach(([x, z, ry]) => placeProp(group, 'spider_doll', x, 0, z, ry, [0.5, 0.55, 0.45]));
+  const dolls = DOLLS.map(([x, z, ry]) => placeProp(group, 'spider_doll', x, 0, z, ry, [0.5, 0.55, 0.45])?.obj).filter(Boolean);
   const st = placeProp(group, 'sidetable', 121.4, 0, -39.6, Math.PI / 2, [0.6, 0.75, 0.6]); // 西牆邊的小桌，上面一盞油燈和紙條
   placeProp(group, 'lantern', 121.4, st ? st.h : 0.75, -39.6, 0.4, [0.22, 0.4, 0.22]);
   const fwd = new THREE.Vector3();
@@ -19,7 +19,12 @@ export function createWeeping(scene) {
     active: () => crying >= 0,
     start(i, done) { if (crying >= 0 || !DOLLS[i]) return false; crying = i; t = 0; next = 1.2; onEnd = done; return true; },
     stop,
-    update(dt, cam) {
+    update(dt, cam, { solved, zone } = {}) {
+      // 找到之後：你沒看著的時候，五個娃娃都轉過來面向你
+      if (solved && zone === 'lib_reading' && crying < 0) {
+        cam.getWorldDirection(fwd); fwd.y = 0; fwd.normalize();
+        for (const o of dolls) { const dx = o.position.x - cam.position.x, dz = o.position.z - cam.position.z, d = Math.hypot(dx, dz) || 1; if ((dx * fwd.x + dz * fwd.z) / d < 0.3) o.rotation.y = Math.atan2(-dx, -dz); }
+      }
       if (crying < 0) return;
       t += dt; next -= dt;
       if (t > LIMIT) return stop();

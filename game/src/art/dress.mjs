@@ -372,7 +372,7 @@ export function dressRoom(r, group, lib) {
     if (K.floor.length && len > 2.5 && (!ex.walls || ex.walls.includes(wn))) {
       let t = 0.9;
       while (t < len - 0.9) {
-        seed++; const name = pick(K.floor, seed), w = { wardrobe: 1.3, sideboard: 1.7, clock: 0.7, armor: 0.9, bust: 0.6, plant: 0.6, candelabraFloor: 0.5, bookshelf: 1.7, tallShelf: 1.9, chairs: 2.1, bench: 2.0, crates: 1.5, statue: 1.3, weapons: 1.4, cauldronStand: 1.0, globeStand: 0.8, bones: 1.0, coffin: 1.9 }[name] ?? 1;
+        seed++; const name = pick(K.floor, seed), w = { wardrobe: 1.3, sideboard: 1.7, clock: 0.7, armor: 0.9, bust: 0.6, plant: 0.6, candelabraFloor: 0.5, bookshelf: 1.7, tallShelf: 1.9, chairs: 2.1, bench: 2.0, crates: 1.5, statue: 1.3, weapons: 1.4, cauldronStand: 1.0, globeStand: 0.8, bones: 1.0, coffin: 1.9, warBanner: 1.4, lectern: 1.0, parkBench: 2.3 }[name] ?? 1;
         const deep = name === 'chairs' ? 1.6 : name === 'crates' ? 1.2 : 0.8;
         const mid = t + w / 2, probe = [P(t, 0.3), P(t + w, 0.3), P(mid, deep), P(t, deep), P(t + w, deep)];
         if (t + w <= len - 0.6 && free(probe, false) && rnd(seed, 3) > 0.15) {

@@ -199,6 +199,7 @@ export function createWorld(canvas, lang = 'zh') {
       else sfxPan(kind, pan, { vol });
     },
     // 熄燈（P10）：房間的燈和手上的燈一起關掉
+    isDark: () => !!dark,
     setDark(on) { // 調亮度而不是關掉燈，避免畫面重新編譯而卡一下
       if (on && !dark) dark = [world.roomLight.intensity, lamp.intensity];
       if (on) { world.roomLight.intensity = 0; lamp.intensity = 0.05; } else if (dark) { [world.roomLight.intensity, lamp.intensity] = dark; dark = null; }
