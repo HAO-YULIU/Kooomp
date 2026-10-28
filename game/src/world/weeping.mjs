@@ -10,7 +10,8 @@ const LIMIT = 45; // 黑暗最多幾秒（沒找到就點回燈）
 export function createWeeping(scene) {
   const group = new THREE.Group(); group.name = 'weeping-dolls'; scene.add(group);
   DOLLS.forEach(([x, z, ry]) => placeProp(group, 'spider_doll', x, 0, z, ry, [0.5, 0.55, 0.45]));
-  placeProp(group, 'lantern', 129.5, 0.8, -44.1, 0.4, [0.22, 0.4, 0.22]);
+  const st = placeProp(group, 'sidetable', 121.4, 0, -39.6, Math.PI / 2, [0.6, 0.75, 0.6]); // 西牆邊的小桌，上面一盞油燈和紙條
+  placeProp(group, 'lantern', 121.4, st ? st.h : 0.75, -39.6, 0.4, [0.22, 0.4, 0.22]);
   const fwd = new THREE.Vector3();
   let crying = -1, t = 0, next = 0, onEnd = null;
   const stop = () => { if (crying < 0) return; crying = -1; onEnd?.(); };

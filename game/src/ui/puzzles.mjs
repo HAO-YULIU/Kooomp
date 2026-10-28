@@ -456,8 +456,14 @@ const BUILD = {
     const paint = () => { view.innerHTML = ''; wheels.forEach((v, i) => view.append(el('div', {},
       el('button', { text: '−', onclick: () => { wheels[i] = (v + 25) % 26; react('wheel', { i }); paint(); } }), el('b', { text: AZ[v] }),
       el('button', { text: '+', onclick: () => { wheels[i] = (v + 1) % 26; react('wheel', { i }); paint(); } })))); };
+    // 也可以直接打字（轉輪一格一格轉太慢）：打的字母同步轉到轉輪上
+    const typed = el('input', { maxlength: '5', placeholder: 'ABCDE', class: 'num', autocapitalize: 'characters', oninput: () => {
+      [...typed.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 5)].forEach((ch, i) => { wheels[i] = AZ.indexOf(ch); }); react('wheel', {}); paint();
+    } });
+    typed.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') go.click(); };
+    const go = el('button', { text: t('answer'), onclick: () => submit(wheels.map((v) => AZ[v]).join('')) });
     paint();
-    body.append(el('p', { text: t('p30_intro') }), view, el('button', { text: t('answer'), onclick: () => submit(wheels.map((v) => AZ[v]).join('')) }));
+    body.append(el('p', { text: t('p30_intro') }), view, el('div', { class: 'row' }, typed, go));
   },
 
   // P31：閱覽室的油燈（吹熄之後，在黑暗中找到正在哭的娃娃；場景裡的事由 logic/act3.mjs 處理）
