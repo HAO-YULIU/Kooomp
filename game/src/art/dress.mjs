@@ -4,7 +4,7 @@
 // 全部只是外觀：不擋路、不能調查。同一種材質合成一個物件（Kit），蠟燭用 InstancedMesh，手機才畫得動。
 // 用法：scene.mjs 在每個房間原本的擺設之後呼叫 dressRoom(room, group, lib)
 import * as THREE from 'three';
-import { DOORS, THINGS } from '../data/world-ch1.mjs';
+import { DOORS, THINGS, MIRRORS } from '../data/world-ch1.mjs';
 import * as T from './textures.mjs';
 import { placeProp, variant } from './models.mjs';
 
@@ -316,7 +316,7 @@ const ROOM_KIND = {
   lib_entry: 'library', lib_reading: 'library', lib_maze: 'maze', lib_ante: 'ante', lib_well: 'well', a4_pass: 'pass', a4_gears: 'gears', a4_nest: 'nest', dock: 'dock',
 };
 // 原本就有擺設的地方（不要疊上去）：[x0, z0, x1, z1]；walls：只擺這幾面牆（N＝z 小的那面、S、W＝x 小、E）
-const DORM_SIDE = (r, north) => ({ walls: ['W', 'E'], wallWalls: ['W', 'E', north ? 'S' : 'N'], keep: [[r.x[0], north ? r.z[0] : r.z[1] - 2.4, r.x[1], north ? r.z[0] + 2.4 : r.z[1]], [r.x[0], north ? r.z[1] - 1.6 : r.z[0], r.x[1], north ? r.z[1] : r.z[0] + 1.6]] });
+const DORM_SIDE = (r, north) => ({ walls: ['W', 'E'], wallWalls: ['W', 'E', north ? 'S' : 'N'], wallKeep: MIRRORS.map((m) => [m.x - 1, m.z - 0.7, m.x + 1, m.z + 0.7]), keep: [[r.x[0], north ? r.z[0] : r.z[1] - 2.4, r.x[1], north ? r.z[0] + 2.4 : r.z[1]], [r.x[0], north ? r.z[1] - 1.6 : r.z[0], r.x[1], north ? r.z[1] : r.z[0] + 1.6]] });
 const EXTRA = {
   dorm_eldrin: (r) => DORM_SIDE(r, true), dorm_grimoire: (r) => DORM_SIDE(r, true), dorm_belmont: (r) => DORM_SIDE(r, false), dorm_ouroboros: (r) => DORM_SIDE(r, false),
   hall: () => ({ keep: [[-10, 115.4, -8.6, 118.1], [8.6, 115.4, 10, 118.1], [-10, 126.4, -8.6, 129.1], [8.6, 126.4, 10, 129.1], [-10, 110, -8.4, 112], [8.4, 110, 10, 112], [-10, 138, -8.4, 140], [8.4, 138, 10, 140], [4.5, 138.8, 6.5, 140], [-1.6, 110, 1.6, 140]], wallKeep: [[-10, 113.5, -9.4, 118.5], [-10, 127.5, -9.4, 132.5], [9.4, 113.5, 10, 118.5], [9.4, 127.5, 10, 132.5]] }),

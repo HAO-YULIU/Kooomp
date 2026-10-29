@@ -65,6 +65,7 @@ export const SCRIPT = {
     ['vaughn', '這把鑰匙哪來的？', 'Where did you get that key?'],
     ['elora', '……祕密。走吧。', '…That’s a secret. Come on.'],
   ],
+  'mirror': [[null, '字是反著寫的……像是有人從鏡子的另一邊，用手指寫給你看。', 'The letters are backwards… as if someone wrote them with a finger from the other side of the glass.']],
   // ---- 第二幕：肖像畫長廊 ----
   'segment:act2': [
     [null, '北翼的門後是一條窄窄的走廊。兩側掛著六幅女學生的畫像，盡頭的門上了鎖。', 'Beyond the North Wing door is a narrow corridor. Six portraits of girls line the walls; the door at the end is locked.'],

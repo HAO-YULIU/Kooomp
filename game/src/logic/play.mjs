@@ -19,6 +19,7 @@ import { createAct2 } from './act2.mjs';
 import { createAct3 } from './act3.mjs';
 import { createAct4 } from './act4.mjs';
 import { createScares } from '../world/scares.mjs';
+import { createMirrors } from '../world/mirrors.mjs';
 
 const $ = (id) => document.getElementById(id);
 const HOUR_PID = { P03: 'eldrin', P04: 'grimoire', P05: 'belmont', P06: 'ouroboros' };
@@ -68,6 +69,7 @@ export function startPlay({ conn, getState, myUid, toast, dev, devUser }) {
   $('btn-familiar').hidden = S().mode !== 'solo';
   const scares = createScares(world.scene); // 一次性的驚嚇演出（碼頭、星盤廳、創辦人的房間）
   if (dev) window.__scares = scares;
+  const mirrors = createMirrors(world.scene); // 交誼廳的古鏡（哈氣浮出反字）
   const act3 = createAct3({ world, conn, toast, say, S, myChar: () => me()?.char, solvedByMe: (pid, r) => { onSolved(pid, myUid, r.reveal); toast(t('solved', { pid })); }, serverNow: () => Date.now() + clockOffset });
   const act4 = createAct4({ world, conn, toast, say, talking, S, myUid, myChar: () => me()?.char, receiver, serverNow: () => Date.now() + clockOffset, holding: () => holding, dev, playScript: (k) => play(k),
     solvedByMe: (pid, r) => { onSolved(pid, myUid, r.reveal); toast(t('solved', { pid })); } });
@@ -132,6 +134,7 @@ export function startPlay({ conn, getState, myUid, toast, dev, devUser }) {
     if (!tg) return;
     focusNext = tg; setTimeout(() => { focusNext = null; }); // 這次調查打開的視窗，鏡頭看著這個東西
     if (act2.interact(tg) || act3.interact(tg) || act4.interact(tg)) return;
+    if (tg.kind === 'mirrorfog') { if (mirrors.breathe(tg.id)) setTimeout(() => play('mirror'), 2500); return; }
     if (tg.kind === 'plaques') return openPanel(L(tg.label), (body) => body.append(el('ul', { class: 'plaques' }, ...HEADMASTERS.map((h) => el('li', { text: L(h) })))));
     if (tg.kind === 'prop' && tg.text) return say([[null, tg.text.zh, tg.text.en]]);
     if (tg.kind === 'rumor') {
@@ -266,6 +269,7 @@ export function startPlay({ conn, getState, myUid, toast, dev, devUser }) {
     $('btn-inspect').classList.toggle('ready', !!tg);
     // 同步、畫面
     sender.update({ ...mine, h: hideState }, now);
+    mirrors.update(dt);
     scares.update(dt, { segment, zone: mine.z, cam: world.camera, dark: world.isDark(), busy: talking() || panelOpen() });
     world.haunting = !!segment && segment !== 'act4' && segment !== 'epilogue' && segment !== 'prologue'; world.busy = panelOpen() || talking();
     world.frame(dt, receiver.update(dt, now), mine.z);

@@ -68,6 +68,14 @@ export const NORTH_PORTRAITS = [
 ];
 export const LIGHTNING_AT = [0, 4, 2, 3, 5];
 
+// 交誼廳的古鏡（掛在壁爐對面那面牆的牆面上（牆厚 0.3），避開門）。face：鏡面朝哪個方向（+1＝朝南、-1＝朝北）
+export const MIRRORS = [
+  { house: 'eldrin', x: 19.5, z: 6.84, face: -1, text: L('別相信鐘聲', 'DON’T TRUST THE BELLS') },
+  { house: 'grimoire', x: -19.5, z: 6.84, face: -1, text: L('她還在井底', 'SHE IS STILL DOWN THERE') },
+  { house: 'belmont', x: -1.6, z: 9.16, face: 1, text: L('數到十三就跑', 'AT THIRTEEN, RUN') },
+  { house: 'ouroboros', x: 7.6, z: 9.16, face: 1, text: L('手套底下是什麼', 'WHAT IS UNDER THE GLOVE') },
+];
+
 // 場景裡可以調查的東西。kind：
 //   prop    擺設（可以調查，會顯示 text）
 //   rumor   傳聞（P02，走到旁邊才聽得到）
@@ -122,6 +130,9 @@ export const THINGS = [
     return { id: `window_${h}`, room: `dorm_${h}`, kind: 'puzzle', puzzle: 'P07', x: r[0], z: r[1], size: [0.3, 1.8, 1.4], y: 1.2, solid: false,
       label: L('窗戶：派使魔去看別的塔', 'Window: send your familiar to the other towers'), needsAi: true };
   }),
+  // 每間交誼廳一面古鏡：對它哈氣，霧上浮出手指寫的反字（不是謎題，是伏筆；world/mirrors.mjs）
+  ...MIRRORS.map((m) => ({ id: `mirror_${m.house}`, hidden: true, room: `dorm_${m.house}`, kind: 'mirrorfog', x: m.x, z: m.z, size: [1.0, 1.7, 0.4], y: 0.7, solid: false,
+    label: L('鏡子：對它哈一口氣', 'The mirror: breathe on it') })),
   // 星盤廳：星盤（P08）、柱子、窗簾
   { id: 'disk', room: 'starhall', kind: 'puzzle', puzzle: 'P08', x: 0, z: 0, size: [5, 0.3, 5], solid: false, label: L('星盤', 'The astrolabe') },
   ...[[-5, -5], [5, -5], [-5, 5], [5, 5]].map(([x, z], i) => ({ id: `pillar${i}`, room: 'starhall', kind: 'pillar', x, z, size: [1.2, 10, 1.2], solid: true })),
