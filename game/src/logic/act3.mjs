@@ -37,7 +37,11 @@ export function createAct3({ world, conn, toast, say, S, myChar, solvedByMe, ser
       if (tg.kind === 'doll') {
         if (S().solved.includes('P31')) { toast(t('p31_after')); return true; }
         if (!dolls.active()) { toast(t('p31_quiet')); return true; }
-        conn.request({ t: 'answer', pid: 'P31', value: { pick: tg.doll } }).then((res) => {
+        conn.request({ t: 'peek', pid: 'P31' }).then((pk) => { // 多人：隊友可能剛抱錯、換了一個在哭——先確認還是同一個
+          if (pk.t === 'peek' && pk.content.doll !== dolls.which()) { dolls.switchTo(pk.content.doll); toast(t('p31_moved')); return; }
+          return conn.request({ t: 'answer', pid: 'P31', value: { pick: tg.doll } });
+        }).then((res) => {
+          if (!res) return;
           dolls.stop();
           if (res.solved) { solvedByMe('P31', res); setTimeout(() => toast(t('p31_found')), 1800); }
           else if (res.t !== 'error') { sfx('stinger'); toast(t('p31_wrong')); }
@@ -94,6 +98,7 @@ export function createAct3({ world, conn, toast, say, S, myChar, solvedByMe, ser
         // 迷宮裡第一次熄燈時，黑暗中有呼吸聲
         if (dark && !scared && mine.z === 'lib_maze') { scared = true; playFile('assets/audio/ch1/breath_monster.mp3', { volume: 0.35 }); setTimeout(() => sfx('whisper'), 2500); }
       } else if (wasDark) { wasDark = false; world.setDark(false); }
+      if (dolls.active() && S().solved.includes('P31')) dolls.stop(); // 隊友找到了：哭聲停、燈亮
       dolls.update(dt, world.camera, { solved: S().solved.includes('P31'), zone: mine.z });
       // 暗室：完全沒有光
       const d = mine.z === 'lib_dark';

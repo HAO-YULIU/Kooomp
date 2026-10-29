@@ -17,6 +17,8 @@ export function createWeeping(scene) {
   const stop = () => { if (crying < 0) return; crying = -1; onEnd?.(); };
   return {
     active: () => crying >= 0,
+    which: () => crying,
+    switchTo(i) { if (crying >= 0 && DOLLS[i]) { crying = i; next = 0.3; } }, // 多人：隊友抱錯，換成另一個在哭
     start(i, done) { if (crying >= 0 || !DOLLS[i]) return false; crying = i; t = 0; next = 1.2; onEnd = done; return true; },
     stop,
     update(dt, cam, { solved, zone } = {}) {
