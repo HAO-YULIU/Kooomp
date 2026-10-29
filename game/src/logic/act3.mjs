@@ -10,6 +10,7 @@ import { t } from './i18n.mjs';
 export function createAct3({ world, conn, toast, say, S, myChar, solvedByMe, serverNow }) {
   const lib = createLibrary(world.scene, world.world.colliders);
   const dolls = createWeeping(world.scene); // P31：哭泣的娃娃
+  if (new URLSearchParams(location.search).has('dev')) window.__dolls = dolls;
   let wasDark = false, exitSent = false, scared = false, inDark = false;
 
   // P31：吹熄油燈（謎題視窗裡的按鈕 → ui/puzzles.mjs 送出 ml-sob）
