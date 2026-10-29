@@ -72,6 +72,12 @@ export const CREDITS = {
     ['Free Medieval Paintings Pack', 'yowi', 'https://sketchfab.com/3d-models/free-medieval-paintings-pack-011c2e7851574651a91320698cfde4ae', 'Sketchfab Standard'],
     ['Ghost Woman A-Pose', 'fluxium3d', 'https://sketchfab.com/3d-models/ghost-woman-a-pose-f4f4f2f59f124f54a787438bb3ed9ab0'],
     ['Still Life FF3 - Backrooms', 'thejuiceman75', 'https://sketchfab.com/3d-models/still-life-ff3-backrooms-bf83d418563f4f0aa5c3263b0d616ebc'],
+    ['Rocking chair', 'Lassi Kaukonen', 'https://sketchfab.com/3d-models/rocking-chair-ad9874cd2d734e64ba2b13cef46279b6'],
+    ['Rocking chair', 'DragonJojo', 'https://sketchfab.com/3d-models/rocking-chair-897ce33a65d04bb69eb3d87d0742464f'],
+    ['Birdcage', 'chaschinkaa', 'https://sketchfab.com/3d-models/birdcage-40bec101ccc243bc9d049d40cf43fe90'],
+    ['Sea of Thieves - Music Box', 'artikora', 'https://sketchfab.com/3d-models/sea-of-thieves-music-box-70de9ea240e84ad99c4f721c3cce251a'],
+    ['Creepy Doll Head', 'MacDesigns', 'https://sketchfab.com/3d-models/creepy-doll-head-05466f98b03e4a6bb35ee0d89d02ed18'],
+    ['Spider', 'iamlookingforthebathroom', 'https://sketchfab.com/3d-models/spider-7dd188c614044bcab9a64c25a0f186b3'],
   ],
   sounds: 'Pixabay：tanweraman、freesound_community、pantoman、wakanatsukiko、magiaz、dragon-studio、strachszydlo、audiopapkin、liecio、yodguard、universfield、u_5hx6qi66bg、the217amlibrary、cyberwave-orchestra',
 };

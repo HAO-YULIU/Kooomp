@@ -118,5 +118,14 @@
   "split": "painting"
  },
  "ghost_woman": "ghost_woman.glb",
- "faceless": "faceless.glb"
+ "faceless": "faceless.glb",
+ "rocker": "rocker.glb",
+ "rocker2": "rocker2.glb",
+ "birdcage": "birdcage.glb",
+ "musicbox": "musicbox.glb",
+ "dollhead": {
+  "file": "dollhead.glb",
+  "tint": "#d8cfc0"
+ },
+ "spiderweb": "spiderweb.glb"
 }

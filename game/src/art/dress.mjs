@@ -100,7 +100,7 @@ const FLOOR = {
     // 檯面右邊：頭骨／藥水／巫毒娃娃（製作人給的模型），沒有就用拼的
     if (seed % 3 === 0) { if (!placeProp(G, 'skull', ox, top, oz, ry + 0.3, [0.16, 0.2, 0.2])) L.P.skull(k, ox, top, oz, ry); }
     else if (seed % 3 === 1) { if (!placeProp(G, variant('potions', seed >> 2), ox, top, oz, ry, [0.3, 0.3, 0.2])) L.P.bottles(k, ox, top, oz, seed, 3); }
-    else if (!(seed % 2 && placeProp(G, 'hourglass', ox, top, oz, ry, [0.16, 0.26, 0.16])) && !placeProp(G, 'voodoo', ox, top, oz, ry + seed, [0.22, 0.1, 0.22])) L.P.goblet(k, ox, top, oz); // 沙漏或巫毒娃娃
+    else if (!(seed % 2 && placeProp(G, 'hourglass', ox, top, oz, ry, [0.16, 0.26, 0.16])) && !(seed % 4 === 2 && placeProp(G, 'musicbox', ox, top, oz, ry, [0.24, 0.22, 0.22])) && !placeProp(G, 'voodoo', ox, top, oz, ry + seed, [0.22, 0.1, 0.22])) L.P.goblet(k, ox, top, oz); // 沙漏、音樂盒或巫毒娃娃
     return 1.7;
   },
   clock(k, x, z, ry, ctx) { // 落地鐘
@@ -161,6 +161,7 @@ const FLOOR = {
     } else L.P.openBook(k, tx, top, tz, ry);
     return 2.1;
   },
+  rocker(k, x, z, ry, ctx, seed) { prop(variant('rocker', seed), x, z, ry + 0.4, 0.75, 1.1, 0.95); return 1.1; }, // 搖椅（兩款）
   warBanner(k, x, z, ry) { prop('warbanner', x, z, ry, 1.0, 2.7, 0.8); return 1.4; }, // 破爛的戰旗（插在地上）
   lectern(k, x, z, ry) { prop('lectern', x, z, ry, 0.55, 1.35, 0.55); return 1.0; }, // 放書的講台
   parkBench(k, x, z, ry) { prop('parkbench', x, z, ry, 1.9, 1.0, 0.75); return 2.3; }, // 碼頭的木長椅
@@ -296,7 +297,7 @@ const WALL = {
 
 // ---------- 每種房間要擺什麼（權重） ----------
 const KINDS = {
-  dorm: { floor: [['wardrobe', 2], ['sideboard', 3], ['clock', 1], ['plant', 2], ['candelabraFloor', 1], ['chairs', 1]], wall: [['painting', 6], ['sconce', 3], ['shelf', 1], ['mirror', 1], ['window', 2]], beams: true, floatN: 10 },
+  dorm: { floor: [['wardrobe', 2], ['sideboard', 3], ['clock', 1], ['plant', 2], ['candelabraFloor', 1], ['chairs', 1], ['rocker', 1]], wall: [['painting', 6], ['sconce', 3], ['shelf', 1], ['mirror', 1], ['window', 2]], beams: true, floatN: 10 },
   hall: { floor: [['armor', 3], ['statue', 2], ['candelabraFloor', 2], ['plant', 1], ['bust', 2], ['warBanner', 2]], wall: [['painting', 4], ['sconce', 4], ['tapestry', 2]], floatN: 60, chandelier: true },
   banquet: { floor: [['armor', 2], ['candelabraFloor', 2], ['sideboard', 2], ['statue', 1]], wall: [['painting', 4], ['sconce', 3], ['tapestry', 2]] },
   starhall: { floor: [['bookshelf', 2], ['globeStand', 1], ['candelabraFloor', 2], ['bust', 1], ['sideboard', 1], ['lectern', 1]], wall: [['painting', 3], ['sconce', 3], ['shelf', 1]], floatN: 24 },
@@ -372,7 +373,7 @@ export function dressRoom(r, group, lib) {
     if (K.floor.length && len > 2.5 && (!ex.walls || ex.walls.includes(wn))) {
       let t = 0.9;
       while (t < len - 0.9) {
-        seed++; const name = pick(K.floor, seed), w = { wardrobe: 1.3, sideboard: 1.7, clock: 0.7, armor: 0.9, bust: 0.6, plant: 0.6, candelabraFloor: 0.5, bookshelf: 1.7, tallShelf: 1.9, chairs: 2.1, bench: 2.0, crates: 1.5, statue: 1.3, weapons: 1.4, cauldronStand: 1.0, globeStand: 0.8, bones: 1.0, coffin: 1.9, warBanner: 1.4, lectern: 1.0, parkBench: 2.3 }[name] ?? 1;
+        seed++; const name = pick(K.floor, seed), w = { wardrobe: 1.3, sideboard: 1.7, clock: 0.7, armor: 0.9, bust: 0.6, plant: 0.6, candelabraFloor: 0.5, bookshelf: 1.7, tallShelf: 1.9, chairs: 2.1, bench: 2.0, crates: 1.5, statue: 1.3, weapons: 1.4, cauldronStand: 1.0, globeStand: 0.8, bones: 1.0, coffin: 1.9, warBanner: 1.4, lectern: 1.0, parkBench: 2.3, rocker: 1.1 }[name] ?? 1;
         const deep = name === 'chairs' ? 1.6 : name === 'crates' ? 1.2 : 0.8;
         const mid = t + w / 2, probe = [P(t, 0.3), P(t + w, 0.3), P(mid, deep), P(t, deep), P(t + w, deep)];
         if (t + w <= len - 0.6 && free(probe, false) && rnd(seed, 3) > 0.15) {
@@ -486,8 +487,18 @@ export function dressDock(r, group, lib) {
 // 蜘蛛娃娃：坐在陰暗角落（有模型才有）。x, z, 面向
 const DOLLS = { north_stairs: [[-1.55, -90.8, 0.5]], lib_ante: [[121.6, -59.4, 0.6]] };
 // 稻草人：鐘塔機械室最暗的角落，張著手、咧嘴笑（第四幕被追時突然看到）
+// 陶瓷娃娃頭（滾在地上）、吊著的鳥籠（[x, z, 離地高度]）、角落的蜘蛛網（2026-10-29）
+const DOLL_HEADS = { lib_well: [[137.6, -59.1, 2.1]], a4_nest: [[166.4, 4.9, 0.7]], north_stairs: [[-1.45, -83.2, 3.6]] };
+const CAGES = { lib_entry: [[102.6, 10.6, 2.4]], founder: [[-5.6, -77.6, 3.2]] };
+const WEBS = { lib_ante: [[130.5, -50.6, 2.4]], north_stairs: [[1.6, -91.6, -0.8]] };
 export function dressDolls(r, group) {
   for (const [x, z, ry] of DOLLS[r.id] ?? []) placeProp(group, 'spider_doll', x, 0, z, ry, [0.5, 0.55, 0.45]);
+  for (const [x, z, ry] of DOLL_HEADS[r.id] ?? []) { const m = placeProp(group, 'dollhead', x, 0, z, ry, [0.2, 0.26, 0.22]); if (m) m.obj.rotation.z = 0.5; } // 側躺著
+  for (const [x, z, y] of WEBS[r.id] ?? []) placeProp(group, 'spiderweb', x, 0.01, z, y, [0.9, 0.3, 0.9]);
+  for (const [x, z, y] of CAGES[r.id] ?? []) {
+    const m = placeProp(group, 'birdcage', x, y, z, x + z, [0.45, 0.7, 0.45]); if (!m) continue;
+    const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, r.h - y - m.h, 5), L.MAT.iron()); chain.position.set(x, y + m.h + (r.h - y - m.h) / 2, z); group.add(chain); // 吊到天花板
+  }
   // 典禮廳北牆高處（教師席上方）：製作人給的玫瑰窗（連著一段拱形的石牆）
   if (r.id === 'banquet') { const m = placeProp(group, 'rosewindow', -22, 7.2, 102, 0, [8, 6, 5]); if (m) m.obj.position.z += m.d / 2; }
 }
