@@ -68,7 +68,7 @@ export function startPlay({ conn, getState, myUid, toast, dev, devUser }) {
   const act2 = createAct2({ world, conn, toast, play, S, house: myHouse(), solo: S().mode === 'solo', lang: getLang() });
   $('btn-familiar').hidden = S().mode !== 'solo';
   const scares = createScares(world.scene); // 一次性的驚嚇演出（碼頭、星盤廳、創辦人的房間）
-  if (dev) window.__scares = scares;
+  if (dev) { window.__scares = scares; window.__conn = conn; window.__S = S; } // 本機測試用
   const mirrors = createMirrors(world.scene); // 交誼廳的古鏡（哈氣浮出反字）
   const act3 = createAct3({ world, conn, toast, say, S, myChar: () => me()?.char, solvedByMe: (pid, r) => { onSolved(pid, myUid, r.reveal); toast(t('solved', { pid })); }, serverNow: () => Date.now() + clockOffset });
   const act4 = createAct4({ world, conn, toast, say, talking, S, myUid, myChar: () => me()?.char, receiver, serverNow: () => Date.now() + clockOffset, holding: () => holding, dev, playScript: (k) => play(k),
@@ -200,7 +200,7 @@ export function startPlay({ conn, getState, myUid, toast, dev, devUser }) {
   addEventListener('keyup', (e) => { if (e.code === 'KeyQ') holding = false; });
   $('btn-inspect').onclick = interact;
   // 開發者測試工具（右上角 🛠）
-  devtools = devUser ? createDevTools({ conn, world, S, things: THINGS, toast, onSolved: (pid, r) => onSolved(pid, myUid, r.reveal) }) : null;
+  devtools = devUser ? createDevTools({ conn, world, S, things: THINGS, toast, myUid, onSolved: (pid, r) => onSolved(pid, myUid, r.reveal) }) : null;
   // 設定：亮度、重看入學指南
   const touch = document.body.classList.contains('touch');
   $('btn-settings').onclick = () => openPanel(t('settings'), (body) => {
