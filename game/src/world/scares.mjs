@@ -2,6 +2,7 @@
 //   序幕・碼頭：渡船靠岸時，碼頭盡頭站著一個長髮的女人，走近或盯著她看一會兒，她就不見了（只有耳語）。
 //   第一幕・星盤廳：柱子後面站著一個沒有臉的男人，被看到半秒就消失。
 //   第二幕・創辦人的房間：熄滅燭火的那 9 秒，戴兜帽的女人站在你背後的門口。燈亮回來時她已經不在了。
+//   北翼樓梯、封印室前廳的蜘蛛娃娃：你沒看著的時候會轉頭面向你。
 // 每個演出一次（重新整理頁面才會再有）。
 import * as THREE from 'three';
 import { ghostWoman } from '../art/haunt.mjs';
@@ -19,12 +20,18 @@ export function createScares(scene) {
     if (!figs[name]) { const g = new THREE.Group(); g.name = 'scare-' + name; if (!ghostWoman(g, name)) ghostWoman(g); g.position.set(0, -100, 0); scene.add(g); figs[name] = g; }
     return figs[name];
   };
-  const done = new Set(); let cur = null, last = null; const fwd = new THREE.Vector3();
+  const done = new Set(); let cur = null, last = null, dolls = null; const fwd = new THREE.Vector3();
   return {
     state: () => ({ cur: cur?.s.id ?? null, done: [...done], last }), // 開發測試用
     /** 每一格。ctx：{ segment, zone, cam, dark（燈有沒有熄）, busy（對話、視窗） } */
     update(dt, { segment, zone, cam, dark, busy }) {
       last = [segment, zone, dark];
+      // 北翼樓梯、封印室前廳的蜘蛛娃娃：你沒看著的時候，它把頭轉過來面向你
+      if (zone === 'north_stairs' || zone === 'lib_ante') {
+        if (!dolls) { dolls = []; scene.traverse((o) => { if (o.userData.prop === 'spider_doll' && o.parent?.name !== 'weeping-dolls') dolls.push(o); }); }
+        cam.getWorldDirection(fwd); fwd.y = 0; fwd.normalize();
+        for (const o of dolls) { const dx = o.position.x - cam.position.x, dz = o.position.z - cam.position.z, d = Math.hypot(dx, dz) || 1; if (d < 12 && (dx * fwd.x + dz * fwd.z) / d < 0.3) o.rotation.y = Math.atan2(-dx, -dz); }
+      }
       if (cur) {
         const { s, g } = cur; cur.t += dt;
         g.lookAt(cam.position.x, 0, cam.position.z);
