@@ -94,7 +94,10 @@ function makeRoomCuller(scene) {
 export function createWorld(canvas, lang = 'zh') {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: !isTouch, powerPreference: 'high-performance' });
   // 解析度會依速度自動調（手機卡的時候先降解析度，順了再慢慢調回來）
-  const maxRatio = Math.min(devicePixelRatio, isTouch ? 1.5 : 2), minRatio = isTouch ? 0.6 : 0.85;
+  const fullRatio = Math.min(devicePixelRatio, isTouch ? 1.5 : 2), minRatio = isTouch ? 0.6 : 0.85;
+  // 省電模式（設定裡開）：每秒最多 30 格、解析度最多 1 倍（手機發燙、比較舊的手機用）
+  let lowPower = (() => { try { return localStorage.getItem('ml_lowpower') === '1'; } catch { return false; } })();
+  let maxRatio = lowPower ? Math.min(1, fullRatio) : fullRatio;
   let ratio = maxRatio, slowT = 0, fastT = 0;
   renderer.setPixelRatio(ratio);
   renderer.shadowMap.enabled = !isTouch;
@@ -200,6 +203,12 @@ export function createWorld(canvas, lang = 'zh') {
     },
     // 熄燈（P10）：房間的燈和手上的燈一起關掉
     isDark: () => !!dark,
+    get lowPower() { return lowPower; },
+    setLowPower(on) {
+      lowPower = !!on; try { localStorage.setItem('ml_lowpower', on ? '1' : '0'); } catch { /* 無痕 */ }
+      maxRatio = lowPower ? Math.min(1, fullRatio) : fullRatio; ratio = Math.min(ratio, maxRatio); if (!lowPower) ratio = maxRatio;
+      renderer.setPixelRatio(ratio); resize(); slowT = fastT = 0;
+    },
     setDark(on) { // 調亮度而不是關掉燈，避免畫面重新編譯而卡一下
       if (on && !dark) dark = [world.roomLight.intensity, lamp.intensity];
       if (on) { world.roomLight.intensity = 0; lamp.intensity = 0.05; } else if (dark) { [world.roomLight.intensity, lamp.intensity] = dark; dark = null; }
@@ -328,7 +337,8 @@ export function createWorld(canvas, lang = 'zh') {
       }
       renderer.render(scene, camera);
       // 自動解析度：連續 1.5 秒每格超過 1/40 秒就降一級；連續 6 秒都在 1/55 秒內就升一級
-      if (dt > 1 / 40) { slowT += dt; fastT = 0; } else if (dt < 1 / 55) { fastT += dt; slowT = 0; } else { slowT = Math.max(0, slowT - dt); fastT = 0; }
+      const slow = lowPower ? 1 / 24 : 1 / 40, fast = lowPower ? 1 / 32 : 1 / 55; // 省電模式本來就是每秒 30 格，不要因此一直降解析度
+      if (dt > slow) { slowT += dt; fastT = 0; } else if (dt < fast) { fastT += dt; slowT = 0; } else { slowT = Math.max(0, slowT - dt); fastT = 0; }
       if (slowT > 1.5 && ratio > minRatio) { ratio = Math.max(minRatio, ratio - 0.15); renderer.setPixelRatio(ratio); resize(); slowT = 0; }
       else if (fastT > 6 && ratio < maxRatio) { ratio = Math.min(maxRatio, ratio + 0.1); renderer.setPixelRatio(ratio); resize(); fastT = 0; }
     },

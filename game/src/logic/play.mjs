@@ -215,6 +215,7 @@ export function startPlay({ conn, getState, myUid, toast, dev, devUser }) {
     mus.oninput = () => { setMusicVolume(+mus.value); mval.textContent = `${Math.round(+mus.value * 100)}%`; };
     body.append(el('div', { class: 'row' }, el('span', { text: t('brightness') }), slider, val), el('div', { class: 'row' }, el('span', { text: t('volume') }), vol, vval),
       el('div', { class: 'row' }, el('span', { text: t('music_volume') }), mus, mval),
+      (() => { const b = el('button', { class: 'small' }); const paint = () => { b.textContent = t(world.lowPower ? 'lowpower_on' : 'lowpower_off'); }; b.onclick = () => { world.setLowPower(!world.lowPower); paint(); }; paint(); return el('div', { class: 'row' }, el('span', { text: t('lowpower') }), b); })(),
       el('button', { text: t('replay_tut'), onclick: () => { closePanel(); openTutorial({ touch }); } }),
       el('button', { text: t('credits'), onclick: () => openPanel(t('credits'), (b) => b.append( // 素材來源（CC BY 要標註作者）
         el('h3', { text: '3D' }), ...CREDITS.models.map(([n, a, u, lic = 'CC BY 4.0']) => el('p', { class: 'credit' }, u ? el('a', { href: u, target: '_blank', rel: 'noopener', text: n }) : el('span', { text: n }), el('small', { text: a ? ` — ${a}（${lic}）` : '' }))),
@@ -230,6 +231,7 @@ export function startPlay({ conn, getState, myUid, toast, dev, devUser }) {
   const entered = new Set();
   let last = performance.now(), caughtCool = 0;
   const loop = (now) => {
+    if (world.lowPower && now - last < 31) { requestAnimationFrame(loop); return; } // 省電模式：每秒最多 30 格
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
     const mine = world.me();
     const st = S();
