@@ -6,11 +6,11 @@ import { playFile, chime } from '../world/sound.mjs';
 import { sfx } from '../art/sfx.mjs';
 import { openPanel, el, L, LP } from '../ui/overlay.mjs';
 import { t } from './i18n.mjs';
+import { caption } from '../ui/captions.mjs';
 
 export function createAct3({ world, conn, toast, say, S, myChar, solvedByMe, serverNow }) {
   const lib = createLibrary(world.scene, world.world.colliders);
-  const captions = () => { try { return localStorage.getItem('ml_captions') !== '0'; } catch { return true; } }; // 設定裡的「聲音字幕」
-  const dolls = createWeeping(world.scene, (dir) => { if (captions()) toast(t('sob_cap', { dir: t(`sob_dir.${dir}`) })); }); // P31：哭泣的娃娃
+  const dolls = createWeeping(world.scene, (dir) => caption('sob_cap', { dir: t(`sob_dir.${dir}`) })); // 聲音字幕（設定裡可以關） // P31：哭泣的娃娃
   if (new URLSearchParams(location.search).has('dev')) window.__dolls = dolls;
   let wasDark = false, exitSent = false, scared = false, inDark = false;
 
@@ -98,7 +98,7 @@ export function createAct3({ world, conn, toast, say, S, myChar, solvedByMe, ser
           exitSent = true; conn.request({ t: 'answer', pid: 'P13', value: 'exit' }).then((res) => { if (res.solved) solvedByMe('P13', res); else if (res.error !== 'already_solved') exitSent = false; });
         }
         // 迷宮裡第一次熄燈時，黑暗中有呼吸聲
-        if (dark && !scared && mine.z === 'lib_maze') { scared = true; playFile('assets/audio/ch1/breath_monster.mp3', { volume: 0.35 }); setTimeout(() => sfx('whisper'), 2500); }
+        if (dark && !scared && mine.z === 'lib_maze') { scared = true; playFile('assets/audio/ch1/breath_monster.mp3', { volume: 0.35 }); caption('cap.breath'); setTimeout(() => sfx('whisper'), 2500); }
       } else if (wasDark) { wasDark = false; world.setDark(false); }
       if (dolls.active() && S().solved.includes('P31')) dolls.stop(); // 隊友找到了：哭聲停、燈亮
       dolls.update(dt, world.camera, { solved: S().solved.includes('P31'), zone: mine.z });

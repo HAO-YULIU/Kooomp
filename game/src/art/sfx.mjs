@@ -1,4 +1,5 @@
 // 機關的音效（帳號二）：全部用 Web Audio 當場合成，不用下載音檔。
+import { caption, sideWord } from '../ui/captions.mjs';
 // sfx('click' | 'tick' | 'stone' | 'gear' | 'chime' | 'note' | 'sand' | 'paper' | 'wood' | 'glass' | 'metal' | 'lever' | 'knock' | 'thud' | 'wrong' | 'solved' | 'whoosh', 參數)
 let ctx = null, master = null, noiseBuf = null, volume = (() => { try { return +(localStorage.getItem('ml_volume') ?? 1); } catch { return 1; } })();
 function audio() {
@@ -129,6 +130,8 @@ export function sfxPan(name, pan = 0, { vol = 1, arg } = {}) {
 }
 /** 有沒有這個音檔（製作人給的） */
 export const hasSound = (name) => !!FILES[name]?.length || !!STREAM[name];
+/** 手機震動（安卓才有；iPhone 的網頁不能震）：驚嚇的時候用 */
+export function buzz(pattern = 120) { try { navigator.vibrate?.(pattern); } catch { /* 不支援 */ } }
 export function sfx(name, arg) { try { if (playFile(name, { rate: 0.95 + Math.random() * 0.1 })) return; SOUNDS[name]?.(arg); } catch { /* 沒有聲音也沒關係 */ } }
 
 // ---------- 腳步聲：石地、木地板聲音不同；跑步重一點 ----------
@@ -224,14 +227,14 @@ export function wardenVoice({ visible, dist = 99, side = 0, mode = 'patrol', dt 
   glide(W.growl.gain, mode === 'chase' || mode === 'grab' ? 0.12 : mode === 'search' ? 0.05 : 0.015, 0.3);
   // 剛開始追：嘶吼（10 秒內不重複）
   if (visible && mode === 'chase' && W.mode !== 'chase' && c.currentTime > W.roarAt) {
-    W.roarAt = c.currentTime + 10;
+    W.roarAt = c.currentTime + 10; caption('cap.roar', { side: sideWord(side) });
     if (!playFile('warden_roar', { vol: 0.25 + 0.6 * k })) { tone(140, { type: 'sawtooth', dur: 1.2, vol: 0.12 * (0.4 + k), slide: 0.45, attack: 0.05 }); noise({ dur: 1.1, vol: 0.12 * (0.4 + k), type: 'bandpass', freq: 900, q: 1.2, sweep: 0.4 }); }
   }
   W.mode = mode;
   // 腳步：走 0.7 秒一步、跑 0.38 秒一步
   if (visible && mode !== 'idle' && mode !== 'stun' && mode !== 'grab') {
     W.stepT -= dt;
-    if (W.stepT <= 0) { W.stepT = mode === 'chase' ? 0.38 : 0.7; if (k > 0.02 && !playFile('warden_step', { vol: k * 0.9, rate: 0.9 + Math.random() * 0.1 })) { tone(48, { dur: 0.35, vol: 0.4 * k, slide: 0.6 }); noise({ dur: 0.15, vol: 0.12 * k, freq: 260 }); } }
+    if (W.stepT <= 0) { W.stepT = mode === 'chase' ? 0.38 : 0.7; if (k > 0.04) caption(mode === 'chase' ? 'cap.warden_run' : 'cap.warden_step', { side: sideWord(side) }, { every: 4 }); if (k > 0.02 && !playFile('warden_step', { vol: k * 0.9, rate: 0.9 + Math.random() * 0.1 })) { tone(48, { dur: 0.35, vol: 0.4 * k, slide: 0.6 }); noise({ dur: 0.15, vol: 0.12 * k, freq: 260 }); } }
   }
 }
 

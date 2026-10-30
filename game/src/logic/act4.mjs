@@ -12,6 +12,7 @@ import { sfx, setMusic, setTension, hasSound, setLoop } from '../art/sfx.mjs';
 import { openPanel, closePanel, panelOpen, el, L } from '../ui/overlay.mjs';
 import { openRescue } from '../ui/puzzles.mjs';
 import { t } from './i18n.mjs';
+import { caption } from '../ui/captions.mjs';
 import { CHARS } from './chars.mjs';
 
 const $ = (id) => document.getElementById(id);
@@ -100,6 +101,7 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
     if (retry) { say(SCRIPT['act4:retry']); return; }
     // 十二響，然後第十三響；守夜人哼著童謠從樓梯下來
     for (let i = 0; i < 13; i++) setTimeout(() => chime(false), i * 380);
+    caption('cap.bells');
     setTimeout(() => playLullaby({ lines: 1, volume: 0.3 }), 5600);
   }
 

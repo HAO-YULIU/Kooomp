@@ -14,7 +14,7 @@ const CJK = /[一-鿿]/;
 
 test('程式和網頁用到的文字，中文、英文都有', () => {
   const keys = new Set();
-  for (const f of walk(join(ROOT, 'game/src')).filter((f) => f.endsWith('.mjs'))) for (const m of readFileSync(f, 'utf8').matchAll(/\bt\(\s*['`]([a-zA-Z0-9_.]+)['`]/g)) keys.add(m[1]);
+  for (const f of walk(join(ROOT, 'game/src')).filter((f) => f.endsWith('.mjs'))) for (const m of readFileSync(f, 'utf8').matchAll(/\b(?:t|caption)\(\s*['`]([a-zA-Z0-9_.]+)['`]/g)) keys.add(m[1]);
   for (const m of readFileSync(join(ROOT, 'game/index.html'), 'utf8').matchAll(/data-t(?:-[a-z]+)?="([^"]+)"/g)) keys.add(m[1]);
   const miss = [];
   for (const lang of ['zh', 'en']) { setLang(lang); for (const k of keys) { const v = t(k); if (!v || (v === k && lang === 'zh')) miss.push(`${lang}:${k}`); if (lang === 'en' && CJK.test(v.replaceAll('魔蝕', ''))) miss.push(`en（有中文）:${k}`); } }

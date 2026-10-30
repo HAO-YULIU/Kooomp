@@ -2,6 +2,7 @@
 // 他依 SCARECROW.route 一塊一塊站上刻著羅馬數字的石板，走完一輪回到角落；站過的石板依序就是工具箱的密碼（答案在伺服器）。
 // 每個人看到的是自己的稻草人（不同步），所以多人時每個人都可以自己記。
 import * as THREE from 'three';
+import { caption, sideWord } from '../ui/captions.mjs';
 import { placeProp } from '../art/models.mjs';
 import { sfxPan } from '../art/sfx.mjs';
 import { SCARECROW } from '../data/act4-ch1.mjs';
@@ -42,7 +43,7 @@ export function createScarecrow(scene) {
       if (away < AWAY) return;
       seen = false; away = 0; at = (at + 1) % spots.length; put(cam);
       const n = spots[at], pan = ((n[0] - cam.position.x) * -fwd.z + (n[1] - cam.position.z) * fwd.x) / (Math.hypot(n[0] - cam.position.x, n[1] - cam.position.z) || 1);
-      sfxPan('wood', pan, { vol: 0.5 }); setTimeout(() => sfxPan('stone', pan, { vol: 0.35 }), 120); // 背後傳來稻草摩擦、踩上石板的聲音
+      sfxPan('wood', pan, { vol: 0.5 }); setTimeout(() => sfxPan('stone', pan, { vol: 0.35 }), 120); caption('cap.straw', { side: sideWord(pan, Math.abs(pan) < 0.45) }); // 背後傳來稻草摩擦、踩上石板的聲音
     },
   };
 }

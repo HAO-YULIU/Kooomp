@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { reactThing, syncSolved, tickRigs, sfx, sfxPan, step, setAmbience, tickHaunt, hauntNow } from '../art/index.mjs'; // 帳號二的美術掛鉤（守夜人的正式模型、謎題的場景反應），要在蓋場景之前註冊
 import { loadCharacter } from '../art/characters.mjs';
+import { caption, sideWord } from '../ui/captions.mjs';
 import { createControls } from '../../../prototype/src/controls.mjs';
 import { buildWorld } from './greybox.mjs';
 import { ROOMS, DOORS, THINGS, PATROL } from '../data/world-ch1.mjs';
@@ -200,6 +201,7 @@ export function createWorld(canvas, lang = 'zh') {
       const pan = (right / Math.max(d, 1)) * 0.8, vol = Math.max(0.15, 1 - d / 25);
       if (st.door.lock?.puzzle) { sfxPan('unlock', pan, { vol }); setTimeout(() => sfxPan(kind, pan, { vol }), 700); } // 解謎打開的門：先「喀」一聲解鎖
       else sfxPan(kind, pan, { vol });
+      caption('cap.door', { side: sideWord(pan * 2) }, { every: 3 });
     },
     // 熄燈（P10）：房間的燈和手上的燈一起關掉
     isDark: () => !!dark,

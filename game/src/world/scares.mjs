@@ -12,7 +12,8 @@
 import * as THREE from 'three';
 import { ghostWoman, hauntNow } from '../art/haunt.mjs';
 import { placeProp } from '../art/models.mjs';
-import { sfx, sfxPan } from '../art/sfx.mjs';
+import { sfx, sfxPan, buzz } from '../art/sfx.mjs';
+import { caption, sideWord } from '../ui/captions.mjs';
 
 const SHOWS = [
   { id: 'dock', seg: 'prologue', zone: 'dock', fig: 'ghost_woman', at: [1.4, 142.4], near: 13, stare: 3.5, delay: 0 },
@@ -59,7 +60,7 @@ export function createScares(scene, colliders = []) {
         if (book.position.y <= 0.03) {
           book.position.y = 0.03; book.rotation.set(0, Math.random() * 6, 0);
           cam.getWorldDirection(fwd); fwd.y = 0; fwd.normalize(); const dx = book.position.x - cam.position.x, dz = book.position.z - cam.position.z, d = Math.hypot(dx, dz) || 1;
-          sfxPan('thud', (dx * -fwd.z + dz * fwd.x) / d, { vol: 0.9 }); setTimeout(() => sfx('paper'), 120); fall = null;
+          sfxPan('thud', (dx * -fwd.z + dz * fwd.x) / d, { vol: 0.9 }); buzz(70); caption('cap.thud', { side: sideWord(0, true) }); setTimeout(() => sfx('paper'), 120); fall = null;
         }
       }
       if (cur) {
@@ -70,7 +71,7 @@ export function createScares(scene, colliders = []) {
         const look = (dx * fwd.x + dz * fwd.z) / d > 0.8;
         if (look && !busy) cur.seen += dt; // 對話框開著的時候不算（玩家還沒在看）
         const gone = zone !== s.zone || d < s.near || cur.seen > s.stare || (s.dark && !dark) || cur.t > 60;
-        if (gone) { g.position.y = -100; if (cur.seen > 0 || d < s.near) { const pan = (dx * -fwd.z + dz * fwd.x) / d; sfxPan('whisper', pan, { vol: 0.8 }); if (!s.dark) hauntNow('flicker'); /* 她消失的時候燈閃一下 */ } cur = null; }
+        if (gone) { g.position.y = -100; if (cur.seen > 0 || d < s.near) { const pan = (dx * -fwd.z + dz * fwd.x) / d; sfxPan('whisper', pan, { vol: 0.8 }); caption('cap.ear'); if (!s.dark) hauntNow('flicker'); /* 她消失的時候燈閃一下 */ } cur = null; }
         return;
       }
       for (const s of SHOWS) {

@@ -11,7 +11,8 @@ import { setSoundVolume } from '../world/sound.mjs';
 import { t, getLang } from './i18n.mjs';
 import { CHARS, HOUSES } from './chars.mjs';
 import { SCRIPT } from '../data/story-ch1.mjs';
-import { sfx } from '../art/sfx.mjs';
+import { sfx, buzz } from '../art/sfx.mjs';
+import { captionsOn } from '../ui/captions.mjs';
 import { SPAWNS, DOORS, ROOMS, RUMORS, THINGS, FINALE_MIRROR, MIRRORS } from '../data/world-ch1.mjs';
 const THINGS_BY_ID = Object.fromEntries(THINGS.map((x) => [x.id, x]));
 import { HEADMASTERS } from '../data/story-ch1.mjs';
@@ -72,13 +73,15 @@ export function startPlay({ conn, getState, myUid, toast, dev, devUser }) {
   if (dev) { window.__scares = scares; window.__conn = conn; window.__S = S; } // 本機測試用
   const mirrors = createMirrors(world.scene); // 交誼廳的古鏡（哈氣浮出反字）
   // 第一章的最後一幕（尾聲講完）：宿舍的燈突然全滅，自己房間的古鏡起霧、從裡面寫出一行字；講完才出現「第一章完」
+  let inFinale = false;
   function finale(done) {
+    inFinale = true;
     const m = MIRRORS.find((q) => q.house === myHouse()) ?? MIRRORS[0];
-    world.setDark(true); sfx('slam');
+    world.setDark(true); sfx('slam'); buzz([160, 60, 90]);
     world.teleport({ x: m.x, z: m.z + m.face * 1.6, yaw: m.face > 0 ? 0 : Math.PI }); // 黑暗裡，你已經站在鏡子前面
     setTimeout(() => {
       mirrors.scrawl('mirror_' + m.house, L(FINALE_MIRROR)); sfx('whisper'); say(SCRIPT.finale);
-      const wait = setInterval(() => { if (!talking()) { clearInterval(wait); setTimeout(() => { world.setDark(false); done(); }, 2500); } }, 500);
+      const wait = setInterval(() => { if (!talking()) { clearInterval(wait); setTimeout(() => { world.setDark(false); inFinale = false; done(); }, 2500); } }, 500);
     }, 1800);
   }
   const act3 = createAct3({ world, conn, toast, say, S, myChar: () => me()?.char, solvedByMe: (pid, r) => { onSolved(pid, myUid, r.reveal); toast(t('solved', { pid })); }, serverNow: () => Date.now() + clockOffset });
@@ -140,7 +143,7 @@ export function startPlay({ conn, getState, myUid, toast, dev, devUser }) {
   // ---- 調查 ----
   function interact() {
     if (talking()) return advanceDialog();
-    if (panelOpen()) return;
+    if (panelOpen() || inFinale) return;
     const tg = world.target();
     if (!tg) return;
     focusNext = tg; setTimeout(() => { focusNext = null; }); // 這次調查打開的視窗，鏡頭看著這個東西
@@ -227,7 +230,7 @@ export function startPlay({ conn, getState, myUid, toast, dev, devUser }) {
     body.append(el('div', { class: 'row' }, el('span', { text: t('brightness') }), slider, val), el('div', { class: 'row' }, el('span', { text: t('volume') }), vol, vval),
       el('div', { class: 'row' }, el('span', { text: t('music_volume') }), mus, mval),
       (() => { const b = el('button', { class: 'small' }); const paint = () => { b.textContent = t(world.lowPower ? 'lowpower_on' : 'lowpower_off'); }; b.onclick = () => { world.setLowPower(!world.lowPower); paint(); }; paint(); return el('div', { class: 'row' }, el('span', { text: t('lowpower') }), b); })(),
-      (() => { const b = el('button', { class: 'small' }); const on = () => { try { return localStorage.getItem('ml_captions') !== '0'; } catch { return true; } }; const paint = () => { b.textContent = t(on() ? 'lowpower_on' : 'lowpower_off'); }; b.onclick = () => { try { localStorage.setItem('ml_captions', on() ? '0' : '1'); } catch { /* 無痕 */ } paint(); }; paint(); return el('div', { class: 'row' }, el('span', { text: t('captions') }), b); })(), // 聲音字幕（預設開，2026-10-30 製作人）
+      (() => { const b = el('button', { class: 'small' }); const on = captionsOn; const paint = () => { b.textContent = t(on() ? 'lowpower_on' : 'lowpower_off'); }; b.onclick = () => { try { localStorage.setItem('ml_captions', on() ? '0' : '1'); } catch { /* 無痕 */ } paint(); }; paint(); return el('div', { class: 'row' }, el('span', { text: t('captions') }), b); })(), // 聲音字幕（預設開，2026-10-30 製作人）
       el('button', { text: t('replay_tut'), onclick: () => { closePanel(); openTutorial({ touch }); } }),
       el('button', { text: t('credits'), onclick: () => openPanel(t('credits'), (b) => b.append( // 素材來源（CC BY 要標註作者）
         el('h3', { text: '3D' }), ...CREDITS.models.map(([n, a, u, lic = 'CC BY 4.0']) => el('p', { class: 'credit' }, u ? el('a', { href: u, target: '_blank', rel: 'noopener', text: n }) : el('span', { text: n }), el('small', { text: a ? ` — ${a}（${lic}）` : '' }))),
@@ -278,7 +281,7 @@ export function startPlay({ conn, getState, myUid, toast, dev, devUser }) {
     if (segment?.startsWith('act3')) act3.frame(dt, mine, segment);
     const hideState = act4.frame(dt, mine, segment);
     // 「調查」提示
-    const tg = !panelOpen() && !talking() ? world.target() : null;
+    const tg = !panelOpen() && !talking() && !inFinale ? world.target() : null; // 最後一幕（熄燈、鏡子）不顯示提示
     $('prompt').hidden = !tg; if (tg) $('prompt').textContent = `${matchMedia('(pointer: coarse)').matches ? '' : 'E　'}${L(tg.label)}`;
     $('btn-inspect').classList.toggle('ready', !!tg);
     // 同步、畫面

@@ -3,8 +3,9 @@
 //   還有「黑影」：在你沒在看的地方站著一個高高的黑影，你轉頭看到它一下子就不見了。
 // world.frame 每一格呼叫 tickHaunt；world.haunting＝false 時不發生（第四幕、尾聲）。
 import * as THREE from 'three';
-import { sfx, sfxPan } from './sfx.mjs';
+import { sfx, sfxPan, buzz } from './sfx.mjs';
 import { placeProp } from './models.mjs';
+import { caption, sideWord } from '../ui/captions.mjs';
 
 const H = { next: 45 + Math.random() * 45, figure: null, shade: null, flicker: null, force: null };
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -77,13 +78,13 @@ export function tickHaunt(dt, { room, camera, scene, roomLight, busy, on }) {
   const side = Math.random() < 0.5 ? -1 : 1;
   const kind = H.force ?? pick(); H.force = null;
   switch (kind) {
-    case 'knock': for (let i = 0; i < 3; i++) setTimeout(() => sfxPan('knock', side * 0.8, { vol: 0.5, arg: true }), i * 520 + (i === 2 ? 300 : 0)); break;
+    case 'knock': for (let i = 0; i < 3; i++) setTimeout(() => sfxPan('knock', side * 0.8, { vol: 0.5, arg: true }), i * 520 + (i === 2 ? 300 : 0)); caption('cap.knock', { side: sideWord(side) }); break;
     case 'flicker': if (roomLight.intensity > 0) { H.flicker = { t: 0, base: roomLight.intensity, last: roomLight.intensity }; sfx('hum'); } break;
     case 'shade': { const p = spotFor(room, camera); if (!p) { H.next = 5; break; } H.shade.position.y = -100; H.shade = H.shades[Math.floor(Math.random() * H.shades.length)]; H.shade.position.copy(p); H.figure = { pos: p, t: 0, seen: 0 }; break; }
-    case 'whisper': sfxPan('whisper', side, { vol: 0.8 }); break;
-    case 'steps': sfxPan('steps', side * 0.3, { vol: 1 }); break;
-    case 'slam': sfxPan('slam', side * 0.6, { vol: 0.5 }); break;
-    case 'giggle': sfxPan('giggle', side * 0.9, { vol: 0.8 }); break;
+    case 'whisper': sfxPan('whisper', side, { vol: 0.8 }); caption('cap.whisper', { side: sideWord(side) }); break;
+    case 'steps': sfxPan('steps', side * 0.3, { vol: 1 }); caption('cap.steps', { side: sideWord(0, true) }); break;
+    case 'slam': sfxPan('slam', side * 0.6, { vol: 0.5 }); buzz(90); caption('cap.slam', { side: sideWord(side) }); break;
+    case 'giggle': sfxPan('giggle', side * 0.9, { vol: 0.8 }); caption('cap.giggle', { side: sideWord(side) }); break;
   }
 }
 /** 開發者測試：馬上發生一件（不給名稱就隨機） */
