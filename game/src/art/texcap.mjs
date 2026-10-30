@@ -16,7 +16,8 @@ function shrink(tex, max) {
 
 /** kind：'prop'（擺設）或 'char'（角色、守夜人） */
 export function slimTextures(root, kind = 'prop') {
-  const prop = kind === 'prop', maxColor = isTouch ? 512 : 1024, maxOther = isTouch ? (prop ? 128 : 256) : 512, dropNormal = isTouch && prop;
+  let low = false; try { low = isTouch && localStorage.getItem('ml_lowpower') === '1'; } catch { /* 無痕 */ } // 手機開省電模式（或上次載入當掉自動開）：顏色貼圖再小一半
+  const prop = kind === 'prop', maxColor = isTouch ? (low && prop ? 256 : 512) : 1024, maxOther = isTouch ? (prop ? 128 : 256) : 512, dropNormal = isTouch && prop;
   root.traverse((o) => {
     if (!o.isMesh) return;
     for (const m of [o.material].flat()) {

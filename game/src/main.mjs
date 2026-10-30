@@ -31,6 +31,9 @@ function paintText() {
 for (const b of document.querySelectorAll('[data-lang]')) b.onclick = () => { setLang(b.dataset.lang); $('plang').value = getLang(); paintText(); paintMusic(); };
 setLang(getLang()); $('plang').value = getLang(); paintText();
 
+// 上次進遊戲載入到一半網頁就被重整（手機記憶體不夠）：這次自動開省電模式（貼圖也會用更小的），並告訴玩家
+let crashed = false;
+try { const v = +localStorage.getItem('ml_loading'); if (v && Date.now() - v < 15 * 60e3) { crashed = localStorage.getItem('ml_lowpower') !== '1'; localStorage.setItem('ml_lowpower', '1'); } localStorage.removeItem('ml_loading'); } catch { /* 無痕 */ }
 let toastTimer;
 function toast(text) { const el = $('toast'); el.textContent = text; el.classList.add('on'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('on'), 2600); }
 
@@ -67,6 +70,7 @@ async function boot() {
   }
   $('hello').textContent = t('hello', { name: me.name });
   show('s-menu');
+  if (crashed) { crashed = false; setTimeout(() => toast(t('crash_lowpower')), 800); }
   setTimeout(() => import('./art/models.mjs').then((m) => m.preloadProps()).catch(() => {}), 1500); // 擺設的模型先在背景下載，按出發時就不用等
   showSave();
   const code = (params.get('room') || '').toUpperCase();
@@ -310,6 +314,7 @@ async function startGame() {
   if (game || starting) return;
   starting = true; setMusic(null); musicBtn.hidden = true;
   const loading = loadingScreen();
+  try { localStorage.setItem('ml_loading', String(Date.now())); } catch { /* 無痕 */ } // 載入完才清掉：清不掉代表網頁中途被重整
   closeStage(); $('backdrop').hidden = true;
   for (const s of screens) $(s).hidden = true;
   await nextPaint(); // 先讓載入畫面出來
@@ -329,8 +334,8 @@ async function startGame() {
     if (pendingNotes) game.setNotes(pendingNotes);
     game.onState(state, null);
     renderTeam();
-  } catch (e) { console.error(e); loading.fail(); return; }
-  loading.ready().then(() => game.tutorial());
+  } catch (e) { console.error(e); try { localStorage.removeItem('ml_loading'); } catch { /* 無痕 */ } loading.fail(); return; }
+  loading.ready().then(() => { try { localStorage.removeItem('ml_loading'); } catch { /* 無痕 */ } game.tutorial(); });
 }
 function renderTeam() {
   if (!state) return;
