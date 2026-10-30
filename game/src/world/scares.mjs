@@ -10,7 +10,7 @@
 //   北翼樓梯角落的搖椅：沒有人坐，自己慢慢搖，嘎吱作響。
 // 每個演出一次（重新整理頁面才會再有）。
 import * as THREE from 'three';
-import { ghostWoman } from '../art/haunt.mjs';
+import { ghostWoman, hauntNow } from '../art/haunt.mjs';
 import { placeProp } from '../art/models.mjs';
 import { sfx, sfxPan } from '../art/sfx.mjs';
 
@@ -70,7 +70,7 @@ export function createScares(scene, colliders = []) {
         const look = (dx * fwd.x + dz * fwd.z) / d > 0.8;
         if (look && !busy) cur.seen += dt; // 對話框開著的時候不算（玩家還沒在看）
         const gone = zone !== s.zone || d < s.near || cur.seen > s.stare || (s.dark && !dark) || cur.t > 60;
-        if (gone) { g.position.y = -100; if (cur.seen > 0 || d < s.near) { const pan = (dx * -fwd.z + dz * fwd.x) / d; sfxPan('whisper', pan, { vol: 0.8 }); } cur = null; }
+        if (gone) { g.position.y = -100; if (cur.seen > 0 || d < s.near) { const pan = (dx * -fwd.z + dz * fwd.x) / d; sfxPan('whisper', pan, { vol: 0.8 }); if (!s.dark) hauntNow('flicker'); /* 她消失的時候燈閃一下 */ } cur = null; }
         return;
       }
       for (const s of SHOWS) {
