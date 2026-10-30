@@ -41,10 +41,13 @@ export function createMirrors(scene) {
   return {
     /** 對鏡子哈氣（id＝那面鏡子的 thing id）；回傳 true＝開始起霧 */
     breathe(id) { const f = fogs[id]; if (!f || f.t >= 0) return false; f.t = 0; f.fog.visible = true; sfx('whoosh'); return true; },
+    /** 第一章的最後（2026-10-30）：熄燈後鏡子自己起霧、浮出 text，不會散掉 */
+    scrawl(id, text) { const f = fogs[id]; if (!f) return false; f.fog.material.map?.dispose(); f.fog.material.map = fogTex(text); f.fog.material.needsUpdate = true; f.t = 0; f.hold = true; f.fog.visible = true; sfx('whoosh'); return true; },
     update(dt) {
       for (const f of Object.values(fogs)) {
         if (f.t < 0) continue;
         f.t += dt;
+        if (f.hold) { f.fog.material.opacity = Math.min(0.9, f.t / 1.2 * 0.9); continue; } // 慢慢浮出來
         f.fog.material.opacity = f.t < 0.8 ? f.t / 0.8 * 0.9 : f.t < 6 ? 0.9 : Math.max(0, 0.9 - (f.t - 6) / 3); // 起霧 0.8 秒、停 5 秒、慢慢散掉 3 秒
         if (f.t > 9) { f.t = -1; f.fog.visible = false; }
       }

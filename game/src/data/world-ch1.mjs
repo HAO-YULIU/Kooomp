@@ -69,6 +69,8 @@ export const NORTH_PORTRAITS = [
 export const LIGHTNING_AT = [0, 4, 2, 3, 5];
 
 // 交誼廳的古鏡（掛在壁爐對面那面牆的牆面上（牆厚 0.3），避開門）。face：鏡面朝哪個方向（+1＝朝南、-1＝朝北）
+// 第一章最後一幕：熄燈後，自己房間的古鏡浮出的字（play.mjs 的 finale）
+export const FINALE_MIRROR = { zh: '還沒結束', en: 'It is not over' };
 export const MIRRORS = [
   { house: 'eldrin', x: 19.5, z: 6.84, face: -1, text: L('別相信鐘聲', 'DON’T TRUST THE BELLS') },
   { house: 'grimoire', x: -19.5, z: 6.84, face: -1, text: L('她還在井底', 'SHE IS STILL DOWN THERE') },

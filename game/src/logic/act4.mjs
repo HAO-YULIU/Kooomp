@@ -26,7 +26,7 @@ function summary(r) {
   return [el('table', { class: 'result' }, ...rows.map(([k, v]) => el('tr', {}, el('th', { text: k }), el('td', { text: v }))))];
 }
 
-export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar, receiver, serverNow, holding, solvedByMe, playScript, dev }) {
+export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar, receiver, serverNow, holding, solvedByMe, playScript, finale = (done) => done(), dev }) {
   const warden = createWarden(world.scene, { view: WARDEN.view, fov: WARDEN.fov });
   const scenery = createAct4Scene(world.scene);
   const scarecrow = createScarecrow(world.scene); // P32
@@ -113,10 +113,12 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
         if (ending === 'climax' && !talking()) { // 守夜人墜下屋頂之後：回到宿舍，播尾聲
           ending = 'epilogue'; warden.set({ visible: false }); world.setDark(false);
           world.teleport(SPAWNS.act1?.[CHARS[myChar()]?.house] ?? A4_SPAWN); playScript('segment:epilogue');
-        } else if (ending === 'epilogue' && !talking()) { // 尾聲講完：第一章結束
-          ending = null; setMusic('menu');
+        } else if (ending === 'epilogue' && !talking()) { // 尾聲講完：最後的演出（熄燈、鏡子），然後第一章結束
+          ending = 'finale'; setMusic(null);
+          finale(() => { ending = null; setMusic('menu');
           openPanel(t('ch1_end'), (body) => body.append(...summary(S().result), el('p', { text: t('ch1_end_body') }),
             el('button', { text: t('to_menu'), onclick: () => { const q = new URLSearchParams(location.search); q.delete('room'); location.href = location.pathname + (q.size ? `?${q}` : ''); } })));
+          });
         }
         return 0;
       }

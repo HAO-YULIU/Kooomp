@@ -11,7 +11,8 @@ import { setSoundVolume } from '../world/sound.mjs';
 import { t, getLang } from './i18n.mjs';
 import { CHARS, HOUSES } from './chars.mjs';
 import { SCRIPT } from '../data/story-ch1.mjs';
-import { SPAWNS, DOORS, ROOMS, RUMORS, THINGS } from '../data/world-ch1.mjs';
+import { sfx } from '../art/sfx.mjs';
+import { SPAWNS, DOORS, ROOMS, RUMORS, THINGS, FINALE_MIRROR, MIRRORS } from '../data/world-ch1.mjs';
 const THINGS_BY_ID = Object.fromEntries(THINGS.map((x) => [x.id, x]));
 import { HEADMASTERS } from '../data/story-ch1.mjs';
 import { CREDITS } from '../data/credits.mjs';
@@ -70,8 +71,18 @@ export function startPlay({ conn, getState, myUid, toast, dev, devUser }) {
   const scares = createScares(world.scene, world.world.colliders); // 一次性的驚嚇演出（碼頭、星盤廳、創辦人的房間）
   if (dev) { window.__scares = scares; window.__conn = conn; window.__S = S; } // 本機測試用
   const mirrors = createMirrors(world.scene); // 交誼廳的古鏡（哈氣浮出反字）
+  // 第一章的最後一幕（尾聲講完）：宿舍的燈突然全滅，自己房間的古鏡起霧、從裡面寫出一行字；講完才出現「第一章完」
+  function finale(done) {
+    const m = MIRRORS.find((q) => q.house === myHouse()) ?? MIRRORS[0];
+    world.setDark(true); sfx('slam');
+    world.teleport({ x: m.x, z: m.z + m.face * 1.6, yaw: m.face > 0 ? 0 : Math.PI }); // 黑暗裡，你已經站在鏡子前面
+    setTimeout(() => {
+      mirrors.scrawl('mirror_' + m.house, L(FINALE_MIRROR)); sfx('whisper'); say(SCRIPT.finale);
+      const wait = setInterval(() => { if (!talking()) { clearInterval(wait); setTimeout(() => { world.setDark(false); done(); }, 2500); } }, 500);
+    }, 1800);
+  }
   const act3 = createAct3({ world, conn, toast, say, S, myChar: () => me()?.char, solvedByMe: (pid, r) => { onSolved(pid, myUid, r.reveal); toast(t('solved', { pid })); }, serverNow: () => Date.now() + clockOffset });
-  const act4 = createAct4({ world, conn, toast, say, talking, S, myUid, myChar: () => me()?.char, receiver, serverNow: () => Date.now() + clockOffset, holding: () => holding, dev, playScript: (k) => play(k),
+  const act4 = createAct4({ world, conn, toast, say, talking, S, myUid, myChar: () => me()?.char, receiver, serverNow: () => Date.now() + clockOffset, holding: () => holding, dev, playScript: (k) => play(k), finale,
     solvedByMe: (pid, r) => { onSolved(pid, myUid, r.reveal); toast(t('solved', { pid })); } });
   if (dev) window.__ml = { receiver, world, conn, sent: 0, notes, heard, act2, act3, act4, get state() { return S(); } };
 
