@@ -18,14 +18,16 @@ async function loadAll() {
   let list = {};
   try { const r = await fetch(base + 'list.json'); if (r.ok) list = await r.json(); } catch { return; }
   const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
-  // 一次只載幾個（手機 2 個）：同時解開幾十個模型的大貼圖，縮小之前記憶體就爆了（網頁被重整）
+  // 檔案全部同時下載（壓縮過的檔案不大），但一次只解開幾個（手機 2 個）：同時解開幾十個模型的大貼圖，縮小之前記憶體就爆了（網頁被重整）
+  const files = {}; for (const ent of Object.values(list)) { const f = typeof ent === 'string' ? ent : ent.file; files[f] ??= fetch(base + f).then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(r.status)))); }
+  for (const k in files) files[k]?.catch(() => {}); // 還沒輪到解開前就失敗：先接住，輪到時再報
   const queue = Object.entries(list), touch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
-  await Promise.all(Array.from({ length: touch ? 2 : 6 }, async () => { for (let e; (e = queue.shift());) await loadOne(loader, ...e); }));
+  await Promise.all(Array.from({ length: touch ? 2 : 6 }, async () => { for (let e; (e = queue.shift());) await loadOne(loader, files, ...e); }));
 }
-async function loadOne(loader, name, ent) {
+async function loadOne(loader, files, name, ent) {
   const { file, ry = 0, tint, glow, split } = typeof ent === 'string' ? { file: ent } : ent;
   try {
-    const g = await loader.loadAsync(base + file), root = g.scene; slimTextures(root, 'prop');
+    const g = await loader.parseAsync(await files[file], base), root = g.scene; slimTextures(root, 'prop');
     root.rotation.y = ry; root.updateMatrixWorld(true);
     root.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = true; for (const m of [o.material].flat()) { if (m.map) m.map.anisotropy = 4; if (tint) m.color?.set(tint); if (m.transmission > 0) { m.transmission = 0; m.transparent = true; m.opacity = Math.min(m.opacity, 0.45); m.depthWrite = false; } // 真實透光的玻璃（藥水瓶）每一格要把整個畫面多畫一遍，手機會卡：改成一般的半透明
     if (glow && m.map && m.emissive) { m.emissive.set(glow); m.emissiveMap = m.map; m.emissiveIntensity = 0.9; } } } }); // tint：整個染色（例如白色的石像鬼染成石頭灰）；glow：亮的地方自己發光（提燈的玻璃）
