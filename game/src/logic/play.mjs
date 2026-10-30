@@ -67,7 +67,7 @@ export function startPlay({ conn, getState, myUid, toast, dev, devUser }) {
   });
   const act2 = createAct2({ world, conn, toast, play, S, house: myHouse(), solo: S().mode === 'solo', lang: getLang() });
   $('btn-familiar').hidden = S().mode !== 'solo';
-  const scares = createScares(world.scene); // 一次性的驚嚇演出（碼頭、星盤廳、創辦人的房間）
+  const scares = createScares(world.scene, world.world.colliders); // 一次性的驚嚇演出（碼頭、星盤廳、創辦人的房間）
   if (dev) { window.__scares = scares; window.__conn = conn; window.__S = S; } // 本機測試用
   const mirrors = createMirrors(world.scene); // 交誼廳的古鏡（哈氣浮出反字）
   const act3 = createAct3({ world, conn, toast, say, S, myChar: () => me()?.char, solvedByMe: (pid, r) => { onSolved(pid, myUid, r.reveal); toast(t('solved', { pid })); }, serverNow: () => Date.now() + clockOffset });
