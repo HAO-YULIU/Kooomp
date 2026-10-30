@@ -9,7 +9,8 @@ import { t } from './i18n.mjs';
 
 export function createAct3({ world, conn, toast, say, S, myChar, solvedByMe, serverNow }) {
   const lib = createLibrary(world.scene, world.world.colliders);
-  const dolls = createWeeping(world.scene, (dir) => toast(t('sob_cap', { dir: t(`sob_dir.${dir}`) }))); // P31：哭泣的娃娃
+  const captions = () => { try { return localStorage.getItem('ml_captions') !== '0'; } catch { return true; } }; // 設定裡的「聲音字幕」
+  const dolls = createWeeping(world.scene, (dir) => { if (captions()) toast(t('sob_cap', { dir: t(`sob_dir.${dir}`) })); }); // P31：哭泣的娃娃
   if (new URLSearchParams(location.search).has('dev')) window.__dolls = dolls;
   let wasDark = false, exitSent = false, scared = false, inDark = false;
 
