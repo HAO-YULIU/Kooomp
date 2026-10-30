@@ -7,7 +7,7 @@ import { DOLLS } from '../data/library-ch1.mjs';
 
 const LIMIT = 45; // 黑暗最多幾秒（沒找到就點回燈）
 
-export function createWeeping(scene) {
+export function createWeeping(scene, caption = () => {}) {
   const group = new THREE.Group(); group.name = 'weeping-dolls'; scene.add(group);
   const dolls = DOLLS.map(([x, z, ry]) => placeProp(group, 'spider_doll', x, 0, z, ry, [0.5, 0.55, 0.45])?.obj).filter(Boolean);
   const st = placeProp(group, 'sidetable', 121.4, 0, -39.6, Math.PI / 2, [0.6, 0.75, 0.6]); // 西牆邊的小桌，上面一盞油燈和紙條
@@ -36,6 +36,7 @@ export function createWeeping(scene) {
       cam.getWorldDirection(fwd); fwd.y = 0; fwd.normalize();
       const pan = (dx / d) * -fwd.z + (dz / d) * fwd.x; // 右邊＝正
       const ahead = (dx / d) * fwd.x + (dz / d) * fwd.z;
+      caption(d < 2.5 ? 'near' : ahead < -0.3 ? 'back' : pan > 0.45 ? 'right' : pan < -0.45 ? 'left' : 'front'); // 字幕：手機靜音、聽不到的人也能找（只說方向）
       sfxPan('sob', pan, { vol: Math.min(1.4, 2.2 / (1 + d * 0.45)) * (ahead < 0 ? 0.65 : 1) }); // 在背後：悶一點
     },
   };

@@ -3,6 +3,7 @@
 let ctx = null, master = null, noiseBuf = null, volume = (() => { try { return +(localStorage.getItem('ml_volume') ?? 1); } catch { return 1; } })();
 function audio() {
   if (ctx) return ctx;
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* 舊的瀏覽器沒有 */ } // iPhone 開靜音模式時網頁預設沒有聲音：當成「播放媒體」才會出聲
   try {
     ctx = new (window.AudioContext || window.webkitAudioContext)();
     master = ctx.createGain(); master.gain.value = 0.55 * volume; master.connect(ctx.destination);

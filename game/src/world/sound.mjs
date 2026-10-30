@@ -2,7 +2,8 @@
 // 瀏覽器要等玩家點過畫面才能出聲，所以第一次用到時才建立 AudioContext。
 let ctx = null, master = null;
 const ac = () => {
-  if (!ctx) { ctx = new (window.AudioContext || window.webkitAudioContext)(); master = ctx.createGain(); master.gain.value = 0.8 * (() => { try { return +(localStorage.getItem('ml_volume') ?? 1); } catch { return 1; } })(); master.connect(ctx.destination); }
+  if (!ctx) { try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* 舊的瀏覽器沒有 */ } // iPhone 開靜音模式時網頁預設沒有聲音：當成「播放媒體」才會出聲
+    ctx = new (window.AudioContext || window.webkitAudioContext)(); master = ctx.createGain(); master.gain.value = 0.8 * (() => { try { return +(localStorage.getItem('ml_volume') ?? 1); } catch { return 1; } })(); master.connect(ctx.destination); }
   if (ctx.state === 'suspended') ctx.resume();
   return ctx;
 };
