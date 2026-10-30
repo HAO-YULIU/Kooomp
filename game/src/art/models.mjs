@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from '../../../prototype/vendor/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from '../../../prototype/vendor/addons/libs/meshopt_decoder.module.js';
+import { slimTextures } from './texcap.mjs';
 import { clone as cloneSkinned } from '../../../prototype/vendor/addons/utils/SkeletonUtils.js';
 
 const T = {}; // 名稱 → 載好的模型（範本）
@@ -17,19 +18,22 @@ async function loadAll() {
   let list = {};
   try { const r = await fetch(base + 'list.json'); if (r.ok) list = await r.json(); } catch { return; }
   const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
-  await Promise.all(Object.entries(list).map(async ([name, ent]) => {
-    const { file, ry = 0, tint, glow, split } = typeof ent === 'string' ? { file: ent } : ent;
-    try {
-      const g = await loader.loadAsync(base + file), root = g.scene;
-      root.rotation.y = ry; root.updateMatrixWorld(true);
-      root.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = true; for (const m of [o.material].flat()) { if (m.map) m.map.anisotropy = 4; if (tint) m.color?.set(tint); if (m.transmission > 0) { m.transmission = 0; m.transparent = true; m.opacity = Math.min(m.opacity, 0.45); m.depthWrite = false; } // 真實透光的玻璃（藥水瓶）每一格要把整個畫面多畫一遍，手機會卡：改成一般的半透明
-      if (glow && m.map && m.emissive) { m.emissive.set(glow); m.emissiveMap = m.map; m.emissiveIntensity = 0.9; } } } }); // tint：整個染色（例如白色的石像鬼染成石頭灰）；glow：亮的地方自己發光（提燈的玻璃）
-      if (!split) { T[name] = template(root); return; }
-      // split：一個檔案裡有好幾件（畫作組的 23 幅畫）：每一件各自一個名字 name#0、name#1…（variant 會一起挑）
-      const parts = root.children.length === 1 && !root.children[0].isMesh ? root.children[0].children : root.children;
-      [...parts].forEach((part, i) => { const one = new THREE.Group(); one.add(part.clone()); one.children[0].applyMatrix4(part.parent.matrixWorld); T[`${typeof split === 'string' ? split : name}#${i}`] = template(one); }); // split 是字串：用那個名字（畫作組 → painting#0…，跟原本的畫一起輪流）
-    } catch (e) { console.warn('模型載入失敗', name, e); }
-  }));
+  // 一次只載幾個（手機 2 個）：同時解開幾十個模型的大貼圖，縮小之前記憶體就爆了（網頁被重整）
+  const queue = Object.entries(list), touch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+  await Promise.all(Array.from({ length: touch ? 2 : 6 }, async () => { for (let e; (e = queue.shift());) await loadOne(loader, ...e); }));
+}
+async function loadOne(loader, name, ent) {
+  const { file, ry = 0, tint, glow, split } = typeof ent === 'string' ? { file: ent } : ent;
+  try {
+    const g = await loader.loadAsync(base + file), root = g.scene; slimTextures(root, 'prop');
+    root.rotation.y = ry; root.updateMatrixWorld(true);
+    root.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = true; for (const m of [o.material].flat()) { if (m.map) m.map.anisotropy = 4; if (tint) m.color?.set(tint); if (m.transmission > 0) { m.transmission = 0; m.transparent = true; m.opacity = Math.min(m.opacity, 0.45); m.depthWrite = false; } // 真實透光的玻璃（藥水瓶）每一格要把整個畫面多畫一遍，手機會卡：改成一般的半透明
+    if (glow && m.map && m.emissive) { m.emissive.set(glow); m.emissiveMap = m.map; m.emissiveIntensity = 0.9; } } } }); // tint：整個染色（例如白色的石像鬼染成石頭灰）；glow：亮的地方自己發光（提燈的玻璃）
+    if (!split) { T[name] = template(root); return; }
+    // split：一個檔案裡有好幾件（畫作組的 23 幅畫）：每一件各自一個名字 name#0、name#1…（variant 會一起挑）
+    const parts = root.children.length === 1 && !root.children[0].isMesh ? root.children[0].children : root.children;
+    [...parts].forEach((part, i) => { const one = new THREE.Group(); one.add(part.clone()); one.children[0].applyMatrix4(part.parent.matrixWorld); T[`${typeof split === 'string' ? split : name}#${i}`] = template(one); }); // split 是字串：用那個名字（畫作組 → painting#0…，跟原本的畫一起輪流）
+  } catch (e) { console.warn('模型載入失敗', name, e); }
 }
 // 量好大小、底部中間對齊原點，記下最高點（蠟燭的燭芯，點火用）、有沒有骨架
 function template(root) {

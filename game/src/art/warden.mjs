@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from '../../../prototype/vendor/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from '../../../prototype/vendor/addons/libs/meshopt_decoder.module.js';
 import { decorators } from '../world/art-hooks.mjs';
+import { slimTextures } from './texcap.mjs';
 import { wardenVoice } from './sfx.mjs';
 
 let base = 'models/chars/';
@@ -17,7 +18,7 @@ let source = null;
 const MODE_ANIM = { idle: 'idle', stun: 'idle', rest: 'walk', patrol: 'walk', search: 'walk', chase: 'run', grab: 'attack' };
 
 export async function loadWardenModel() {
-  source ||= new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(base + 'warden.glb');
+  source ||= new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(base + 'warden.glb').then((g) => { slimTextures(g.scene, 'char'); return g; });
   const gltf = await source;
   const model = gltf.scene.clone(true);
   // 複製後骨架要重新接上

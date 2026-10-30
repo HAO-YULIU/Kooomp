@@ -9,6 +9,7 @@
 //   c.talk(秒數)、c.setMood('calm' | 'smile' | 'scared')
 //   c.setMoving(速度)                           // 走路：腿前後擺、膝蓋彎、手臂擺（沒有骨架的模型只上下晃）
 import * as THREE from 'three';
+import { slimTextures } from './texcap.mjs';
 import { GLTFLoader } from '../../../prototype/vendor/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from '../../../prototype/vendor/addons/libs/meshopt_decoder.module.js';
 
@@ -43,7 +44,7 @@ function restoreMaterial(m) {
 }
 
 async function loadSource(key) {
-  if (!cache.has(key)) cache.set(key, loader.loadAsync(base + key + '.glb'));
+  if (!cache.has(key)) cache.set(key, loader.loadAsync(base + key + '.glb').then((g) => { slimTextures(g.scene, 'char'); return g; }));
   return cache.get(key);
 }
 
