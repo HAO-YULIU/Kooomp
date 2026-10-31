@@ -68,7 +68,7 @@ export const CHAPTER1 = {
              ['When the lights go out, see where every portrait is looking.', 'The second headmaster’s plaque mentions how long the founder served.', '1659 − 33 = 1626.']),
   },
 
-  // ---- 2026-10-26 新增的謎題（帳號二設計，等製作人確認）----
+  // ---- 2026-10-26 新增的謎題（帳號二設計，2026-10-31 製作人確認保留）----
   P30: {
     seg: 'act2', diff: 7, kind: 'text', ans: 'LIANA', // 閃電時她站在哪幅畫旁邊，依序取名字的第一個字母
     hints: H(['等閃電。每次亮起來的時候，看她站在哪一幅畫旁邊。', '每幅畫下面的銘牌都有名字。只看英文名字的第一個字母。', '她依序站在 Lorna、Ines、Ada、Nora、Agnes 旁邊。'],

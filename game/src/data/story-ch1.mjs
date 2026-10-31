@@ -174,7 +174,7 @@ export const SCRIPT = {
     [null, '然後他往後一倒，從屋頂墜了下去。只有你聽清楚了那句話。', 'Then he tips backward and falls from the roof. Only you heard the words clearly.'],
   ],
   'P29:others': [[null, '他說了一句什麼，被風吹散了。然後他往後一倒，從屋頂墜了下去。', 'He says something — the wind tears it away. Then he tips backward and falls from the roof.']],
-  // 尾聲講完、熄燈後（2026-10-30 帳號二，伏筆，等製作人確認）
+  // 尾聲講完、熄燈後（2026-10-30 帳號二，伏筆；2026-10-31 製作人確認保留）
   'finale': [[null, '燈，全滅了。黑暗裡，房間那面古鏡慢慢起了霧——有人從鏡子裡面，寫了一行字。', 'The lights die, all at once. In the dark, the old mirror slowly fogs over — someone on the inside has written a line.']],
   'segment:epilogue': [
     [null, '四個人在第十三響的餘音結束的那一刻衝回宿舍。窗外的鐘塔，恢復了安靜。', 'The four of you burst into the dormitory at the very moment the thirteenth toll fades. Outside, the clock tower falls silent.'],
