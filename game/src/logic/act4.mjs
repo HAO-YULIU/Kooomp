@@ -45,7 +45,7 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
   const hud = el('div', { id: 'a4clock', hidden: true }); $('hud').append(hud);
   const veil = el('div', { id: 'a4veil' }); document.body.append(veil);
   // 畫面邊緣的紅／黑：只在數值真的變了才改（每一格都重畫整個畫面的漸層，守夜人靠近時會卡）
-  let veilKey = '';
+  let veilKey = '', dangerAt = 0;
   const setVeil = (bg, op) => { const key = bg + op; if (key === veilKey) return; veilKey = key; if (bg) veil.style.background = bg; veil.style.opacity = op; };
   const RED = 'radial-gradient(circle, transparent 55%, rgba(120,0,0,0.55) 100%)';
   const fight = el('div', { id: 'a4grab', hidden: true }, el('b', { text: t('a4_grab') }), el('div', { class: 'bar' }, el('i')));
@@ -53,7 +53,8 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
     el('button', { text: t('a4_self'), onclick: () => openRescue(conn, 'S', myUid, toast) }));
   const lost = el('div', { id: 'a4lost', hidden: true }, el('h2', { id: 'a4lost-title' }), el('p', { id: 'a4lost-text' }),
     el('button', { text: t('a4_retry'), onclick: () => conn.request({ t: 'retry' }) }));
-  document.body.append(fight, bound, lost);
+  const warn = el('div', { id: 'a4warn', hidden: true, text: t('a4_danger') }); // 視窗上面的警告（提示框在視窗底下會被蓋住）
+  document.body.append(fight, bound, lost, warn);
 
   // ---- 被抓到：1.5 秒內連點（空白鍵／畫面）掙脫 ----
   function struggle(until, free = 1) {
@@ -113,7 +114,7 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
     // 每一幀：回傳要放進位置訊息的躲藏狀態
     frame(dt, mine, segment) {
       if (segment !== 'act4') {
-        if (active) { active = false; hud.hidden = true; setVeil(null, 0); world.tired = false; setMusic(null); setLoop('hide_breath', 0); }
+        if (active) { active = false; hud.hidden = true; setVeil(null, 0); document.body.classList.remove('a4danger'); warn.hidden = true; world.tired = false; setMusic(null); setLoop('hide_breath', 0); }
         if (ending === 'climax' && !talking()) { // 守夜人墜下屋頂之後：回到宿舍，播尾聲
           ending = 'epilogue'; warden.set({ visible: false }); world.setDark(false);
           world.teleport(SPAWNS.act1?.[CHARS[myChar()]?.house] ?? A4_SPAWN); playScript('segment:epilogue');
@@ -179,6 +180,9 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
       // 靠近的感覺：畫面邊緣變紅、童謠
       const d = shown.zone === mine.z ? Math.hypot(shown.x - mine.p[0], shown.z - mine.p[1]) : 99;
       if (!me) setVeil(RED, (Math.round(Math.max(0, 1 - d / 14) * 10) / 10).toFixed(1));
+      // 開著謎題視窗時守夜人來了：視窗邊框閃紅光＋提醒（2026-10-31：手機玩家專心解題時看不到他靠近）
+      const danger = !me && panelOpen() && (d < 8 || (shown.mode === 'chase' && d < 18));
+      if (danger !== document.body.classList.contains('a4danger')) { document.body.classList.toggle('a4danger', danger); warn.hidden = !danger; if (danger && performance.now() > dangerAt) { dangerAt = performance.now() + 8000; navigator.vibrate?.(120); } }
       // 配樂：守夜人越近越緊張；在追人時至少一半；被綁在蝕巢時只剩一點點
       if (!ending) setMusic('chase'); const near = Math.max(0, 1 - d / 22);
       setTension(me ? 0.12 : shown.mode === 'rest' ? 0.15 * near : shown.mode === 'chase' || shown.mode === 'grab' ? 0.5 + 0.5 * near : shown.mode === 'search' ? 0.25 + 0.5 * near : 0.6 * near);

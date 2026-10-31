@@ -497,3 +497,8 @@ button, a, input, select, canvas, .choice { touch-action: manipulation; }
 #caption { position: fixed; left: 50%; top: 13%; transform: translateX(-50%); max-width: 80vw; padding: 5px 22px; font-family: var(--script); font-size: 17px; font-style: italic; color: #ece4d6; background: linear-gradient(90deg, transparent, rgba(8,6,6,.78) 18%, rgba(8,6,6,.78) 82%, transparent); text-shadow: 0 0 4px #000; opacity: 0; transition: opacity .4s; pointer-events: none; z-index: 30; text-align: center; }
 #caption.on { opacity: 1; }
 #a4grab.none .bar { opacity: .2; }
+/* 第四幕：開著謎題視窗時守夜人靠近（act4.mjs） */
+body.a4danger #panel { border-color: #c43a2f; animation: a4danger 0.9s ease-in-out infinite; }
+@keyframes a4danger { 50% { box-shadow: 0 0 0 2px #c43a2f, 0 0 28px rgba(196,58,47,.85); } }
+#a4warn { position: fixed; left: 50%; top: 3%; transform: translateX(-50%); z-index: 40; padding: 6px 18px; border-radius: 8px; background: rgba(60,0,0,.9); border: 1px solid #c43a2f; color: #fff; font-size: 16px; pointer-events: none; white-space: nowrap; }
+body.modal #caption { top: auto; bottom: 3%; } /* 開著視窗時字幕移到下面，不要蓋住標題 */
