@@ -504,3 +504,4 @@ body.a4danger #panel { border-color: #c43a2f; animation: a4danger 0.9s ease-in-o
 body.modal #caption { top: auto; bottom: 3%; } /* 開著視窗時字幕移到下面，不要蓋住標題 */
 #a4state { position: fixed; top: 52px; left: 50%; transform: translateX(-50%); padding: 2px 12px; font-size: 13px; border-radius: 12px; background: rgba(10,8,8,.6); color: #d8d0c4; white-space: nowrap; pointer-events: none; }
 #a4state.rest { color: #9fe0a8; } #a4state.chase { color: #ff6a5a; font-weight: bold; } #a4state.stun { color: #ffd27a; }
+#a4state.leave { color: #9fe0a8; }

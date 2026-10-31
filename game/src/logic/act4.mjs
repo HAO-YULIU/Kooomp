@@ -43,7 +43,7 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
 
   // ---- 畫面：倒數、心跳（守夜人靠近時畫面邊緣變紅）、掙脫、被綁住、判定輸 ----
   const hud = el('div', { id: 'a4clock', hidden: true }); $('hud').append(hud);
-  const wstate = el('div', { id: 'a4state', hidden: true }); $('hud').append(wstate); let wsKey = ''; // 守夜人現在在做什麼（2026-10-31：玩家要知道什麼時候可以安心解題）
+  const wstate = el('div', { id: 'a4state', hidden: true }); $('hud').append(wstate); let wsKey = '', begunAt = 0; // 守夜人現在在做什麼（2026-10-31：玩家要知道什麼時候可以安心解題）
   const veil = el('div', { id: 'a4veil' }); document.body.append(veil);
   // 畫面邊緣的紅／黑：只在數值真的變了才改（每一格都重畫整個畫面的漸層，守夜人靠近時會卡）
   let veilKey = '', dangerAt = 0;
@@ -96,7 +96,7 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
   }
 
   function begin(retry) {
-    active = true; introDone = false; ai = newAI(); roofAt = null;
+    active = true; introDone = false; ai = newAI(); roofAt = null; begunAt = performance.now();
     if (boundOpen) { boundOpen = false; world.controls.setEnabled(true); } // 重來：被綁住的人也回到開頭
     if (retry) { if (S().nest) S().nest = {}; if (S().act4) S().act4.lost = null; } // 新的房間狀態馬上會到，先清掉，免得又被拉回蝕巢、又顯示判定輸
     shown = { ...shown, x: WARDEN_START.x, z: WARDEN_START.z, mode: 'idle', zone: WARDEN_START.zone }; target = { ...shown };
@@ -135,10 +135,10 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
       // 倒數
       const left = (st.act4?.deadline ?? now) - now;
       hud.hidden = false; hud.textContent = `${t('a4_clock')} ${fmt(left)}`;
-      { const m = shown.mode, k = m === 'rest' || m === 'idle' ? 'rest' : m === 'chase' || m === 'grab' ? 'chase' : m === 'stun' ? 'stun' : 'hunt'; if (k !== wsKey) { wsKey = k; wstate.textContent = t(`a4_state.${k}`); wstate.className = k; } wstate.hidden = false; } hud.classList.toggle('urgent', left < 180000);
+      { const m = shown.mode, k = m === 'idle' || (m === 'rest' && performance.now() - begunAt < (WARDEN.calm ?? 0) * 1000) ? 'leave' : m === 'rest' || m === 'idle' ? 'rest' : m === 'chase' || m === 'grab' ? 'chase' : m === 'stun' ? 'stun' : 'hunt'; if (k !== wsKey) { wsKey = k; wstate.textContent = t(`a4_state.${k}`); wstate.className = k; } wstate.hidden = false; } hud.classList.toggle('urgent', left < 180000);
       // 劇情講完 3 秒後守夜人開始行動
       if (!introDone && !talking()) { introDone = true; startAt = performance.now() + 3000; }
-      if (introDone && startAt && performance.now() > startAt) { ai.start(); startAt = 0; }
+      if (introDone && startAt && performance.now() > startAt) { ai.start(); startAt = 0; begunAt = performance.now(); } // begunAt：開場走開的那段從這裡算
       // 被綁在蝕巢
       const me = captured();
       if (me) {
