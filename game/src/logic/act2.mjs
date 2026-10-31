@@ -75,7 +75,7 @@ export function createAct2({ world, conn, toast, play, S, house, solo, lang }) {
       if (anomaly?.id === 'armor_breath' && !breathed && (house === 'belmont' || (solo && familiarView)) && gallery.nearArmor(pos)) {
         breathed = true; playFile('assets/audio/ch1/breath_monster.mp3', { volume: 0.5 }); caption('cap.armor_breath');
       }
-      northHall.update(dt, world.camera);
+      northHall.update(dt, world.camera, { zone: mine.z, solved: S().solved.includes('P30') });
       if (darkUntil && performance.now() > darkUntil) { darkUntil = 0; world.setDark(false); gallery.setDark(false); }
       if (gallery.update(dt, pos, mine.z === 'corridor', mine.y) === 'rush') {
         if (hasSound('grab_scream')) sfx('grab_scream'); else scream(); sfx('stinger'); const f = document.getElementById('flash'); f.classList.add('on'); setTimeout(() => f.classList.remove('on'), 160);
