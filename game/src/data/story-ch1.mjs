@@ -56,7 +56,7 @@ export const SCRIPT = {
   'solved:P07': [[null, '使魔飛回你肩上。其他塔的同伴已經出發了。', 'Your familiar returns to your shoulder. The others have already set out.']],
   'enter:starhall': [
     [null, '星盤廳。巨大的星盤在地上緩緩轉動，四個學院的徽章刻在四個圓環上。', 'The Astrolabe Hall. A vast astrolabe turns slowly in the floor, the four house crests carved into its four rings.'],
-    [null, '（遠處有提燈的光——是赫爾嘉夫人。被燈照到會被抓回宿舍。躲在柱子後面或窗簾後，按住 Q／「屏息」可以不被聽到。）', '(A lamp glows in the distance — Madam Helga. If her light finds you, you’ll be sent back to bed. Hide behind the pillars or curtains; hold Q / “Hold breath” so she can’t hear you.)'],
+    [null, '（遠處有提燈的光——是赫爾嘉夫人。被燈照到會被抓回宿舍；她面前地上那片光，就是她看得到的地方。躲在柱子後面，燈就照不到你。）', '(A lamp glows in the distance — Madam Helga. If her light finds you, you’ll be sent back to bed; the pool of light on the floor in front of her is what she can see. Stay behind the pillars and her lamp can’t reach you.)'],
   ],
   'caught': [['helga', '這麼晚了，還在外面晃？回床上去！', 'Out of bed at this hour? Back to your dormitory!']],
   'solved:P08': [
@@ -154,7 +154,7 @@ export const SCRIPT = {
     [null, '下一秒，他的身體從背後裂開。肋骨像門一樣往兩側撐開，黑色的結晶從裂口刺穿衣服，血順著結晶往下滴。', 'The next instant his back splits open. His ribs swing apart like doors; black crystal spears through his coat, and blood runs down the spikes.'],
     [null, '臉皮整片往下剝落，掛在下巴上。他的眼睛，變成了一片漆黑。', 'The skin of his face peels away in one sheet and hangs from his chin. His eyes are nothing but black.'],
     ['vaughn', '跑！往東邊的通道——別被那道綠光照到！', 'Run! The east passage — don’t let the green light touch you!'],
-    [null, '（Shift／搖桿推到底跑步，跑太久會喘。躲進櫃子、書架縫，按住 Q／「屏息」保持安靜。被抓住時連點掙脫。）', '(Shift / push the stick fully to run — you’ll tire. Hide in cabinets and gaps; hold Q / “Hold breath” to stay silent. If caught, mash to break free.)'],
+    [null, '（Shift／搖桿推到底跑步，跑太久會喘。躲進櫃子、書架縫，按住 Q／「屏息」保持安靜。被抓住時連點掙脫——但只能掙脫兩次。他會不時回蝕巢休息，那就是解題的時候。）', '(Shift / push the stick fully to run — you’ll tire. Hide in cabinets and gaps; hold Q / “Hold breath” to stay silent. If caught, mash to break free — but only twice. Now and then he goes back to his nest to rest: that is your time to solve.)'],
   ],
   'act4:retry': [[null, '……你們又站在入口大廳裡。鐘聲重新開始倒數，綠燈從樓梯上下來。', '…You stand in the entrance hall again. The tolling begins its count anew, and the green lamp descends the stairs.']],
   'enter:a4_gears': [
