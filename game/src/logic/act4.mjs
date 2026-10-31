@@ -43,6 +43,7 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
 
   // ---- 畫面：倒數、心跳（守夜人靠近時畫面邊緣變紅）、掙脫、被綁住、判定輸 ----
   const hud = el('div', { id: 'a4clock', hidden: true }); $('hud').append(hud);
+  const wstate = el('div', { id: 'a4state', hidden: true }); $('hud').append(wstate); let wsKey = ''; // 守夜人現在在做什麼（2026-10-31：玩家要知道什麼時候可以安心解題）
   const veil = el('div', { id: 'a4veil' }); document.body.append(veil);
   // 畫面邊緣的紅／黑：只在數值真的變了才改（每一格都重畫整個畫面的漸層，守夜人靠近時會卡）
   let veilKey = '', dangerAt = 0;
@@ -114,7 +115,7 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
     // 每一幀：回傳要放進位置訊息的躲藏狀態
     frame(dt, mine, segment) {
       if (segment !== 'act4') {
-        if (active) { active = false; hud.hidden = true; setVeil(null, 0); document.body.classList.remove('a4danger'); warn.hidden = true; world.tired = false; setMusic(null); setLoop('hide_breath', 0); }
+        if (active) { active = false; hud.hidden = true; wstate.hidden = true; setVeil(null, 0); document.body.classList.remove('a4danger'); warn.hidden = true; world.tired = false; setMusic(null); setLoop('hide_breath', 0); }
         if (ending === 'climax' && !talking()) { // 守夜人墜下屋頂之後：回到宿舍，播尾聲
           ending = 'epilogue'; warden.set({ visible: false }); world.setDark(false);
           world.teleport(SPAWNS.act1?.[CHARS[myChar()]?.house] ?? A4_SPAWN); playScript('segment:epilogue');
@@ -133,7 +134,8 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
       else if (!st.act4?.lost && !lost.hidden) lost.hidden = true;
       // 倒數
       const left = (st.act4?.deadline ?? now) - now;
-      hud.hidden = false; hud.textContent = `${t('a4_clock')} ${fmt(left)}`; hud.classList.toggle('urgent', left < 180000);
+      hud.hidden = false; hud.textContent = `${t('a4_clock')} ${fmt(left)}`;
+      { const m = shown.mode, k = m === 'rest' || m === 'idle' ? 'rest' : m === 'chase' || m === 'grab' ? 'chase' : m === 'stun' ? 'stun' : 'hunt'; if (k !== wsKey) { wsKey = k; wstate.textContent = t(`a4_state.${k}`); wstate.className = k; } wstate.hidden = false; } hud.classList.toggle('urgent', left < 180000);
       // 劇情講完 3 秒後守夜人開始行動
       if (!introDone && !talking()) { introDone = true; startAt = performance.now() + 3000; }
       if (introDone && startAt && performance.now() > startAt) { ai.start(); startAt = 0; }
@@ -243,7 +245,7 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
     },
     // 尾聲：先在屋頂演完高潮（月光下的守夜人），再回宿舍。伺服器的段落可能比 P29 的回覆先到，所以在這裡排順序
     end() {
-      active = false; ending = 'climax'; hud.hidden = true; setMusic(null); setLoop('hide_breath', 0); setVeil(null, 0); ai.stun(9999, performance.now());
+      active = false; ending = 'climax'; hud.hidden = true; wstate.hidden = true; setMusic(null); setLoop('hide_breath', 0); setVeil(null, 0); ai.stun(9999, performance.now());
       if (world.zone() !== 'a4_roof') world.teleport({ x: 155, z: -42, yaw: 0 });
       warden.set({ x: 155, z: -52, yaw: Math.PI, visible: true, mode: 'stun' }); // 屋頂盡頭，月光下
       playScript('solved:P29'); playScript(myChar() === 'cyril' ? 'P29:cyril' : 'P29:others');
