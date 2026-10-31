@@ -99,7 +99,7 @@ export function createWorld(canvas, lang = 'zh') {
   // 省電模式（設定裡開）：每秒最多 30 格、解析度最多 1 倍（手機發燙、比較舊的手機用）
   let lowPower = (() => { try { return localStorage.getItem('ml_lowpower') === '1'; } catch { return false; } })();
   let maxRatio = lowPower ? Math.min(1, fullRatio) : fullRatio;
-  let ratio = maxRatio, slowT = 0, fastT = 0;
+  let ratio = maxRatio, slowT = 0, fastT = 0, holdUp = 0; // holdUp：剛降過解析度，這幾秒內不升回去
   renderer.setPixelRatio(ratio);
   renderer.shadowMap.enabled = !isTouch;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -338,11 +338,13 @@ export function createWorld(canvas, lang = 'zh') {
         if (left <= 0) { scene.remove(m.mesh); marks.splice(i, 1); }
       }
       renderer.render(scene, camera);
-      // 自動解析度：連續 1.5 秒每格超過 1/40 秒就降一級；連續 6 秒都在 1/55 秒內就升一級
+      // 自動解析度：連續 1.5 秒每格超過 1/40 秒就降一級；連續 8 秒都在 1/55 秒內就升一級
       const slow = lowPower ? 1 / 24 : 1 / 40, fast = lowPower ? 1 / 32 : 1 / 55; // 省電模式本來就是每秒 30 格，不要因此一直降解析度
       if (dt > slow) { slowT += dt; fastT = 0; } else if (dt < fast) { fastT += dt; slowT = 0; } else { slowT = Math.max(0, slowT - dt); fastT = 0; }
-      if (slowT > 1.5 && ratio > minRatio) { ratio = Math.max(minRatio, ratio - 0.15); renderer.setPixelRatio(ratio); resize(); slowT = 0; }
-      else if (fastT > 6 && ratio < maxRatio) { ratio = Math.min(maxRatio, ratio + 0.1); renderer.setPixelRatio(ratio); resize(); fastT = 0; }
+      // 每次改解析度畫面都會頓一下：降過之後 40 秒內不升回去（2026-10-31：守夜人一出現就降、走開又升，來回切換，看起來一頓一頓的）
+      holdUp = Math.max(0, holdUp - dt);
+      if (slowT > 1.5 && ratio > minRatio) { ratio = Math.max(minRatio, ratio - 0.15); renderer.setPixelRatio(ratio); resize(); slowT = 0; holdUp = 40; }
+      else if (fastT > 8 && ratio < maxRatio && holdUp <= 0) { ratio = Math.min(maxRatio, ratio + 0.1); renderer.setPixelRatio(ratio); resize(); fastT = 0; }
     },
   };
 }

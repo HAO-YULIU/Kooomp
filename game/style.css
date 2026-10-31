@@ -198,7 +198,7 @@ body.modal #hud #dialog { visibility: visible; }
   background: rgba(10, 6, 8, 0.75); color: #e9d6b0; font-size: 18px; letter-spacing: 0.08em; z-index: 6; pointer-events: none; }
 #a4clock.urgent { color: #ff6a5a; border-color: var(--danger); animation: a4pulse 1s infinite; }
 @keyframes a4pulse { 50% { box-shadow: 0 0 18px rgba(196, 58, 47, 0.8); } }
-#a4veil { position: fixed; inset: 0; pointer-events: none; opacity: 0; transition: opacity .4s; z-index: 3; }
+#a4veil { position: fixed; inset: 0; pointer-events: none; opacity: 0; transition: opacity .4s; z-index: 3; will-change: opacity; } /* 自己一層：變透明度不用重畫整個畫面（手機） */
 #a4grab { position: fixed; inset: 0; display: grid; place-content: center; gap: 16px; background: rgba(60, 0, 0, 0.55); z-index: 45; text-align: center; padding: 16px; touch-action: manipulation; }
 #a4grab b { font-size: 24px; color: #fff; text-shadow: 0 0 12px #f00; }
 #a4grab .bar { width: min(360px, 80vw); height: 14px; border: 1px solid #fff; border-radius: 7px; overflow: hidden; margin: 0 auto; }

@@ -225,9 +225,9 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
         case 'npc': if (!isSim() && msg.w) target = { x: msg.w[0], z: msg.w[1], yaw: msg.w[2], mode: msg.m, zone: msg.z }; break;
         case 'grab': if (msg.uid === myUid) struggle(msg.until, msg.free ?? 1); else toast(t('a4_grab_other', { name: S().members.find((m) => m.uid === msg.uid)?.name ?? '?' })); break;
         case 'escaped': if (isSim()) ai.resolve(true, now, []); break;
-        case 'revived': // 單人：使魔把你拉回來（越來越虛弱）
+        case 'revived': // 單人：使魔把你拉回來（越來越虛弱）。就在原地醒來，不送回起點（2026-10-31 製作人）；守夜人退到遠處回蝕巢休息
           if (isSim()) ai.resolve(false, now, players(world.me(), 0));
-          if (msg.uid === myUid) { world.teleport(CHECKPOINTS[world.zone()] ?? A4_SPAWN); say([[null, t('a4_revived', { n: msg.left }), t('a4_revived', { n: msg.left })]]); }
+          if (msg.uid === myUid) { say([[null, t('a4_revived', { n: msg.left }), t('a4_revived', { n: msg.left })]]); }
           break;
         case 'captured': if (isSim()) ai.resolve(false, now, players(world.me(), 0)); if (msg.uid !== myUid) toast(t('a4_captured_other', { name: S().members.find((m) => m.uid === msg.uid)?.name ?? '?' })); break;
         case 'freed': if (msg.uid !== myUid) toast(t('a4_freed_other', { name: S().members.find((m) => m.uid === msg.uid)?.name ?? '?' })); break;
