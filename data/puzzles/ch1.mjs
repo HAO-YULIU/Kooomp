@@ -77,8 +77,8 @@ export const CHAPTER1 = {
 
   P31: {
     seg: 'act3b', diff: 8, kind: 'doll', count: 5, // 閱覽室的五個娃娃：熄燈後哪一個在哭，由房間的亂數決定；抱錯了就換另一個哭
-    hints: H(['先吹熄桌上的油燈。燈亮著的時候，娃娃不會出聲。', '戴上耳機。哭聲從左邊來就往左轉，越走越大聲就對了。', '一直轉身，直到哭聲在正前方，再往前走到聲音最大的那一個。'],
-             ['Blow out the oil lamp on the table first. While it burns, the dolls stay silent.', 'Wear headphones. If the crying comes from the left, turn left — louder means closer.', 'Keep turning until the crying is straight ahead, then walk to where it is loudest.']),
+    hints: H(['先吹熄桌上的油燈。燈亮著的時候，娃娃不會出聲。', '戴上耳機（聽不到聲音就在設定開「聲音字幕」，會寫出哭聲在哪個方向）。哭聲從左邊來就往左轉，越走越大聲就對了。', '一直轉身，直到哭聲在正前方，再往前走到聲音最大的那一個。'],
+             ['Blow out the oil lamp on the table first. While it burns, the dolls stay silent.', 'Wear headphones (or turn on Sound captions in Settings to see which way the crying comes from). If the crying comes from the left, turn left — louder means closer.', 'Keep turning until the crying is straight ahead, then walk to where it is loudest.']),
   },
 
   P32: {
