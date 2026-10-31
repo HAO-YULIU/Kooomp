@@ -125,6 +125,15 @@ export function createWorld(canvas, lang = 'zh') {
   const helga = makeAvatar(lang === 'en' ? 'Madam Helga' : '赫爾嘉夫人', null, { robe: '#3b2a3d', model: 'helga' });
   const cone = new THREE.SpotLight('#ffcf70', 40, PATROL.view, THREE.MathUtils.degToRad(PATROL.fov / 2), 0.4, 1.4);
   cone.position.set(0, 1.3, -0.3); cone.target.position.set(0, 0, -4); helga.add(cone, cone.target);
+  // 地上淡淡的光：跟「被照到就被抓」的範圍一樣大（2026-10-31：只有被燈照到才會被抓，玩家要看得出哪裡危險）
+  const fan = (() => {
+    const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 4, 32, 32, 32);
+    gr.addColorStop(0, 'rgba(255,255,255,0.9)'); gr.addColorStop(0.75, 'rgba(255,255,255,0.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+    const half = THREE.MathUtils.degToRad(PATROL.fov / 2), m = new THREE.Mesh(new THREE.CircleGeometry(PATROL.view, 24, Math.PI / 2 - half, half * 2),
+      new THREE.MeshBasicMaterial({ color: '#ffcf70', map: new THREE.CanvasTexture(c), transparent: true, opacity: 0.3, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+    m.rotation.x = -Math.PI / 2; m.position.y = 0.03; m.renderOrder = 1; return m;
+  })();
+  helga.add(fan);
   helga.visible = false; scene.add(helga);
 
   if (new URLSearchParams(location.search).has('dev')) window.__world = { renderer, scene, camera }; // 本機測試：量效能用
