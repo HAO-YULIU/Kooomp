@@ -182,7 +182,6 @@ export const PATROL = {
   room: 'starhall', period: 44, // 走一圈幾秒
   path: [[-7, -7], [7, -7], [7, 7], [-7, 7]],
   view: 8, fov: 60, // 提燈照得到的距離（公尺）、角度
-  hearRun: 6, hearWalk: 3, // 跑步、走路多近會被聽到
 };
 
 // 第三幕：沉眠圖書館（game/src/data/library-ch1.mjs）

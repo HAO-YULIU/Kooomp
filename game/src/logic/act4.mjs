@@ -31,6 +31,7 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
   const warden = createWarden(world.scene, { view: WARDEN.view, fov: WARDEN.fov });
   const scenery = createAct4Scene(world.scene);
   const scarecrow = createScarecrow(world.scene); // P32
+  if (dev) window.__scarecrow = scarecrow; // 本機測試用
   const newAI = () => createWardenAI({ rooms: ROOMS, doors: DOORS, points: WARDEN_POINTS, params: WARDEN, start: WARDEN_START });
   let ai = newAI();
   let shown = { x: WARDEN_START.x, z: WARDEN_START.z, yaw: 0, mode: 'idle', zone: WARDEN_START.zone }, target = { ...shown };
@@ -55,15 +56,16 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
   document.body.append(fight, bound, lost);
 
   // ---- 被抓到：1.5 秒內連點（空白鍵／畫面）掙脫 ----
-  function struggle(until) {
+  function struggle(until, free = 1) {
     if (panelOpen()) closePanel();
-    let hits = 0; const need = 8; fight.hidden = false; fight.querySelector('i').style.width = '0%';
-    const hit = (e) => { if (e.type === 'keydown' && e.code !== 'Space') return; e.preventDefault?.(); hits++; fight.querySelector('i').style.width = `${Math.min(100, (hits / need) * 100)}%`; if (hits >= need) done(true); };
+    let hits = 0; const need = 10; fight.hidden = false; fight.querySelector('i').style.width = '0%';
+    fight.querySelector('b').textContent = t(free > 0 ? 'a4_grab' : 'a4_grab_none'); fight.classList.toggle('none', free <= 0); // 掙脫次數用完：怎麼點都沒用
+    const hit = (e) => { if (e.type === 'keydown' && e.code !== 'Space') return; e.preventDefault?.(); if (free <= 0) return; hits++; fight.querySelector('i').style.width = `${Math.min(100, (hits / need) * 100)}%`; if (hits >= need) done(true); };
     const done = (ok) => {
       if (!grabbed) return; grabbed = null; fight.hidden = true;
       removeEventListener('keydown', hit); fight.removeEventListener('pointerdown', hit);
       conn.request({ t: ok ? 'escape' : 'caught' });
-      if (ok) toast(t('a4_escaped'));
+      if (ok) toast(t(free > 1 ? 'a4_escaped' : 'a4_escaped_last'));
     };
     grabbed = setTimeout(() => done(false), Math.max(300, until - serverNow()));
     addEventListener('keydown', hit); fight.addEventListener('pointerdown', hit);
@@ -124,7 +126,7 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
         }
         return 0;
       }
-      scenery.frame(dt, mine.z); scarecrow.update(dt, world.camera, mine.z);
+      scenery.frame(dt, mine.z); scarecrow.update(dt, world.camera, world.roomOf(world.camera.position.x, world.camera.position.z)?.id, S().solved.includes('P32')); // 用鏡頭真正所在的房間（伺服器回來的 mine.z 會慢一點）
       const now = serverNow(), st = S();
       if (st.act4?.lost && lost.hidden) showLost(st.act4.lost); // 重新整理後也要看得到「重來」
       else if (!st.act4?.lost && !lost.hidden) lost.hidden = true;
@@ -221,7 +223,7 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
       const now = performance.now();
       switch (msg.t) {
         case 'npc': if (!isSim() && msg.w) target = { x: msg.w[0], z: msg.w[1], yaw: msg.w[2], mode: msg.m, zone: msg.z }; break;
-        case 'grab': if (msg.uid === myUid) struggle(msg.until); else toast(t('a4_grab_other', { name: S().members.find((m) => m.uid === msg.uid)?.name ?? '?' })); break;
+        case 'grab': if (msg.uid === myUid) struggle(msg.until, msg.free ?? 1); else toast(t('a4_grab_other', { name: S().members.find((m) => m.uid === msg.uid)?.name ?? '?' })); break;
         case 'escaped': if (isSim()) ai.resolve(true, now, []); break;
         case 'revived': // 單人：使魔把你拉回來（越來越虛弱）
           if (isSim()) ai.resolve(false, now, players(world.me(), 0));

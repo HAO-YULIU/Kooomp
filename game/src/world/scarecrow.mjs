@@ -1,10 +1,11 @@
 // 第四幕・機械室（P32「稻草人」，帳號二 2026-10-26）：角落的稻草人，你轉開視線他就換個地方站。
 // 他依 SCARECROW.route 一塊一塊站上刻著羅馬數字的石板，走完一輪回到角落；站過的石板依序就是工具箱的密碼（答案在伺服器）。
 // 每個人看到的是自己的稻草人（不同步），所以多人時每個人都可以自己記。
+// 解開之後（2026-10-31）：你下一次轉開視線，他就站在你背後，之後不再動。
 import * as THREE from 'three';
 import { caption, sideWord } from '../ui/captions.mjs';
 import { placeProp } from '../art/models.mjs';
-import { sfxPan } from '../art/sfx.mjs';
+import { sfxPan, buzz } from '../art/sfx.mjs';
 import { SCARECROW } from '../data/act4-ch1.mjs';
 
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI'];
@@ -27,16 +28,21 @@ export function createScarecrow(scene) {
   const him = new THREE.Group(); group.add(him);
   const ok = placeProp(him, 'scarecrow', 0, 0, 0, 0, [1.6, 2.3, 0.7]);
   const spots = [SCARECROW.corner, ...SCARECROW.route.map((i) => SCARECROW.slabs[i])];
-  let at = 0, seen = false, away = 0;
+  let at = 0, seen = false, away = 0, last = false; // last：最後一嚇做過了
   const put = (cam) => { const [x, z] = spots[at]; him.position.set(x, 0, z); if (cam) him.lookAt(cam.position.x, 0, cam.position.z); else him.lookAt(155, 0, 8); };
   put();
   const fwd = new THREE.Vector3();
   return {
-    update(dt, cam, zone) {
-      if (!ok || zone !== 'a4_gears') { seen = false; return; }
+    debug: () => last, // 開發測試用
+    update(dt, cam, zone, solved = false) {
+      if (!ok || zone !== 'a4_gears' || last) { seen = false; return; }
       cam.getWorldDirection(fwd); fwd.y = 0; fwd.normalize();
       const dx = him.position.x - cam.position.x, dz = him.position.z - cam.position.z, d = Math.hypot(dx, dz) || 1;
       const look = (dx * fwd.x + dz * fwd.z) / d > 0.75 && d < 16; // 他在畫面裡
+      if (solved && !look) { // 最後一嚇：站到你背後 1.6 公尺，面向你
+        last = [zone, +cam.position.x.toFixed(1), +cam.position.z.toFixed(1)]; him.position.set(cam.position.x - fwd.x * 1.6, 0, cam.position.z - fwd.z * 1.6); him.lookAt(cam.position.x, 0, cam.position.z);
+        sfxPan('wood', 0, { vol: 0.9 }); buzz(80); caption('cap.straw', { side: sideWord(0, true) }); return;
+      }
       if (look) { seen = true; away = 0; return; }
       if (!seen) return;
       away += dt;

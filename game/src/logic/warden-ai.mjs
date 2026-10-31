@@ -46,7 +46,7 @@ export function createWardenAI({ rooms, doors, points, params: P, start, rand = 
     const dx = tx - s.x, dz = tz - s.z, d = Math.hypot(dx, dz);
     if (d < 0.05) return goal.zone === s.zone;
     const step = Math.min(d, speed * dt);
-    s.x += (dx / d) * step; s.z += (dz / d) * step; s.yaw = Math.atan2(-dx, -dz);
+    s.x += (dx / d) * step; s.z += (dz / d) * step; if (d > 0.35) s.yaw = Math.atan2(-dx, -dz); // 快到的時候不轉向（目標一直在動，方向會左右抖，看起來卡卡的）
     s.zone = zoneAt(s.x, s.z) ?? s.zone;
     return goal.zone === s.zone && d <= step + 0.05;
   }
@@ -90,7 +90,8 @@ export function createWardenAI({ rooms, doors, points, params: P, start, rand = 
     // 被抓的結果：掙脫＝停 2 秒；沒掙脫＝他退到遠處（不會一復活又被抓）
     resolve(escaped, now, players) {
       if (escaped) return this.stun(P.stun, now);
-      s.catches++; s.target = null; s.mode = 'patrol'; s.goal = null; s.exposed.clear();
+      s.catches++; s.target = null; s.goal = null; s.exposed.clear(); s.seen = {};
+      s.mode = P.rest ? 'rest' : 'patrol'; s.rest = P.rest ?? 0; // 抓到人之後回蝕巢休息一輪，大家才有時間解題（2026-10-31）
       this.placeFar(players);
     },
     placeFar(players) { const best = farPoint(players); if (best) Object.assign(s, { x: best.x, z: best.z, zone: best.zone }); },

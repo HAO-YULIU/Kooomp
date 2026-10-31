@@ -306,8 +306,15 @@ test('第四幕單人：倒數、齒輪多 90 秒、被抓到復活 3 次、用�
   assert.equal((await p.request({ t: 'repel' })).error, 'cooldown');
   // 被抓到：掙脫成功不算；沒掙脫用掉一次復活
   assert.equal((await p.request({ t: 'catch', uid: p.uid })).t, 'ok');
+  let g = await p.wait((m) => m.t === 'grab'); assert.equal(g.free, 2);
   assert.equal((await p.request({ t: 'escape' })).escaped, true);
-  for (const n of [2, 1, 0]) {
+  await sleep(10); await p.request({ t: 'catch', uid: p.uid });
+  assert.equal((await p.request({ t: 'escape' })).escaped, true); // 第二次掙脫
+  // 掙脫兩次之後：再被抓就掙脫不了（2026-10-31 製作人）
+  await sleep(10); await p.request({ t: 'catch', uid: p.uid });
+  assert.equal((await p.request({ t: 'escape' })).escaped, false);
+  assert.equal((await p.wait((m) => m.t === 'revived')).left, 2);
+  for (const n of [1, 0]) {
     await sleep(10);
     await p.request({ t: 'catch', uid: p.uid });
     assert.equal((await p.request({ t: 'caught' })).escaped, false);

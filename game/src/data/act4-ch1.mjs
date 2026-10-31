@@ -95,7 +95,9 @@ export const WARDEN_POINTS = {
 export const WARDEN_START = { x: 107.5, z: 14.5, zone: 'lib_entry' };
 // 守夜人的行動（docs/04-map-ch1.md）：速度以玩家走路 2.0、跑步 3.6 公尺／秒為準
 export const WARDEN = {
-  patrol: 1.4, chase: 3.24, view: 12, fov: 60, notice: 0.5, hearRun: 15, hearWalk: 6, lose: 4,
-  reach: 1.1, findHidden: 1.5, stun: 2, repel: 5,
-  calm: 30, hunt: 90, rest: 45, // 開場先走開 30 秒（2026-10-22 製作人：40 改 30）；之後找人 90 秒、回蝕巢 45 秒輪流（2026-10-22 製作人：一開始就追太難，玩家還要解謎）
+  // 2026-10-31 製作人手機試玩：一直被追、沒時間解題 → 追得慢一點、比較快甩掉、比較不容易被聽到；找人的時間變短、休息變長
+  patrol: 1.4, chase: 3.0, view: 11, fov: 60, notice: 0.8, hearRun: 10, hearWalk: 4, lose: 3,
+  reach: 1.1, findHidden: 1.5, stun: 4, repel: 5,
+  calm: 60, hunt: 60, rest: 75, escapes: 2, // escapes：每個人最多掙脫幾次，之後被抓就掙脫不了（2026-10-31 製作人）
+  // 舊的：calm 30, hunt 90, rest 45, chase 3.24, view 12, notice 0.5, hearRun 15, hearWalk 6, lose 4, stun 2 // 開場先走開 30 秒（2026-10-22 製作人：40 改 30）；之後找人 90 秒、回蝕巢 45 秒輪流（2026-10-22 製作人：一開始就追太難，玩家還要解謎）
 };

@@ -496,3 +496,4 @@ button, a, input, select, canvas, .choice { touch-action: manipulation; }
 /* 聲音字幕（ui/captions.mjs） */
 #caption { position: fixed; left: 50%; top: 13%; transform: translateX(-50%); max-width: 80vw; padding: 5px 22px; font-family: var(--script); font-size: 17px; font-style: italic; color: #ece4d6; background: linear-gradient(90deg, transparent, rgba(8,6,6,.78) 18%, rgba(8,6,6,.78) 82%, transparent); text-shadow: 0 0 4px #000; opacity: 0; transition: opacity .4s; pointer-events: none; z-index: 30; text-align: center; }
 #caption.on { opacity: 1; }
+#a4grab.none .bar { opacity: .2; }

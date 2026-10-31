@@ -351,9 +351,7 @@ export function createWorld(canvas, lang = 'zh') {
 export function helgaSees(h, me, { moving, running, holding, hidden }) {
   if (hidden) return false;
   const dx = me.x - h.x, dz = me.z - h.z, dist = Math.hypot(dx, dz);
-  // 聽到
-  if (!holding && running && dist < PATROL.hearRun) return true;
-  if (!holding && moving && dist < PATROL.hearWalk) return true;
+  // 只有被提燈照到才算（2026-10-31 製作人：靠近不會被抓）
   // 看到：在提燈照得到的扇形裡，而且中間沒有柱子
   if (dist > PATROL.view) return false;
   const fx = -Math.sin(h.yaw), fz = -Math.cos(h.yaw);

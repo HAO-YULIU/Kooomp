@@ -71,6 +71,9 @@ async function boot() {
   $('hello').textContent = t('hello', { name: me.name });
   show('s-menu');
   if (crashed) { crashed = false; setTimeout(() => toast(t('crash_lowpower')), 800); }
+  else if (/iP(hone|ad|od)/.test(navigator.userAgent) && !navigator.audioSession) { // 舊的 iPhone（iOS 16.4 以前）：靜音模式下網頁沒聲音，提醒一次
+    try { if (!localStorage.getItem('ml_ios_mute')) { localStorage.setItem('ml_ios_mute', '1'); setTimeout(() => toast(t('ios_mute')), 800); } } catch { /* 無痕 */ }
+  }
   setTimeout(() => import('./art/models.mjs').then((m) => m.preloadProps()).catch(() => {}), 1500); // 擺設的模型先在背景下載，按出發時就不用等
   showSave();
   const code = (params.get('room') || '').toUpperCase();

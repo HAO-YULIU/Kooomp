@@ -126,7 +126,7 @@ export class Room extends DurableObject {
     const r = this.room;
     for (const p of ACT4_PUZZLES) { delete r.solved[p]; delete r.puz[p]; delete r.hints[p]; }
     r.captured = {}; r.revives = 3; r.segAt = Date.now();
-    r.act4 = { deadline: Date.now() + ACT4.duration, lost: null, bonus: false, repelAt: 0, grab: {}, n: 0 };
+    r.act4 = { deadline: Date.now() + ACT4.duration, lost: null, bonus: false, repelAt: 0, grab: {}, esc: {}, n: 0 };
     this.ctx.storage.setAlarm(r.act4.deadline);
   }
   // ---------- 存檔（server/profile.mjs，每個玩家一個） ----------
@@ -351,12 +351,14 @@ export class Room extends DurableObject {
         const v = String(msg.uid ?? ''), a4 = r.act4;
         if (uid !== r.sim || r.segment !== 'act4' || !a4 || a4.lost || !r.members[v] || r.captured[v] || (a4.grab[v] ?? 0) + 3000 > Date.now()) return err('bad_args'); // 上一次抓的結果還沒回報（斷線）就等 3 秒
         a4.grab[v] = Date.now() + ACT4.grab;
-        await this.save(); this.broadcast({ t: 'grab', uid: v, until: a4.grab[v] }); return reply({ t: 'ok' });
+        const free = ACT4.escapes - ((a4.esc ??= {})[v] ?? 0); // 還能掙脫幾次（用完了：這次掙脫不了）
+        await this.save(); this.broadcast({ t: 'grab', uid: v, until: a4.grab[v], free }); return reply({ t: 'ok' });
       }
       case 'escape': case 'caught': { // 被抓的人自己回報：掙脫成功，或沒掙脫
         const a4 = r.act4; if (!a4?.grab?.[uid]) return err('bad_args');
-        const ok = msg.t === 'escape' && Date.now() <= a4.grab[uid] + 800; // 給網路一點時間
+        const ok = msg.t === 'escape' && Date.now() <= a4.grab[uid] + 800 && ((a4.esc ??= {})[uid] ?? 0) < ACT4.escapes; // 給網路一點時間；次數用完就算沒掙脫
         delete a4.grab[uid];
+        if (ok) a4.esc[uid] = (a4.esc[uid] ?? 0) + 1;
         if (ok) this.broadcast({ t: 'escaped', uid }); else this.caught(uid);
         await this.save(); this.broadcastState(); return reply({ t: 'ok', escaped: ok });
       }
