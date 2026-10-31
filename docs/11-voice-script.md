@@ -83,7 +83,7 @@
 | ★ | `segment_act4_6` | 「提著綠燈走長廊，誰家孩子還沒睡……」孩子們，該回床上了。 | “Green lamp glowing down the hall, who’s still waking, little one…” Children. Back to bed now. |
 | ★ | `P29_cyril_1` | ……你也是。 | …You too. |
 
-## 旁白（可以不錄）— 69 句
+## 旁白（可以不錄）— 71 句
 
 | 檔名 | 中文 | English |
 |---|---|---|
@@ -102,6 +102,7 @@
 | `solved_P07_1` | 使魔飛回你肩上。其他塔的同伴已經出發了。 | Your familiar returns to your shoulder. The others have already set out. |
 | `enter_starhall_1` | 星盤廳。巨大的星盤在地上緩緩轉動，四個學院的徽章刻在四個圓環上。 | The Astrolabe Hall. A vast astrolabe turns slowly in the floor, the four house crests carved into its four rings. |
 | `solved_P08_1` | 四個圓環咬合的聲音在大廳裡迴盪。往北的門，無聲地打開了。 | The four rings lock together with a sound that echoes through the hall. The northern door swings open without a sound. |
+| `mirror_1` | 字是反著寫的……像是有人從鏡子的另一邊，用手指寫給你看。 | The letters are backwards… as if someone wrote them with a finger from the other side of the glass. |
 | `segment_act2_1` | 北翼的門後是一條窄窄的走廊。兩側掛著六幅女學生的畫像，盡頭的門上了鎖。 | Beyond the North Wing door is a narrow corridor. Six portraits of girls line the walls; the door at the end is locked. |
 | `solved_P30_1` | 最後一格轉到位，鎖喀的一聲開了。門後是一條更長的走廊，牆上掛滿了畫像。 | The last wheel clicks into place and the lock gives. Beyond the door, a much longer corridor, hung wall to wall with portraits. |
 | `enter_corridor_1` | 燭火輕輕搖晃。你有種奇怪的感覺：這條走廊，好像走不完。 | The candles flicker. You have the strangest feeling that this corridor never ends. |
@@ -151,6 +152,7 @@
 | `solved_P29_3` | 他看著艾洛拉。她的手套底下，透出微微的黑光。 | He looks at Elora. Beneath her glove, a faint black light is showing. |
 | `P29_cyril_2` | 然後他往後一倒，從屋頂墜了下去。只有你聽清楚了那句話。 | Then he tips backward and falls from the roof. Only you heard the words clearly. |
 | `P29_others_1` | 他說了一句什麼，被風吹散了。然後他往後一倒，從屋頂墜了下去。 | He says something — the wind tears it away. Then he tips backward and falls from the roof. |
+| `finale_1` | 燈，全滅了。黑暗裡，房間那面古鏡慢慢起了霧——有人從鏡子裡面，寫了一行字。 | The lights die, all at once. In the dark, the old mirror slowly fogs over — someone on the inside has written a line. |
 | `segment_epilogue_1` | 四個人在第十三響的餘音結束的那一刻衝回宿舍。窗外的鐘塔，恢復了安靜。 | The four of you burst into the dormitory at the very moment the thirteenth toll fades. Outside, the clock tower falls silent. |
 | `segment_epilogue_2` | 隔天早上，大廳一切如常。公告欄上寫著：「守夜人葛雷因病退休。」昨晚的血跡，全部不見了。 | The next morning the hall is as if nothing happened. A notice reads: “Night Warden Grey has retired due to illness.” Every trace of blood is gone. |
 | `segment_epilogue_3` | 西里爾收到一封沒有署名的信，封蠟是一條銜尾蛇：「你昨晚去了不該去的地方。」 | Cyril receives an unsigned letter sealed with an ouroboros: “You went somewhere you should not have last night.” |
