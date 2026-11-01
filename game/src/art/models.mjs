@@ -5,11 +5,11 @@
 import * as THREE from 'three';
 import { GLTFLoader } from '../../../prototype/vendor/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from '../../../prototype/vendor/addons/libs/meshopt_decoder.module.js';
-import { slimTextures } from './texcap.mjs';
+import { slimTextures, MODEL_SUFFIX } from './texcap.mjs';
 import { clone as cloneSkinned } from '../../../prototype/vendor/addons/utils/SkeletonUtils.js';
 
 const T = {}; // 名稱 → 載好的模型（範本）
-let base = 'models/props/';
+let base = `models/props${MODEL_SUFFIX}/`; // 手機用 props-m（貼圖事先縮好）
 
 /** 讀清單、載入全部模型（失敗的跳過）。主選單時就先在背景開始下載，載入畫面再等它完成；呼叫幾次都只載一次 */
 let loading = null;

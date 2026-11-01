@@ -7,10 +7,10 @@ import * as THREE from 'three';
 import { GLTFLoader } from '../../../prototype/vendor/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from '../../../prototype/vendor/addons/libs/meshopt_decoder.module.js';
 import { decorators } from '../world/art-hooks.mjs';
-import { slimTextures } from './texcap.mjs';
+import { slimTextures, MODEL_SUFFIX } from './texcap.mjs';
 import { wardenVoice } from './sfx.mjs';
 
-let base = 'models/chars/';
+let base = `models/chars${MODEL_SUFFIX}/`; // 手機用 chars-m
 /** 模型資料夾的位置（跟 characters.mjs 的 setCharacterBase 一樣，預設 models/chars/） */
 export const setWardenBase = (url) => { base = url.endsWith('/') ? url : url + '/'; };
 let source = null;

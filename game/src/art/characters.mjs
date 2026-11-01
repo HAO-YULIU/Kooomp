@@ -9,12 +9,12 @@
 //   c.talk(秒數)、c.setMood('calm' | 'smile' | 'scared')
 //   c.setMoving(速度)                           // 走路：腿前後擺、膝蓋彎、手臂擺（沒有骨架的模型只上下晃）
 import * as THREE from 'three';
-import { slimTextures } from './texcap.mjs';
+import { slimTextures, MODEL_SUFFIX } from './texcap.mjs';
 import { GLTFLoader } from '../../../prototype/vendor/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from '../../../prototype/vendor/addons/libs/meshopt_decoder.module.js';
 
 export const CHARACTER_KEYS = ['yuexi', 'vaughn', 'elora', 'cyril', 'helga', 'aldric', 'moray', 'knox'];
-let base = 'models/chars/';
+let base = `models/chars${MODEL_SUFFIX}/`; // 手機用 chars-m（貼圖事先縮好）
 /** 模型資料夾的位置（預設 models/chars/，相對於網頁） */
 export const setCharacterBase = (url) => { base = url.endsWith('/') ? url : url + '/'; };
 

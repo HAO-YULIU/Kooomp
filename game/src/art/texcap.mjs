@@ -2,6 +2,8 @@
 // 載好每個模型時呼叫一次：顏色貼圖最大 maxColor、其他貼圖（凹凸、粗糙度…）最大 maxOther；手機上擺設的凹凸貼圖（normalMap）直接拿掉、其他縮到 128（暗暗的場景裡看不太出來）。
 // 粗糙度／金屬貼圖不能拿掉：glTF 的金屬係數預設是 1，拿掉貼圖整個會變成金屬。
 const isTouch = typeof matchMedia === 'function' && (matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window);
+/** 手機：用事先縮好貼圖的模型（models/props-m、chars-m，tools/mobile-models.cjs 產生），下載少、解開快 */
+export const MODEL_SUFFIX = isTouch ? '-m' : '';
 const COLOR = ['map', 'emissiveMap'];
 const OTHER = ['normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'bumpMap', 'alphaMap', 'specularIntensityMap', 'sheenColorMap', 'clearcoatNormalMap'];
 const done = new WeakSet();
