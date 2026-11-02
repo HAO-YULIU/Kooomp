@@ -104,7 +104,7 @@ export function createWorld(canvas, lang = 'zh') {
   renderer.shadowMap.enabled = !isTouch;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   // 不要每個材質都同步檢查有沒有編譯錯誤（會逼瀏覽器等編譯完，Windows 電腦上會卡好幾秒）；本機測試（?dev）才檢查
-  renderer.debug.checkShaderErrors = new URLSearchParams(location.search).has('dev');
+  renderer.debug.checkShaderErrors = new URLSearchParams(location.search).has('dev') && !new URLSearchParams(location.search).has('nocheck'); // nocheck：本機量載入時間用（跟正式網站一樣不檢查）
   const EXPOSURE = 1.4; // 2026-10-22 製作人：還是有點暗（原本 1.2）；玩家可以在設定裡再調（setBrightness）
   const savedBright = (() => { try { return +localStorage.getItem('ml_bright') || 1; } catch { return 1; } })();
   renderer.toneMappingExposure = EXPOSURE * savedBright;
