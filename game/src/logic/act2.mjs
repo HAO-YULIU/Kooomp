@@ -18,7 +18,7 @@ export function createAct2({ world, conn, toast, play, S, house, solo, lang }) {
   function show(next, n) {
     loop = n; anomaly = next; deep = false; breathed = false;
     gallery.setLoop(anomaly, loop, { familiarView });
-    if (anomaly?.id === 'lullaby') playLullaby({ lines: 2, volume: 0.1 });
+    if (anomaly?.id === 'lullaby') { playLullaby({ lines: 2, volume: 0.1 }); setTimeout(() => caption('cap.lullaby'), 1200); setTimeout(() => caption('cap.lullaby'), 7000); } // 聲音字幕：純聲音的異常（出現兩次，免得錯過）
     if (anomaly?.id === 'liana') play('corridor:liana');
   }
   async function sync() {
