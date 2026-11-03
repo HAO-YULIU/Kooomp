@@ -84,15 +84,3 @@ c.talk(秒數); c.setMood('calm' | 'smile' | 'scared');
 4. **守夜人的動作**：`game/src/world/warden.mjs` 的 `frame(dt, mode)` 最後加一行 `g.userData.update?.(dt, mode);`，動作就會照 AI 狀態（撲抓也會播）。沒加的話，模型自己看移動速度選走路／跑步，不會撲抓。
 5. 手機效能：同一個畫面裡的角色建議 4 個以內。
 
-## 第二章：萬聖夜的布置（2026-11-03）
-- `game/src/art/halloween.mjs`：用程式畫的南瓜燈。`jackOLantern({ size, face: 0～3, light })` 回傳一個 Group（底部在原點），`tickPumpkins(dt)` 每一格呼叫讓燭光閃。
-  - 四種臉：三角眼鋸齒嘴、圓眼大笑、斜眼獠牙、哭臉。
-  - `light: true` 會在裡面放一盞小燈（地上會有一圈橘光），比較耗效能，一個房間只給一兩顆。
-  - 還沒放進遊戲（等第二章劇情確認）。
-- `game/src/art/ch2props.mjs`（2026-11-03）：模型庫裡沒有的第二章家具，用程式拼。底部在原點、正面朝 +z。
-  - `hospitalBed({ bloody })`：醫務室的鐵架病床（床墊、枕頭、垂下床邊的薄被）；`bloody: true` 床單上有一大片血。
-  - `filingCabinet({ drawers, open, years, height })`：舊檔案室的木頭檔案櫃，黃銅把手、手寫年份標籤；`open` 是拉開第幾格（裡面塞滿泛黃的紙），`years` 可以指定每一格的標籤（謎題用）。
-  - `drape({ width, drop, color })`：萬聖節的黑色布幔，原點在上緣中間，掛的時候把位置設在掛點。
-  - 大釜、酒桶、藥水瓶已經有模型（`cauldron`、`barrel`、`potions`），不用另外做。
-- `game/src/art/erode.mjs`（2026-11-03）：蝕化效果，`erode(角色的 root, k)`，k 0～1。皮膚爬滿黑紫色的血管紋、膚色變灰；k ≥ 0.5 眼睛全黑、指甲變黑；k ≥ 0.85 眼睛透出暗紅光。只改材質（每個角色自己一份），模型、骨架、動作都不動。第二章的蝕化學生、蝕化的諾克斯都用這個；試過諾克斯、沃恩。
-- 第二章素材（2026-11-03）續：`ch2props.mjs` 的 `rollBook()`（諾克斯的點名簿，紅圈、莉安娜被劃掉）、`blackPlant()`（溫室的黑色植物，`userData.tick(dt)` 讓根蠕動）；`halloween.mjs` 的 `dressHalloweenHall({ room, tables }, drape)`（典禮廳整套萬聖布置：桌上南瓜燈、天花板飄浮的南瓜燈、牆上黑布幔，回傳 `{ group, tick }`）。
