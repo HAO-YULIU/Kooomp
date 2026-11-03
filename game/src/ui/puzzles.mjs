@@ -5,6 +5,7 @@ import { RUMORS } from '../data/world-ch1.mjs';
 import { MORSE_TABLE, RUNE_ROWS } from '../data/story-ch1.mjs';
 import { ROSTER, SURVIVORS, BOOK_RULE, FLIP_PAGES, TRIGRAMS, RUNES, RUNE_DOOR, LIGHT_GRID, SOKOBAN, VIALS, SKETCH, BRAILLE } from '../data/library-ch1.mjs';
 import { playFile, heartbeatFrom } from '../world/sound.mjs';
+import { sfx } from '../art/sfx.mjs';
 import { LEVERS, BOLTS_LOCKED, GEAR_RACK, AXLE_GAPS, LYRIC, LYRIC_MARKS } from '../data/act4-ch1.mjs';
 import { HOUSES } from '../logic/chars.mjs';
 
@@ -63,6 +64,7 @@ const numberInput = (submit, ph = '') => {
 const NO_HINTS = new Set(['P22']);
 const INFO_PANELS = new Set(['roster', 'notice', 'trigrams', 'sketch', 'crystalball', 'brailletable']);
 const RUNES6 = ['ᚠ', 'ᚢ', 'ᚦ', 'ᚨ', 'ᚱ', 'ᚲ'];
+const S3_RUNES = ['ᛒ', 'ᚨ', 'ᚾ', 'ᛁ', 'ᛊ', 'ᚺ'], S3_LETTERS = ['B', 'A', 'N', 'I', 'S', 'H']; // S3 自救：數字 1～6 對應的符文（對角線拼出 BANISH）
 
 const BUILD = {
   // P02：整理傳聞
@@ -645,8 +647,9 @@ const NEST = {
       : el('button', { text: t(`dir.${d}`), onclick: () => { picks.push(d * 45); if (picks.length === 3) { submit(picks.join(',')); picks.length = 0; } paint(); } })));
     body.append(el('p', { text: t('s2_intro') }), info, dirs);
   },
-  S3(body, { submit }) { // 符文數獨（6×6，2×3 的框）
-    const GIVEN = ['1..4.6', '.5..2.', '2.1..4', '5..2.1', '.1..4.', '6.5..2'];
+  S3(body, { submit }) { // 符文數獨（6×6，2×3 的框）。2026-11-03：換成只有一種填法的題目，填完後對角線（左上→右下）的六個符文拼出 BANISH「驅逐」
+    const GIVEN = ['..5.64', '..45.3', '.4.621', '..6.35', '.....2', '....4.'];
+    const RUNES6 = S3_RUNES;
     const g = GIVEN.map((row) => [...row].map((ch) => (ch === '.' ? 0 : +ch)));
     const fixed = g.map((row) => row.map(Boolean));
     const ok = () => {
@@ -658,11 +661,19 @@ const NEST = {
     const view = el('div', { class: 'sudoku' });
     const paint = () => {
       view.innerHTML = '';
-      g.forEach((row, r) => row.forEach((v, c) => view.append(el('button', { class: `${fixed[r][c] ? 'fixed' : ''} ${c === 2 ? 'bx' : ''} ${r % 2 ? 'by' : ''}`, text: v ? RUNES6[v - 1] : '',
-        onclick: () => { if (fixed[r][c]) return; g[r][c] = (g[r][c] + 1) % 7; paint(); if (ok()) submit('done'); } }))));
+      g.forEach((row, r) => row.forEach((v, c) => view.append(el('button', { class: `${fixed[r][c] ? 'fixed' : ''} ${c === 2 ? 'bx' : ''} ${r % 2 ? 'by' : ''} ${r === c ? 'diag' : ''} ${done && r === c ? 'lit' : ''}`, text: v ? RUNES6[v - 1] : '',
+        onclick: () => { if (fixed[r][c] || done) return; g[r][c] = (g[r][c] + 1) % 7; paint(); if (ok()) reveal(); } }))));
+    };
+    // 填完：對角線的符文一個一個亮起來，拼出解咒的字，再送出
+    let done = false;
+    const word = el('p', { class: 's3word' });
+    const reveal = () => {
+      done = true; paint(); sfx('chime', 0);
+      g.forEach((row, i) => setTimeout(() => { word.textContent = g.map((rw, k) => (k <= i ? S3_LETTERS[rw[k] - 1] : '・')).join(' '); sfx('note', i); }, 350 * (i + 1)));
+      setTimeout(() => { word.textContent = t('s3_word'); setTimeout(() => submit('done'), 1800); }, 350 * 7);
     };
     paint();
-    body.append(el('p', { text: t('s3_intro') }), view);
+    body.append(el('p', { text: t('s3_intro') }), view, word);
   },
   S4(body, { content, submit }) {
     const SIDES = ['left', 'middle', 'right'];
