@@ -83,3 +83,9 @@ c.talk(秒數); c.setMood('calm' | 'smile' | 'scared');
 3. **註冊美術掛鉤**：在蓋場景、建立守夜人之前 `import '../art/index.mjs';`（例如放在 `world.mjs` 最上面）。沒有這行，守夜人還是灰盒。
 4. **守夜人的動作**：`game/src/world/warden.mjs` 的 `frame(dt, mode)` 最後加一行 `g.userData.update?.(dt, mode);`，動作就會照 AI 狀態（撲抓也會播）。沒加的話，模型自己看移動速度選走路／跑步，不會撲抓。
 5. 手機效能：同一個畫面裡的角色建議 4 個以內。
+
+## 第二章：萬聖夜的布置（2026-11-03）
+- `game/src/art/halloween.mjs`：用程式畫的南瓜燈。`jackOLantern({ size, face: 0～3, light })` 回傳一個 Group（底部在原點），`tickPumpkins(dt)` 每一格呼叫讓燭光閃。
+  - 四種臉：三角眼鋸齒嘴、圓眼大笑、斜眼獠牙、哭臉。
+  - `light: true` 會在裡面放一盞小燈（地上會有一圈橘光），比較耗效能，一個房間只給一兩顆。
+  - 還沒放進遊戲（等第二章劇情確認）。
