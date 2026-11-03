@@ -95,3 +95,4 @@ c.talk(秒數); c.setMood('calm' | 'smile' | 'scared');
   - `drape({ width, drop, color })`：萬聖節的黑色布幔，原點在上緣中間，掛的時候把位置設在掛點。
   - 大釜、酒桶、藥水瓶已經有模型（`cauldron`、`barrel`、`potions`），不用另外做。
 - `game/src/art/erode.mjs`（2026-11-03）：蝕化效果，`erode(角色的 root, k)`，k 0～1。皮膚爬滿黑紫色的血管紋、膚色變灰；k ≥ 0.5 眼睛全黑、指甲變黑；k ≥ 0.85 眼睛透出暗紅光。只改材質（每個角色自己一份），模型、骨架、動作都不動。第二章的蝕化學生、蝕化的諾克斯都用這個；試過諾克斯、沃恩。
+- 第二章素材（2026-11-03）續：`ch2props.mjs` 的 `rollBook()`（諾克斯的點名簿，紅圈、莉安娜被劃掉）、`blackPlant()`（溫室的黑色植物，`userData.tick(dt)` 讓根蠕動）；`halloween.mjs` 的 `dressHalloweenHall({ room, tables }, drape)`（典禮廳整套萬聖布置：桌上南瓜燈、天花板飄浮的南瓜燈、牆上黑布幔，回傳 `{ group, tick }`）。

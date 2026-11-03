@@ -77,3 +77,49 @@ export function drape({ width = 3, drop = 2.5, color = '#0b0a0c' } = {}) {
   const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color, roughness: 0.95, side: THREE.DoubleSide }));
   m.name = 'drape'; return m; // 原點在上緣中間：掛的時候把位置設在掛點
 }
+
+// ---- 諾克斯的點名簿：黑色皮面、翻開，頁面上一排排手寫的名字，有些被紅墨水圈起來 ----
+function rollPage(seed, circled) {
+  return canvasTex(256, 340, (g, w, h) => {
+    g.fillStyle = '#d9cba6'; g.fillRect(0, 0, w, h);
+    g.strokeStyle = 'rgba(120,90,50,0.35)'; for (let y = 40; y < h - 10; y += 22) { g.beginPath(); g.moveTo(14, y); g.lineTo(w - 14, y); g.stroke(); }
+    const names = ['Ainsley', 'Brandt', 'Corwin', 'Delia', 'Ewan', 'Fenna', 'Gideon', 'Hollis', 'Ivy', 'Jory', 'Kestrel', 'Liana', 'Maren', 'Nolan'];
+    g.font = 'italic 17px serif'; g.fillStyle = '#2a1a0c';
+    for (let i = 0; i < 13; i++) {
+      const n = names[(i + seed) % names.length], y = 36 + i * 22; g.fillText(`${i + 1}. ${n}`, 22, y);
+      if (circled.includes(i)) { g.strokeStyle = 'rgba(150,10,10,0.85)'; g.lineWidth = 2; g.beginPath(); g.ellipse(70, y - 6, 58, 11, -0.04, 0, Math.PI * 2); g.stroke(); }
+      if (n === 'Liana') { g.strokeStyle = '#1a0a04'; g.lineWidth = 2.5; g.beginPath(); g.moveTo(20, y - 6); g.lineTo(130, y - 4); g.stroke(); } // 莉安娜被劃掉
+    }
+  });
+}
+/** 翻開的點名簿（寬約 0.36 公尺），原點在書背底部 */
+export function rollBook({ seed = 0 } = {}) {
+  const g = new THREE.Group(); g.name = 'roll-book';
+  const leather = new THREE.MeshStandardMaterial({ color: '#141012', roughness: 0.7 });
+  const pw = 0.17, ph = 0.24;
+  for (const sx of [-1, 1]) {
+    const cover = new THREE.Mesh(new THREE.BoxGeometry(pw + 0.01, 0.008, ph + 0.01), leather); cover.position.set(sx * (pw / 2 + 0.004), 0.004, 0); cover.rotation.z = sx * 0.06; g.add(cover);
+    const page = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph), new THREE.MeshStandardMaterial({ map: rollPage(seed + (sx > 0 ? 7 : 0), sx > 0 ? [2, 6, 9] : [4, 11]), roughness: 0.95 }));
+    page.rotation.x = -Math.PI / 2; page.rotation.y = sx * 0.06; page.position.set(sx * (pw / 2 + 0.004), 0.014, 0); g.add(page);
+  }
+  return g;
+}
+
+// ---- 溫室的黑色植物：花盆裡長出黑色的根，像第一章圖書館裡的黑根；tick 讓根慢慢蠕動 ----
+export function blackPlant({ height = 0.9 } = {}) {
+  const g = new THREE.Group(); g.name = 'black-plant';
+  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 0.28, 12), new THREE.MeshStandardMaterial({ color: '#6a3a24', roughness: 0.85 })); pot.position.y = 0.14; g.add(pot);
+  const soil = new THREE.Mesh(new THREE.CircleGeometry(0.19, 12), new THREE.MeshStandardMaterial({ color: '#120c08' })); soil.rotation.x = -Math.PI / 2; soil.position.y = 0.27; g.add(soil);
+  const root = new THREE.MeshStandardMaterial({ color: '#07050a', roughness: 0.25, metalness: 0.3, emissive: '#12001a', emissiveIntensity: 0.6 });
+  const tendrils = [];
+  for (let i = 0; i < 9; i++) {
+    const a = (i / 9) * Math.PI * 2 + Math.random() * 0.4, len = height * (0.5 + Math.random() * 0.6), pts = [];
+    for (let k = 0; k <= 8; k++) { const t = k / 8; pts.push(new THREE.Vector3(Math.cos(a) * (0.04 + t * 0.25) + Math.sin(t * 7 + i) * 0.04, 0.27 + t * len, Math.sin(a) * (0.04 + t * 0.25) + Math.cos(t * 6 + i) * 0.04)); }
+    const curve = new THREE.CatmullRomCurve3(pts), m = new THREE.Mesh(new THREE.TubeGeometry(curve, 20, 0.016, 5), root);
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.08, 5), root); tip.position.copy(pts[8]); tip.lookAt(pts[8].clone().add(pts[8].clone().sub(pts[7]))); tip.rotateX(Math.PI / 2);
+    const holder = new THREE.Group(); holder.add(m, tip); g.add(holder); tendrils.push({ holder, ph: Math.random() * 10 });
+  }
+  let t = 0;
+  g.userData.tick = (dt) => { t += dt; for (const q of tendrils) { q.holder.rotation.y = Math.sin(t * 0.7 + q.ph) * 0.06; q.holder.rotation.z = Math.sin(t * 0.5 + q.ph * 2) * 0.03; } }; // 蠕動
+  return g;
+}

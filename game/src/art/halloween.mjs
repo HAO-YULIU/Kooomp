@@ -90,3 +90,28 @@ export function tickPumpkins(dt) {
     if (it.light) it.light.intensity = 1.2 * f;
   }
 }
+
+/**
+ * 萬聖節的典禮廳布置（第二章）：給一個房間的範圍，擺好南瓜燈和黑布幔。回傳 { group, tick(dt) }。
+ *   room：{ x: [西, 東], z: [北, 南], h: 高 }；tables：長桌的中心線 [[x, z1, z2], …]（桌面高 tableH）
+ *   長桌上每隔 2.5 公尺一顆小南瓜燈；天花板下飄著一排排南瓜燈（慢慢上下浮動）；兩側牆上掛黑布幔。
+ */
+export function dressHalloweenHall({ room, tables = [], tableH = 0.78, drapeEvery = 5 }, makeDrape) {
+  const group = new THREE.Group(); group.name = 'halloween-hall';
+  const float = []; let face = 0;
+  for (const [x, z1, z2] of tables) for (let z = Math.min(z1, z2) + 1.2; z < Math.max(z1, z2) - 1; z += 2.5) {
+    const p = jackOLantern({ size: 0.26, face: face++ % 4 }); p.position.set(x + (face % 2 ? 0.15 : -0.15), tableH, z); p.rotation.y = (Math.random() - 0.5) * 1.2; group.add(p);
+  }
+  const [x0, x1] = room.x, [z0, z1] = room.z, H = room.h ?? 8;
+  let lights = 0;
+  for (let x = x0 + 3; x < x1 - 2; x += 4) for (let z = z0 + 3; z < z1 - 2; z += 5) {
+    const p = jackOLantern({ size: 0.4, face: face++ % 4, light: lights < 3 && Math.random() < 0.15 }); if (p.children.some((c) => c.isPointLight)) lights++;
+    const y = H * 0.62 + Math.random() * H * 0.15; p.position.set(x + (Math.random() - 0.5) * 1.5, y, z + (Math.random() - 0.5) * 1.5); p.rotation.y = Math.random() * Math.PI * 2;
+    group.add(p); float.push({ p, y, ph: Math.random() * 6 });
+  }
+  if (makeDrape) for (const [x, ry] of [[x0 + 0.05, Math.PI / 2], [x1 - 0.05, -Math.PI / 2]]) for (let z = z0 + drapeEvery / 2; z < z1; z += drapeEvery) {
+    const d = makeDrape({ width: 2.4, drop: H * 0.45 }); d.position.set(x, H - 0.3, z); d.rotation.y = ry; group.add(d);
+  }
+  let t = 0;
+  return { group, tick(dt) { t += dt; for (const f of float) f.p.position.y = f.y + Math.sin(t * 0.8 + f.ph) * 0.15; tickPumpkins(dt); } };
+}

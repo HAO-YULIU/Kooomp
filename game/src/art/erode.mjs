@@ -64,3 +64,5 @@ export function erode(root, k = 1) {
   });
   return root;
 }
+
+// 嘴裂開（蝕化的諾克斯）：還沒做好（2026-11-03 試過把裂口貼在臉上，位置對不準），之後再做。
