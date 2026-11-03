@@ -1,5 +1,7 @@
 // 音效（Web Audio）：雨聲、守夜人的童謠（音樂盒）、呼吸聲、尖叫、提示音。
 // 瀏覽器要等玩家點過畫面才能出聲，所以第一次用到時才建立 AudioContext。
+import { caption } from '../ui/captions.mjs';
+import { t as tr } from '../logic/i18n.mjs';
 let ctx = null, master = null;
 const ac = () => {
   if (!ctx) { try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* 舊的瀏覽器沒有 */ } // iPhone 開靜音模式時網頁預設沒有聲音：當成「播放媒體」才會出聲
@@ -102,6 +104,10 @@ export function heartbeatFrom(deg, { beats = 4, volume = 0.7 } = {}) {
   const rad = (deg * Math.PI) / 180, pan = ctx.createStereoPanner(), lp = ctx.createBiquadFilter();
   pan.pan.value = Math.sin(rad); lp.type = 'lowpass'; lp.frequency.value = Math.cos(rad) > 0 ? 1800 : 450;
   lp.connect(pan).connect(master);
+  { // 聲音字幕（設定裡可以關）：照實寫出耳朵聽得到的——偏左還偏右、清楚（前面）還是悶悶的（後面）（2026-11-03：手機沒開聲音也能解 S2）
+    const s = Math.sin(rad), side = s > 0.85 ? 'right' : s > 0.3 ? 'rright' : s < -0.85 ? 'left' : s < -0.3 ? 'lleft' : 'mid';
+    caption('cap.heart', { side: tr(`cap_heart.${side}`), tone: tr(Math.cos(rad) > 0 ? 'cap_heart.clear' : 'cap_heart.muffled') });
+  }
   let t = ctx.currentTime + 0.05;
   for (let i = 0; i < beats; i++, t += 0.85) for (const [k, dt] of [[1, 0], [0.7, 0.22]]) { // 咚—咚
     const o = ctx.createOscillator(), g = ctx.createGain();
