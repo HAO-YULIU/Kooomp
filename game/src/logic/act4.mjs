@@ -122,8 +122,11 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
         } else if (ending === 'epilogue' && !talking()) { // 尾聲講完：最後的演出（熄燈、鏡子），然後第一章結束
           ending = 'finale'; setMusic(null);
           finale(() => { ending = null; setMusic('menu');
-          openPanel(t('ch1_end'), (body) => body.append(...summary(S().result), el('p', { text: t('ch1_end_body') }),
-            el('button', { text: t('to_menu'), onclick: () => { const q = new URLSearchParams(location.search); q.delete('room'); location.href = location.pathname + (q.size ? `?${q}` : ''); } })));
+          // 第一章完：關掉（✕、Esc）也會再跳出來，不然玩家會卡在尾聲回不了選單（2026-11-03）
+          const showEnd = () => openPanel(t('ch1_end'), (body, panel) => { body.append(...summary(S().result), el('p', { text: t('ch1_end_body') }),
+            el('button', { text: t('to_menu'), onclick: () => { panel.onClose = null; const q = new URLSearchParams(location.search); q.delete('room'); location.href = location.pathname + (q.size ? `?${q}` : ''); } }));
+            panel.onClose = () => setTimeout(showEnd, 600); });
+          showEnd();
           });
         }
         return 0;
