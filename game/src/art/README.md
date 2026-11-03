@@ -89,3 +89,8 @@ c.talk(秒數); c.setMood('calm' | 'smile' | 'scared');
   - 四種臉：三角眼鋸齒嘴、圓眼大笑、斜眼獠牙、哭臉。
   - `light: true` 會在裡面放一盞小燈（地上會有一圈橘光），比較耗效能，一個房間只給一兩顆。
   - 還沒放進遊戲（等第二章劇情確認）。
+- `game/src/art/ch2props.mjs`（2026-11-03）：模型庫裡沒有的第二章家具，用程式拼。底部在原點、正面朝 +z。
+  - `hospitalBed({ bloody })`：醫務室的鐵架病床（床墊、枕頭、垂下床邊的薄被）；`bloody: true` 床單上有一大片血。
+  - `filingCabinet({ drawers, open, years, height })`：舊檔案室的木頭檔案櫃，黃銅把手、手寫年份標籤；`open` 是拉開第幾格（裡面塞滿泛黃的紙），`years` 可以指定每一格的標籤（謎題用）。
+  - `drape({ width, drop, color })`：萬聖節的黑色布幔，原點在上緣中間，掛的時候把位置設在掛點。
+  - 大釜、酒桶、藥水瓶已經有模型（`cauldron`、`barrel`、`potions`），不用另外做。
