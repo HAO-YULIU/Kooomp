@@ -99,7 +99,7 @@ export function createWorld(canvas, lang = 'zh') {
   // 省電模式（設定裡開）：每秒最多 30 格、解析度最多 1 倍（手機發燙、比較舊的手機用）
   let lowPower = (() => { try { return localStorage.getItem('ml_lowpower') === '1'; } catch { return false; } })();
   let maxRatio = lowPower ? Math.min(1, fullRatio) : fullRatio;
-  let ratio = maxRatio, slowT = 0, fastT = 0, holdUp = 0; // holdUp：剛降過解析度，這幾秒內不升回去
+  let ratio = maxRatio, slowT = 0, fastT = 0, holdUp = 0, smallT = 1, smallProps = null; // holdUp：剛降過解析度，這幾秒內不升回去
   renderer.setPixelRatio(ratio);
   renderer.shadowMap.enabled = !isTouch;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -335,6 +335,22 @@ export function createWorld(canvas, lang = 'zh') {
         a.visible = p.z === myZone; // 別的區域的隊友不畫（他們的詳細位置也不會傳過來）
         a.position.set(p.shown[0], 0, p.shown[1]); a.rotation.y = p.yShown;
         a.userData.char?.setMoving(Math.hypot(p.v[0], p.v[1]));
+      }
+      // 手機：小擺設（茶杯、瓶子、書…最長邊不到 0.5 公尺）離鏡頭 12 公尺以上就不畫，每 0.25 秒檢查一次（2026-11-03：宿舍、典禮廳每一格要畫的東西太多）
+      // 只管不會動的場景（userData.static 底下）；其他程式自己會開關的東西不碰
+      if (isTouch && (smallT -= dt) <= 0) {
+        smallT = 0.25;
+        if (!smallProps) {
+          smallProps = []; const box = new THREE.Box3(), size = new THREE.Vector3();
+          scene.traverse((o) => {
+            if (!o.userData.prop) return;
+            let st = false; for (let a = o.parent; a; a = a.parent) if (a.userData?.static) { st = true; break; }
+            if (!st) return;
+            box.setFromObject(o); box.getSize(size);
+            if (Math.max(size.x, size.y, size.z) < 0.5 && o.visible) smallProps.push({ o, c: box.getCenter(new THREE.Vector3()), on: true });
+          });
+        }
+        for (const q of smallProps) { const on = q.c.distanceToSquared(camera.position) < 144; if (on !== q.on) { q.on = on; q.o.visible = on; } }
       }
       // 電腦同伴、赫爾嘉夫人在遠的房間就不畫
       for (const a of [...avatars.values(), helga]) if (a.visible && !cullRooms.near(a.position.x, a.position.z)) a.visible = false;
