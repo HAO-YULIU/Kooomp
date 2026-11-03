@@ -32,6 +32,7 @@ for (const b of document.querySelectorAll('[data-lang]')) b.onclick = () => { se
 setLang(getLang()); $('plang').value = getLang(); paintText();
 
 // 上次進遊戲載入到一半網頁就被重整（手機記憶體不夠）：這次自動開省電模式（貼圖也會用更小的），並告訴玩家
+try { document.body.classList.toggle('bigtext', localStorage.getItem('ml_bigtext') === '1'); } catch { /* 無痕 */ } // 字體大小（設定裡切換）
 let crashed = false;
 try { const v = +localStorage.getItem('ml_loading'); if (v && Date.now() - v < 15 * 60e3) { crashed = localStorage.getItem('ml_lowpower') !== '1'; localStorage.setItem('ml_lowpower', '1'); } localStorage.removeItem('ml_loading'); } catch { /* 無痕 */ }
 let toastTimer;
