@@ -196,6 +196,9 @@ test('單人：只能一個人，英文謎題', async () => {
   assert.equal((await p.request({ t: 'answer', pid: 'P07', value: { eldrin: 8, belmont: 9, ouroboros: 3 } })).solved, true);
   const peek = await p.request({ t: 'peek', pid: 'P09' });
   assert.equal(peek.loop, 0); assert.equal(peek.next, null);
+  // P15 錄音的字幕：轉盤調對（反轉＋0.5 倍）才給；調錯沒有
+  assert.equal((await p.request({ t: 'peek', pid: 'P15', value: { rev: true, speed: 0.5 } })).content.lines.length, 5);
+  assert.equal((await p.request({ t: 'peek', pid: 'P15', value: { rev: false, speed: 0.5 } })).content.lines, null);
   // 重新連線（舊連線會被關掉）會拿回自己知道的時辰
   const again = await player(code, 'Solo');
   assert.equal((await again.wait((m) => m.t === 'notes')).notes.P03, '8');

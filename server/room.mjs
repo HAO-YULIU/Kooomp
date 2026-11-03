@@ -342,6 +342,7 @@ export class Room extends DurableObject {
         if (pid === 'P12') { if (!r.items?.lantern) return err('need_item'); return reply({ t: 'peek', pid, content: { shadows: def.ans.split(',') } }); } // 站在標記上舉燈才看得到影子
         if (def.kind === 'doll') return reply({ t: 'peek', pid, content: { doll: cryingDoll(r.seed, st.round ?? 0, def.count) } }); // 哪一個在哭（聲音從那裡傳出來）
         if (pid === 'P24') return reply({ t: 'peek', pid, content: { cells: brailleDoor() } });
+        if (pid === 'P15') { const ok = msg.value?.rev === true && +msg.value?.speed === 0.5; return reply({ t: 'peek', pid, content: { lines: ok ? def.transcript[r.lang === 'en' ? 'en' : 'zh'] : null } }); } // 錄音的字幕：轉盤調對才給（聽不到聲音的人用）
         if (def.kind === 'corridor') return reply({ t: 'peek', pid, loop: st.n ?? 0, streak: st.streak ?? 0, next: corridorLoop(r.seed, st.attempt ?? 0, st.n ?? 0, { rate: def.rate, skip: r.mode === 'solo' ? [] : this.aiHouses() }) });
         return err('bad_puzzle');
       }

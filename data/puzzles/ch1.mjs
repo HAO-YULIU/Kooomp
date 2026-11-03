@@ -110,6 +110,9 @@ export const CHAPTER1 = {
   },
   P15: {
     seg: 'act3b', diff: 8, kind: 'text', ans: '3141', gives: 'note3',
+    // 錄音的字幕（2026-11-03，聽不到聲音的人用；轉盤調對＝反轉＋0.5 倍時，伺服器才給）。內容同 docs/06-audio-ch1.md
+    transcript: { zh: ['我是莉安娜。', '如果你聽到這個……代表我沒有回去。', '別相信鐘聲。別相信學校。', '第七張桌子……抽屜是……三、一、四、一。', '艾洛拉……對不起。'],
+      en: ['This is Liana.', 'If you’re hearing this… it means I didn’t make it back.', 'Don’t trust the bells. Don’t trust the school.', 'The seventh table… the drawer is… three, one, four, one.', 'Elora… I’m sorry.'] },
     hints: H(['聲音太快了，而且好像是反過來的。', '兩個轉盤都要調。', '反轉，速度 0.5 倍。'],
              ['It’s too fast — and it sounds backwards.', 'You need to set both dials.', 'Reverse, at 0.5× speed.']),
   },

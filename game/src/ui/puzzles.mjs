@@ -6,6 +6,7 @@ import { MORSE_TABLE, RUNE_ROWS } from '../data/story-ch1.mjs';
 import { ROSTER, SURVIVORS, BOOK_RULE, FLIP_PAGES, TRIGRAMS, RUNES, RUNE_DOOR, LIGHT_GRID, SOKOBAN, VIALS, SKETCH, BRAILLE } from '../data/library-ch1.mjs';
 import { playFile, heartbeatFrom } from '../world/sound.mjs';
 import { sfx } from '../art/sfx.mjs';
+import { captionsOn } from './captions.mjs';
 import { LEVERS, BOLTS_LOCKED, GEAR_RACK, AXLE_GAPS, LYRIC, LYRIC_MARKS } from '../data/act4-ch1.mjs';
 import { HOUSES } from '../logic/chars.mjs';
 
@@ -256,20 +257,28 @@ const BUILD = {
   },
 
   // P15：留聲水晶（方向、速度）與第七張桌子
-  recording(body, { getLang }) {
-    let dir = 'fwd', speed = 1, playing = null;
+  recording(body, { getLang, conn }) {
+    let dir = 'fwd', speed = 1, playing = null, subT = [];
+    const subs = el('p', { class: 'p15subs' }); // 聲音字幕（設定裡可以關）：轉盤調對時，伺服器給錄音的字幕；調錯就是聽不懂的聲音
     const lab = el('p', { class: 'dim' });
     const paint = () => { lab.textContent = `${t('dial_dir')}：${dir === 'fwd' ? t('forward') : t('reverse')}　${t('dial_speed')}：${speed}×`; };
     paint();
     const play = async () => {
       playing?.stop(); react('play', { rev: dir === 'rev', speed });
+      subT.forEach(clearTimeout); subT = []; subs.textContent = '';
+      if (captionsOn()) conn.request({ t: 'peek', pid: 'P15', value: { rev: dir === 'rev', speed } }).then((r) => {
+        const lines = r.content?.lines;
+        if (!lines) { subs.textContent = t(dir === 'rev' ? 'p15_sub_quick' : speed >= 1 ? 'p15_sub_fast' : 'p15_sub_garbled'); return; } // 錄音檔本身是倒過來又加快的
+        lines.forEach((ln, i) => subT.push(setTimeout(() => { subs.textContent = `（${ln}）`; }, 400 + i * 3200)));
+        subT.push(setTimeout(() => { subs.textContent = t('p15_sub_breath'); }, 400 + lines.length * 3200));
+      });
       playing = await playFile(`assets/audio/ch1/p15_liana_${getLang() === 'en' ? 'en' : 'zh'}.mp3`, { volume: 0.9, reverse: dir === 'rev', rate: speed });
     };
     body.append(el('p', { text: t('p15_crystal') }), lab, el('div', { class: 'row' },
       el('button', { text: t('dial_dir'), onclick: () => { dir = dir === 'fwd' ? 'rev' : 'fwd'; paint(); } }),
       el('button', { text: t('dial_speed'), onclick: () => { speed = speed === 1 ? 2 : speed === 2 ? 0.5 : 1; paint(); } }),
       el('button', { text: `▶ ${t('play')}`, onclick: play }),
-      el('button', { class: 'small', text: '■', onclick: () => { playing?.stop(); react('play', { off: true }); } })));
+      el('button', { class: 'small', text: '■', onclick: () => { playing?.stop(); react('play', { off: true }); subT.forEach(clearTimeout); subs.textContent = ''; } })), subs);
   },
   P15(body, { submit }) { body.append(el('p', { text: t('p15_drawer') }), numberInput(submit, '????')); },
 
