@@ -94,3 +94,4 @@ c.talk(秒數); c.setMood('calm' | 'smile' | 'scared');
   - `filingCabinet({ drawers, open, years, height })`：舊檔案室的木頭檔案櫃，黃銅把手、手寫年份標籤；`open` 是拉開第幾格（裡面塞滿泛黃的紙），`years` 可以指定每一格的標籤（謎題用）。
   - `drape({ width, drop, color })`：萬聖節的黑色布幔，原點在上緣中間，掛的時候把位置設在掛點。
   - 大釜、酒桶、藥水瓶已經有模型（`cauldron`、`barrel`、`potions`），不用另外做。
+- `game/src/art/erode.mjs`（2026-11-03）：蝕化效果，`erode(角色的 root, k)`，k 0～1。皮膚爬滿黑紫色的血管紋、膚色變灰；k ≥ 0.5 眼睛全黑、指甲變黑；k ≥ 0.85 眼睛透出暗紅光。只改材質（每個角色自己一份），模型、骨架、動作都不動。第二章的蝕化學生、蝕化的諾克斯都用這個；試過諾克斯、沃恩。
