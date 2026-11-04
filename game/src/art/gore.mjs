@@ -211,7 +211,7 @@ export function bloodSplat(parent, x, y, z, { size = 1, name = 'spray', normal =
 }
 
 // ---------- 加重血腥（2026-11-04 製作人：「加重血腥部分」） ----------
-const gutsMat = () => new THREE.MeshStandardMaterial({ color: '#6e2a2c', emissive: '#1a0303', roughness: 0.16, metalness: 0.1 });
+const gutsMat = () => new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.12, metalness: 0.15 }); // 顏色每一節不同（setColorAt）：沾滿血的暗紅、灰紫
 /** 腸子：沿著 pts（世界座標 [x,y,z] 陣列）一節一節拖出來，濕亮 */
 export function guts(parent, pts, { r = 0.035, seed = 1 } = {}) {
   const curve = new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(...p)));
@@ -222,6 +222,7 @@ export function guts(parent, pts, { r = 0.035, seed = 1 } = {}) {
     const u = i / (n - 1), p = curve.getPointAt(u), tg = curve.getTangentAt(u);
     const k = r * (0.85 + 0.3 * Math.abs(Math.sin(i * 1.7)) + R() * 0.1); // 一節一節、粗細不一
     q.setFromUnitVectors(Y, tg); s.set(k, k * 1.5, k); m.compose(p, q, s); im.setMatrixAt(i, m);
+    const v = R(); im.setColorAt(i, new THREE.Color().setRGB(0.24 + v * 0.16, 0.04 + v * 0.05, 0.05 + v * 0.05, THREE.SRGBColorSpace)); // 沾滿血、暗暗的，不要粉紅色
   }
   im.castShadow = true; parent.add(im); return im;
 }
