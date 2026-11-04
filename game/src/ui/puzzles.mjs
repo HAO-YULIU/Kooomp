@@ -34,6 +34,7 @@ export function openPuzzle(pid, thing, ctx) {
       else { status.textContent = t('wrong'); ctx.fx?.('wrong'); }
       return r;
     };
+    if (new URLSearchParams(location.search).has('dev')) window.__submit = submit; // 測試用（只有 ?dev）：走跟玩家按「作答」一樣的流程
     if (solved) body.append(el('p', { class: 'p-done', text: t('p_already') }));
     const main = el('div'); body.append(main, status); // 內容要等伺服器回覆的題目，也會排在狀態與提示上面
     builder(main, { ...ctx, submit, solved, pid, panel }); // 畫面可以設定 panel.onClose（關掉時要停的計時器）

@@ -87,7 +87,7 @@ export function startPlay({ conn, getState, myUid, toast, dev, devUser }) {
   const act3 = createAct3({ world, conn, toast, say, S, myChar: () => me()?.char, solvedByMe: (pid, r) => { onSolved(pid, myUid, r.reveal); toast(t('solved', { pid })); }, serverNow: () => Date.now() + clockOffset });
   const act4 = createAct4({ world, conn, toast, say, talking, S, myUid, myChar: () => me()?.char, receiver, serverNow: () => Date.now() + clockOffset, holding: () => holding, dev, playScript: (k) => play(k), finale,
     solvedByMe: (pid, r) => { onSolved(pid, myUid, r.reveal); toast(t('solved', { pid })); } });
-  if (dev) window.__ml = { receiver, world, conn, sent: 0, notes, heard, act2, act3, act4, get state() { return S(); } };
+  if (dev) window.__ml = { myUid, receiver, world, conn, sent: 0, notes, heard, act2, act3, act4, get state() { return S(); } };
 
   // ---- 段落開始：移到出發點、播劇情 ----
   function enterSegment(seg, first) {
