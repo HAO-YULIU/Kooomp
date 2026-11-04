@@ -228,12 +228,13 @@ export function guts(parent, pts, { r = 0.035, seed = 1 } = {}) {
 }
 /** 碎骨頭：散在地上的幾根骨頭（長骨＋兩頭的關節） */
 export function bones(parent, x, z, { n = 7, spread = 0.8, seed = 9 } = {}) {
-  const R = rng(seed), bm = boneMat(), g = new THREE.Group(); parent.add(g);
+  const R = rng(seed), g = new THREE.Group(); parent.add(g);
+  const bm = [new THREE.MeshStandardMaterial({ color: '#8a7860', roughness: 0.85 }), new THREE.MeshStandardMaterial({ color: '#6a4034', roughness: 0.5 }), new THREE.MeshStandardMaterial({ color: '#4a1a16', roughness: 0.3 })]; // 髒的、沾血的、還濕的
   const shaft = new THREE.CylinderGeometry(1, 1, 1, 6), knob = new THREE.SphereGeometry(1, 7, 5);
   for (let i = 0; i < n; i++) {
     const L = 0.18 + R() * 0.3, w = 0.016 + R() * 0.012, b = new THREE.Group();
-    const s = new THREE.Mesh(shaft, bm); s.scale.set(w, L, w); b.add(s);
-    for (const e of [-1, 1]) { const k = new THREE.Mesh(knob, bm); k.scale.setScalar(w * 1.9); k.position.y = e * L / 2; b.add(k); }
+    const mat = bm[Math.floor(R() * bm.length)], s = new THREE.Mesh(shaft, mat); s.scale.set(w, L, w); b.add(s);
+    for (const e of [-1, 1]) { const k = new THREE.Mesh(knob, mat); k.scale.setScalar(w * 1.9); k.position.y = e * L / 2; b.add(k); }
     b.rotation.set(Math.PI / 2, 0, R() * Math.PI * 2); b.position.set(x + (R() - 0.5) * spread, w * 1.6, z + (R() - 0.5) * spread);
     g.add(b);
   }
