@@ -67,7 +67,7 @@ export function createLibrary(scene, colliders) {
   bloodSplat(root, 100.18, 1.6, 13.4, { size: 1.4, name: 'drip', normal: [1, 0, 0], spin: Math.PI });
   bloodSplat(root, 106.1, 1.2, 14.82, { size: 1.0, name: 'drip', normal: [0, 0, -1], spin: Math.PI });
   // 加重（2026-11-04）：牆上抓著往下拖的血手印、貓身下的血、迷宮門口被啃乾淨的骨頭和噴濺
-  wallSmear(root, 115, 1.15, 6.2, { normal: [-1, 0, 0], w: 1.3, seed: 31 });
+  wallSmear(root, 102.7, 1.15, 0, { normal: [0, 0, 1], w: 1.3, seed: 31 }); // 迷宮門左邊、骨頭堆後面（東牆被書架擋住）
   wallSmear(root, 111.6, 1.2, 15, { normal: [0, 0, -1], w: 1.1, seed: 32 });
   bloodPool(root, 103, 11, 0.5, { seed: 6 });
   guts(root, [[103.05, 0.1, 11.05], [103.18, 0.05, 11.22], [103.32, 0.03, 11.18], [103.4, 0.025, 11.32]], { r: 0.02, seed: 7 }); // 貓的肚子被撕開，內臟拖出來
