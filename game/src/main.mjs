@@ -156,7 +156,8 @@ function onMessage(msg) {
     case 'chat': addChat(msg); break;
     case 'mark': game?.world.addMark(msg.kind, msg.p); if (msg.uid !== myUid) toast(`${nameOf(msg.uid)}：${t(`mark_${msg.kind}`)}`); break;
     case 'solved': game?.onSolved(msg.pid, msg.by); toast(`${nameOf(msg.by)}：${t('solved', { pid: msg.pid })}`); devOut(msg); break;
-    case 'hint': if (state) (state.hints[msg.pid] ??= []).push(msg.text); toast(`${nameOf(msg.by)}：${t('hint')}`); break;
+    case 'hint': if (msg.id) break; // 自己要的提示（回覆）：謎題視窗自己會加進去，這裡再加會出現兩次（2026-11-04 全面測試發現）
+      if (state) (state.hints[msg.pid] ??= []).push(msg.text); toast(`${nameOf(msg.by)}：${t('hint')}`); break;
     case 'error': if (!msg.id) toast(errText(msg.error)); break;
   }
 }
