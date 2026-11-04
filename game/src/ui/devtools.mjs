@@ -21,7 +21,7 @@ export function createDevTools({ conn, world, S, things, toast, onSolved, myUid 
     const room = world.roomOf?.(th.x, th.z);
     const cx = room ? (room.x[0] + room.x[1]) / 2 : th.x, cz = room ? (room.z[0] + room.z[1]) / 2 : th.z + 1;
     let dx = cx - th.x, dz = cz - th.z; const l = Math.hypot(dx, dz) || 1; dx /= l; dz /= l;
-    const d = Math.max(th.size?.[0] ?? 0.6, th.size?.[2] ?? 0.6) / 2 + 1.4;
+    const [w, , dd] = th.size ?? [0.6, 0.6, 0.6]; const d = Math.abs(dx) * w / 2 + Math.abs(dz) * dd / 2 + 1.4; // 從東西靠近你的那一面算 1.4 公尺（柵門這種很寬的東西，以前會站太遠、調查不到）
     world.teleport({ x: th.x + dx * d, z: th.z + dz * d, yaw: Math.atan2(dx, dz) });
   }
 
