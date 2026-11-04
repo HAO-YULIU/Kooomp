@@ -237,7 +237,9 @@ function renderWait() {
     b.onclick = async () => {
       peek = c; stage(c);
       if (!sortedHouse) return ($('wait-err').textContent = t('sort_first'));
-      const r = await conn.request({ t: 'char', char: mine?.char === c ? null : c });
+      // 再點一次已經選好的角色：維持選好（以前會取消，玩家按準備時會被說「先選角色」；2026-11-04 全面測試發現）
+      if (mine?.char === c) { $('wait-err').textContent = ''; $('step-ready').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); return; }
+      const r = await conn.request({ t: 'char', char: c });
       $('wait-err').textContent = r.t === 'error' ? errText(r.error) : '';
       if (r.t !== 'error' && mine?.char !== c) { preview?.mood('smile'); $('step-ready').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
     };
