@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { MAZE, mazeLayout } from '../data/library-ch1.mjs';
 import { bookWall } from '../art/textures.mjs';
-import { bloodTrail, bloodPool, buildSenior, bloodSplat, wallSmear, bones } from '../art/gore.mjs';
+import { bloodTrail, bloodPool, buildSenior, bloodSplat, wallSmear, bones, guts } from '../art/gore.mjs';
 
 export const mazePhase = (serverNow) => Math.floor(serverNow / 1000 / MAZE.period);
 export const mazeDark = (serverNow) => (serverNow / 1000) % MAZE.period > MAZE.period - MAZE.dark; // 換位置前熄燈
@@ -70,6 +70,7 @@ export function createLibrary(scene, colliders) {
   wallSmear(root, 115, 1.15, 6.2, { normal: [-1, 0, 0], w: 1.3, seed: 31 });
   wallSmear(root, 111.6, 1.2, 15, { normal: [0, 0, -1], w: 1.1, seed: 32 });
   bloodPool(root, 103, 11, 0.5, { seed: 6 });
+  guts(root, [[103.05, 0.1, 11.05], [103.25, 0.05, 11.3], [103.5, 0.03, 11.25], [103.7, 0.025, 11.45]], { r: 0.02, seed: 7 }); // 貓的肚子被撕開，內臟拖出來
   bones(root, 104.2, 2.2, { n: 8, spread: 1.0, seed: 9 });
   bloodPool(root, 104.2, 2.2, 0.7, { seed: 8 });
   bloodSplat(root, 109, 0, 1.4, { size: 1.4, name: 'spray', spin: 4.1 });
