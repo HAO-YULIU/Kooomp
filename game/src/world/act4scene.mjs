@@ -1,7 +1,7 @@
 // 第四幕的特別場景（灰盒）：屋頂的符文石板（P29）、機械室的大齒輪與鐘擺、蝕巢的黑根、屋頂的月亮。
 import * as THREE from 'three';
 import { ROOF, ROOF_AT } from '../data/act4-ch1.mjs';
-import { bloodPool, bloodSplat } from '../art/gore.mjs';
+import { bloodPool, bloodSplat, bloodTrail, wallSmear, bones, buildVictim } from '../art/gore.mjs';
 
 function runeTexture(ch) {
   const c = document.createElement('canvas'); c.width = c.height = 128;
@@ -50,9 +50,17 @@ export function createAct4Scene(scene) {
   bloodSplat(root, 172.82, 1.4, 3.5, { size: 1.3, name: 'drip', normal: [-1, 0, 0], spin: Math.PI });
   bloodSplat(root, 170.5, 1.1, -1.82, { size: 1.0, name: 'drip', normal: [0, 0, 1], spin: Math.PI });
   bloodSplat(root, 166.4, 0, 4.4, { size: 1.2, name: 'spray', spin: 1.3 });
+  // 加重（2026-11-04）：被拖進來的拖痕、牆上的血手印、啃乾淨的骨頭；靠牆坐著一個被撐開胸口的學生（模型到第四幕才載入）
+  bloodTrail(root, { x: 166.2, z: 4.6 }, { x: 171.6, z: 1.2 }, { width: 0.9, seed: 23, hands: 4 });
+  wallSmear(root, 172.82, 1.2, 0.2, { normal: [-1, 0, 0], w: 1.2, seed: 33 });
+  wallSmear(root, 168.4, 1.1, -1.82, { normal: [0, 0, 1], w: 1.0, seed: 34 });
+  bones(root, 167.6, 3.4, { n: 10, spread: 1.2, seed: 24 });
+  let victimAsked = false;
+  const wakeNest = () => { if (victimAsked) return; victimAsked = true; buildVictim(root, 172.3, 2.6, [-1, 0]).catch((e) => console.warn('蝕巢屍體載入失敗', e)); };
   let t = 0;
   return {
     frame(dt, zone) {
+      if (zone === 'a4_pass' || zone === 'a4_gears' || zone === 'a4_nest') wakeNest();
       moonlight.intensity = zone === 'a4_roof' ? 1.6 : 0; sky.intensity = zone === 'a4_roof' ? 0.8 : 0;
       if (zone !== 'a4_gears') return;
       t += dt; gears.forEach((g, i) => { g.rotation.y += dt * (i % 2 ? -0.3 : 0.3); }); pend.rotation.z = Math.sin(t * 1.2) * 0.35;

@@ -56,6 +56,9 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
     el('button', { text: t('a4_retry'), onclick: () => conn.request({ t: 'retry' }) }));
   const warn = el('div', { id: 'a4warn', hidden: true, text: t('a4_danger') }); // 視窗上面的警告（提示框在視窗底下會被蓋住）
   document.body.append(fight, bound, lost, warn);
+  // 被抓到：血噴在畫面上，慢慢淡掉（2026-11-04 加重血腥）
+  const splash = el('div', { id: 'a4blood' }); document.body.append(splash);
+  const bloodSplash = () => { splash.style.transition = 'none'; splash.style.opacity = '1'; splash.classList.toggle('flip'); void splash.offsetWidth; splash.style.transition = 'opacity 4s ease-in 2s'; splash.style.opacity = '0'; };
 
   // ---- 被抓到：1.5 秒內連點（空白鍵／畫面）掙脫 ----
   function struggle(until, free = 1) {
@@ -71,6 +74,7 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
     };
     grabbed = setTimeout(() => done(false), Math.max(300, until - serverNow()));
     addEventListener('keydown', hit); fight.addEventListener('pointerdown', hit);
+    bloodSplash();
     if (hasSound('grab_scream')) sfx('grab_scream'); else scream(); sfx('stinger'); navigator.vibrate?.([200, 80, 200]);
   }
 

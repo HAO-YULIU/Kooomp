@@ -157,6 +157,12 @@ export async function buildSenior(parent, x, z) {
     // 碎掉的布邊：背上的袍子被撕開（深色的破布片）
     const rag = new THREE.MeshStandardMaterial({ color: '#1a1214', roughness: 0.95, side: THREE.DoubleSide });
     for (let i = 0; i < 6; i++) { const p = new THREE.Mesh(new THREE.PlaneGeometry(0.08 + Math.random() * 0.06, 0.05), rag); p.rotation.set(-Math.PI / 2 + (Math.random() - 0.5) * 0.8, 0, Math.random() * 3); add(p, mid.clone().addScaledVector(side, (i % 2 ? 1 : -1) * (0.12 + Math.random() * 0.03)).addScaledVector(along, (Math.random() - 0.5) * 0.25).setY(mid.y + 0.01)); }
+    // 加重（2026-11-04）：內臟從背上的洞被扯出來，拖到身體旁邊的地上；身體下面、嘴巴旁邊都是血
+    guts(parent, [mid.toArray(), mid.clone().addScaledVector(side, 0.18).setY(mid.y + 0.02).toArray(), mid.clone().addScaledVector(side, 0.32).addScaledVector(along, -0.1).setY(0.08).toArray(), mid.clone().addScaledVector(side, 0.55).addScaledVector(along, 0.05).setY(0.03).toArray(), mid.clone().addScaledVector(side, 0.75).addScaledVector(along, -0.3).setY(0.03).toArray()], { r: 0.03, seed: 5 });
+    bloodPool(parent, mid.x, mid.z, 1.0, { seed: 13, y: 0.015 });
+  }
+  if (bones.Head) bloodPool(parent, W(bones.Head).x + 0.1, W(bones.Head).z, 0.4, { seed: 14, y: 0.016 }); // 嘴巴流出來的血
+  {
   }
   // 下半身結晶化：從腰到腳長滿黑色結晶，結晶也從地板長出來，把腿整個包住
   const cm = crystalMat(), R = rng(11);
@@ -202,4 +208,126 @@ export function bloodSplat(parent, x, y, z, { size = 1, name = 'spray', normal =
   const n = new THREE.Vector3(...normal).normalize();
   m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), n); if (spin) m.rotateZ(spin);
   m.position.set(x, y, z).addScaledVector(n, 0.012); m.renderOrder = 1; parent.add(m); return m;
+}
+
+// ---------- 加重血腥（2026-11-04 製作人：「加重血腥部分」） ----------
+const gutsMat = () => new THREE.MeshStandardMaterial({ color: '#6e2a2c', emissive: '#1a0303', roughness: 0.16, metalness: 0.1 });
+/** 腸子：沿著 pts（世界座標 [x,y,z] 陣列）一節一節拖出來，濕亮 */
+export function guts(parent, pts, { r = 0.035, seed = 1 } = {}) {
+  const curve = new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(...p)));
+  const n = Math.max(6, Math.ceil(curve.getLength() / (r * 1.1))), R = rng(seed);
+  const im = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 9, 7), gutsMat(), n);
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0);
+  for (let i = 0; i < n; i++) {
+    const u = i / (n - 1), p = curve.getPointAt(u), tg = curve.getTangentAt(u);
+    const k = r * (0.85 + 0.3 * Math.abs(Math.sin(i * 1.7)) + R() * 0.1); // 一節一節、粗細不一
+    q.setFromUnitVectors(Y, tg); s.set(k, k * 1.5, k); m.compose(p, q, s); im.setMatrixAt(i, m);
+  }
+  im.castShadow = true; parent.add(im); return im;
+}
+/** 碎骨頭：散在地上的幾根骨頭（長骨＋兩頭的關節） */
+export function bones(parent, x, z, { n = 7, spread = 0.8, seed = 9 } = {}) {
+  const R = rng(seed), bm = boneMat(), g = new THREE.Group(); parent.add(g);
+  const shaft = new THREE.CylinderGeometry(1, 1, 1, 6), knob = new THREE.SphereGeometry(1, 7, 5);
+  for (let i = 0; i < n; i++) {
+    const L = 0.18 + R() * 0.3, w = 0.016 + R() * 0.012, b = new THREE.Group();
+    const s = new THREE.Mesh(shaft, bm); s.scale.set(w, L, w); b.add(s);
+    for (const e of [-1, 1]) { const k = new THREE.Mesh(knob, bm); k.scale.setScalar(w * 1.9); k.position.y = e * L / 2; b.add(k); }
+    b.rotation.set(Math.PI / 2, 0, R() * Math.PI * 2); b.position.set(x + (R() - 0.5) * spread, w * 1.6, z + (R() - 0.5) * spread);
+    g.add(b);
+  }
+  return g;
+}
+// 牆上的血手印：好幾隻手往下抓、拖出長長的血痕（有人被拖走時抓著牆）
+function smearTexture(seed) {
+  const W = 512, H = 768, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d'), R = rng(seed);
+  for (let i = 0; i < 4; i++) {
+    const x = 70 + i * 110 + (R() - 0.5) * 40, y = 90 + R() * 160, s = 2.2 + R() * 0.6, col = `rgba(${55 + R() * 25 | 0},3,3,0.85)`;
+    hand(g, x, y, s, (R() - 0.5) * 0.5, col);
+    g.filter = 'blur(1.5px)';
+    for (let f = 0; f < 4; f++) { // 手指往下拖的四條血痕
+      const fx = x + (-9 + f * 6) * s, len = 180 + R() * 330; g.strokeStyle = `rgba(${45 + R() * 25 | 0},2,2,${0.55 + R() * 0.3})`; g.lineWidth = 4 + R() * 5;
+      g.beginPath(); g.moveTo(fx, y - 20 * s); for (let yy = 0; yy < len; yy += 20) g.lineTo(fx + Math.sin(yy * 0.03 + f) * 4, y + yy); g.stroke();
+    }
+    g.filter = 'none';
+    for (let d = 0; d < 6; d++) { const dx = x + (R() - 0.5) * 70, dy = y + R() * 200; g.fillStyle = `rgba(60,3,3,0.8)`; g.fillRect(dx, dy, 3 + R() * 3, 30 + R() * 160); drop(g, dx + 3, dy + 30 + R() * 160, 4 + R() * 3, 'rgba(60,3,3,0.85)'); }
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+/** 牆上的血手印＋往下拖的血痕。x、y、z＝中心，normal＝牆面朝外的方向 */
+export function wallSmear(parent, x, y, z, { normal = [1, 0, 0], w = 1.2, seed = 31 } = {}) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, w * 1.5), wetMat(smearTexture(seed)));
+  const n = new THREE.Vector3(...normal).normalize();
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), n); m.position.set(x, y, z).addScaledVector(n, 0.015); m.renderOrder = 1; parent.add(m); return m;
+}
+
+/** 被拖進蝕巢的學生：靠牆坐著，胸口被撐開，肋骨外翻、內臟流到腿上和地上，黑色結晶從背後的牆刺穿身體。
+ *  x、z＝屁股的位置；face＝面向的方向 [fx, fz]。回傳 Promise<group> */
+export async function buildVictim(parent, x, z, face = [-1, 0], { seed = 41 } = {}) {
+  const group = new THREE.Group(); parent.add(group);
+  const c = await loadCharacter('vaughn');
+  const model = c.root;
+  model.traverse((o) => {
+    if (!o.isMesh) return; o.material = Array.isArray(o.material) ? o.material.map((m) => m.clone()) : o.material.clone();
+    for (const m of [o.material].flat()) {
+      const n = m.name || '';
+      if (/Skin_|Nails/.test(n)) { m.color?.set('#7f8688'); if (m.sheenColor) m.sheen = 0; }
+      else if (/Hair|Scalp|Transparency/.test(n)) m.color?.set('#1c1410');
+      else if (/robe|shoes/.test(n)) m.color?.multiply(new THREE.Color('#4a2a2a')); // 袍子被血浸透
+    }
+    o.castShadow = true; o.receiveShadow = true;
+  });
+  group.add(model); group.position.set(x, 0, z); group.rotation.y = Math.atan2(-face[0], -face[1]);
+  group.updateMatrixWorld(true);
+  const bns = {}; model.traverse((o) => { if (o.isBone) { const k = o.name.replace(/^.*Base_/, ''); bns[k] ??= o; } });
+  const F = new THREE.Vector3(face[0], 0, face[1]).normalize(), UP = new THREE.Vector3(0, 1, 0), DOWN = UP.clone().negate(), SIDE = new THREE.Vector3(-F.z, 0, F.x);
+  // 坐姿：大腿往前、小腿往前往下、身體往後靠牆、頭垂向一邊、手攤在身邊
+  for (const s of ['L', 'R']) {
+    const sd = s === 'L' ? -1 : 1;
+    if (bns[`${s}_Thigh`]) aim(bns[`${s}_Thigh`], F.clone().addScaledVector(SIDE, sd * 0.25).addScaledVector(DOWN, 0.05));
+    if (bns[`${s}_Calf`]) aim(bns[`${s}_Calf`], F.clone().addScaledVector(SIDE, sd * 0.15).addScaledVector(DOWN, 0.35));
+    if (bns[`${s}_Upperarm`]) aim(bns[`${s}_Upperarm`], DOWN.clone().addScaledVector(SIDE, sd * 0.5).addScaledVector(F, 0.1));
+    if (bns[`${s}_Forearm`]) aim(bns[`${s}_Forearm`], F.clone().addScaledVector(SIDE, sd * 0.6).addScaledVector(DOWN, 0.5));
+  }
+  if (bns.Spine01) aim(bns.Spine01, UP.clone().addScaledVector(F, -0.3));
+  if (bns.Head) { bns.Head.rotateZ(0.6); bns.Head.rotateX(0.5); bns.Head.updateMatrixWorld(true); }
+  group.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(model, true); group.position.y -= box.min.y - 0.01; group.updateMatrixWorld(true);
+  const W = (b) => b.getWorldPosition(new THREE.Vector3());
+  const add = (mesh, pos) => { mesh.position.copy(pos); mesh.castShadow = true; parent.add(mesh); return mesh; };
+  const R = rng(seed);
+  // 胸口被撐開：血肉、深色的洞、往外翻的肋骨
+  const sp = bns.Spine02 ?? bns.Spine01;
+  if (sp) {
+    const chest = W(sp).addScaledVector(F, 0.13);
+    const wound = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 10), fleshMat()); wound.scale.set(0.15, 0.2, 0.05); wound.lookAt(chest.clone().add(F)); add(wound, chest);
+    const hole = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 8), wetFlesh()); hole.scale.set(0.09, 0.14, 0.04); hole.lookAt(chest.clone().add(F)); add(hole, chest.clone().addScaledVector(F, 0.015));
+    const bm = boneMat();
+    for (let i = 0; i < 5; i++) for (const sd of [-1, 1]) {
+      const rib = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.009, 5, 10, Math.PI * 0.7), bm);
+      const p = chest.clone().addScaledVector(UP, 0.12 - i * 0.055).addScaledVector(SIDE, sd * 0.07).addScaledVector(F, 0.03);
+      rib.position.copy(p); rib.lookAt(p.clone().add(UP)); rib.rotateZ(Math.atan2(F.z * sd, F.x * sd)); rib.rotateY(sd * 0.5);
+      rib.castShadow = true; parent.add(rib);
+    }
+    // 內臟：從胸口流下來，掛在腿上，一路拖到地上
+    const hip = W(bns.Pelvis ?? sp);
+    guts(parent, [chest.toArray(), chest.clone().addScaledVector(F, 0.12).addScaledVector(UP, -0.2).toArray(), hip.clone().addScaledVector(F, 0.3).setY(hip.y + 0.06).toArray(), hip.clone().addScaledVector(F, 0.55).addScaledVector(SIDE, 0.25).setY(0.04).toArray(), hip.clone().addScaledVector(F, 0.8).addScaledVector(SIDE, -0.1).setY(0.03).toArray()], { r: 0.032, seed });
+    guts(parent, [chest.clone().addScaledVector(UP, -0.08).toArray(), hip.clone().addScaledVector(F, 0.22).addScaledVector(SIDE, -0.15).setY(hip.y + 0.04).toArray(), hip.clone().addScaledVector(F, 0.45).addScaledVector(SIDE, -0.4).setY(0.03).toArray()], { r: 0.028, seed: seed + 1 });
+    // 黑色結晶：從背後的牆刺穿身體，從胸口穿出來
+    const cm = crystalMat(), geo = new THREE.ConeGeometry(1, 1, 5); geo.translate(0, 0.5, 0);
+    for (let i = 0; i < 7; i++) {
+      const l = 0.5 + R() * 0.7, wd = 0.03 + l * 0.05, s = new THREE.Mesh(geo, cm); s.scale.set(wd, l, wd);
+      const dir = F.clone().addScaledVector(UP, 0.2 + R() * 0.5).addScaledVector(SIDE, (R() - 0.5) * 0.8).normalize();
+      s.quaternion.setFromUnitVectors(UP, dir); add(s, chest.clone().addScaledVector(F, -0.35).addScaledVector(UP, (R() - 0.5) * 0.35).addScaledVector(SIDE, (R() - 0.5) * 0.25));
+    }
+    // 嘴巴流下來的血（下巴到胸口）
+    if (bns.Head) {
+      const chin = W(bns.Head).addScaledVector(F, 0.1).addScaledVector(UP, -0.05);
+      const drip = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.02, 0.22, 6), wetFlesh()); drip.position.copy(chin).addScaledVector(UP, -0.1); parent.add(drip);
+    }
+  }
+  // 身體下面一大灘血
+  bloodPool(parent, x + F.x * 0.35, z + F.z * 0.35, 1.2, { seed: seed + 2, y: 0.016 });
+  return group;
 }

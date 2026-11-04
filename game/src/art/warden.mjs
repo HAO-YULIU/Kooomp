@@ -49,6 +49,27 @@ export async function loadWardenModel() {
   let hand = null; model.traverse((o) => { if (!hand && o.isBone && /hand_r$/.test(o.name)) hand = o; });
   const hp = new THREE.Vector3();
   let t = 0;
+  // 滴血：背上的裂口往下滴，掉到地上留下血點（血點放在場景裡，不跟著守夜人走；40 個循環用）
+  const dropMat = new THREE.MeshBasicMaterial({ color: '#3a0204' }), spotMat = new THREE.MeshBasicMaterial({ color: '#2a0103', transparent: true, opacity: 0.9, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+  const drops = Array.from({ length: 6 }, () => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.012, 5, 4), dropMat); m.scale.y = 2; m.visible = false; m.frustumCulled = false; root.add(m); return { m, v: 0, wait: Math.random() }; });
+  const spots = [], spotGeo = new THREE.CircleGeometry(1, 8); let spotI = 0;
+  const wp = new THREE.Vector3();
+  function drip(dt, mode) {
+    const em = ribs.drips; if (!em?.length) return;
+    let top = root; while (top.parent) top = top.parent;
+    const fast = mode === 'chase' || mode === 'grab';
+    for (const d of drops) {
+      if (!d.m.visible) { d.wait -= dt * (fast ? 3 : 1); if (d.wait > 0) continue; em[Math.floor(Math.random() * em.length)].getWorldPosition(wp); root.worldToLocal(wp); d.m.position.copy(wp); d.v = 0; d.m.visible = true; continue; }
+      d.v += 9.8 * dt; d.m.position.y -= d.v * dt;
+      if (d.m.position.y <= 0.01) {
+        d.m.visible = false; d.wait = 0.3 + Math.random() * 0.8;
+        if (top !== root) { // 落地：留下一個血點
+          d.m.getWorldPosition(wp); let s = spots[spotI]; if (!s) { s = spots[spotI] = new THREE.Mesh(spotGeo, spotMat); s.rotation.x = -Math.PI / 2; s.renderOrder = 1; top.add(s); }
+          s.position.set(wp.x, 0.013, wp.z); s.scale.setScalar(0.025 + Math.random() * 0.03); spotI = (spotI + 1) % 40;
+        }
+      }
+    }
+  }
   return {
     root, play,
     update(dt, mode) {
@@ -58,6 +79,7 @@ export async function loadWardenModel() {
       for (const r of ribs) r.h.rotation.y = r.sd * (0.12 + 0.1 * Math.sin(t * (1.6 + open * 5) + r.ph) + open * 0.55);
       if (hand) { root.updateMatrixWorld(true); hand.getWorldPosition(hp); root.worldToLocal(hp); lamp.position.copy(hp).add(new THREE.Vector3(0, -0.2, 0)); }
       lamp.rotation.z = Math.sin(t * 2.2) * 0.12;
+      drip(dt, mode);
       glass.opacity = 0.7 + 0.25 * Math.sin(t * 9) * Math.sin(t * 3.7);
     },
   };
@@ -126,6 +148,12 @@ function corrupt(model, root) {
   const peel = new THREE.Mesh(new THREE.PlaneGeometry(0.06, 0.1, 1, 3), new THREE.MeshStandardMaterial({ color: '#8a7466', roughness: 0.7, side: THREE.DoubleSide }));
   const pp = peel.geometry.attributes.position; for (let i = 0; i < pp.count; i++) { const y = pp.getY(i); pp.setZ(i, (0.05 - y) ** 2 * 3); } peel.geometry.translate(0, -0.05, 0); peel.geometry.computeVertexNormals();
   peel.quaternion.copy(q); peel.rotateX(0.35); peel.scale.setScalar(0.8); put(peel, face.clone().addScaledVector(UP, -0.025).addScaledVector(FRONT, 0.004), head);
+
+  // 5. 加重（2026-11-04）：嘴巴流下來的血一路染到胸口；背上的裂口一直滴血（滴點，update 裡讓它們往下掉、落地留下血點）
+  const mouth = H.clone().addScaledVector(FRONT, 0.1).addScaledVector(UP, 0.0);
+  const chin = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 8), wet); chin.scale.set(0.035, 0.07, 0.012); chin.quaternion.copy(q); put(chin, mouth.clone().addScaledVector(UP, -0.05), head);
+  const bib = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 8), wet); bib.scale.set(0.09, 0.16, 0.02); bib.quaternion.copy(q); put(bib, chest.clone().addScaledVector(FRONT, torsoR * 0.95).addScaledVector(UP, -0.02), spine);
+  hinges.drips = [0, 1, 2].map((i) => { const o = new THREE.Object3D(); put(o, mid.clone().addScaledVector(AXIS, -0.18 + i * 0.12).addScaledVector(BACK, 0.03).addScaledVector(SIDE, (i - 1) * 0.04), spine); return o; });
   return hinges;
 }
 

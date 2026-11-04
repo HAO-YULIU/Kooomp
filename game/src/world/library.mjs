@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { MAZE, mazeLayout } from '../data/library-ch1.mjs';
 import { bookWall } from '../art/textures.mjs';
-import { bloodTrail, bloodPool, buildSenior, bloodSplat } from '../art/gore.mjs';
+import { bloodTrail, bloodPool, buildSenior, bloodSplat, wallSmear, bones } from '../art/gore.mjs';
 
 export const mazePhase = (serverNow) => Math.floor(serverNow / 1000 / MAZE.period);
 export const mazeDark = (serverNow) => (serverNow / 1000) % MAZE.period > MAZE.period - MAZE.dark; // 換位置前熄燈
@@ -66,6 +66,14 @@ export function createLibrary(scene, colliders) {
   bloodSplat(root, 113.3, 0, 3.2, { size: 1.1, name: 'spray', spin: 2.1 });
   bloodSplat(root, 100.18, 1.6, 13.4, { size: 1.4, name: 'drip', normal: [1, 0, 0], spin: Math.PI });
   bloodSplat(root, 106.1, 1.2, 14.82, { size: 1.0, name: 'drip', normal: [0, 0, -1], spin: Math.PI });
+  // 加重（2026-11-04）：牆上抓著往下拖的血手印、貓身下的血、迷宮門口被啃乾淨的骨頭和噴濺
+  wallSmear(root, 115, 1.15, 6.2, { normal: [-1, 0, 0], w: 1.3, seed: 31 });
+  wallSmear(root, 111.6, 1.2, 15, { normal: [0, 0, -1], w: 1.1, seed: 32 });
+  bloodPool(root, 103, 11, 0.5, { seed: 6 });
+  bones(root, 104.2, 2.2, { n: 8, spread: 1.0, seed: 9 });
+  bloodPool(root, 104.2, 2.2, 0.7, { seed: 8 });
+  bloodSplat(root, 109, 0, 1.4, { size: 1.4, name: 'spray', spin: 4.1 });
+  bloodSplat(root, 106.7, 1.5, 0, { size: 1.2, name: 'drip', normal: [0, 0, 1], spin: Math.PI });
   let lantern = null, lanternTaken = false;
   let seniorAsked = false; // 屍體的模型（2MB）到第三幕才下載，不拖慢開場
   const wake = () => { if (seniorAsked) return; seniorAsked = true; buildSenior(root, 112, 4).then((r) => { lantern = r.lantern; if (lanternTaken) lantern.visible = false; }).catch((e) => console.warn('屍體的模型載入失敗', e)); };
