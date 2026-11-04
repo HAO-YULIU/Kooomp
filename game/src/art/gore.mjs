@@ -264,8 +264,9 @@ export function wallSmear(parent, x, y, z, { normal = [1, 0, 0], w = 1.2, seed =
   m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), n); m.position.set(x, y, z).addScaledVector(n, 0.015); m.renderOrder = 1; parent.add(m); return m;
 }
 
-/** 被拖進蝕巢的學生：靠牆坐著，胸口被撐開，肋骨外翻、內臟流到腿上和地上，黑色結晶從背後的牆刺穿身體。
- *  x、z＝屁股的位置；face＝面向的方向 [fx, fz]。回傳 Promise<group> */
+/** 被拖進蝕巢的學生：仰躺在地上、頭朝牆，胸口被撐開，肋骨外翻、內臟拖到身體兩邊，黑色結晶從地板刺穿身體。
+ *  x、z＝身體中間；face＝腳朝的方向 [fx, fz]（頭在反方向）。回傳 Promise<group>
+ *  （角色模型的腿不是一根根能彎的骨頭，擺不出坐姿，所以用整個人轉過來躺著的做法，跟高年級生一樣） */
 export async function buildVictim(parent, x, z, face = [-1, 0], { seed = 41 } = {}) {
   const group = new THREE.Group(); parent.add(group);
   const c = await loadCharacter('vaughn');
@@ -280,56 +281,46 @@ export async function buildVictim(parent, x, z, face = [-1, 0], { seed = 41 } = 
     }
     o.castShadow = true; o.receiveShadow = true;
   });
-  group.add(model); group.position.set(x, 0, z); group.rotation.y = Math.atan2(-face[0], -face[1]);
-  group.updateMatrixWorld(true);
+  const F = new THREE.Vector3(face[0], 0, face[1]).normalize(), UP = new THREE.Vector3(0, 1, 0), SIDE = new THREE.Vector3().crossVectors(F, UP).normalize();
+  // 仰躺：模型的「上」→ 頭朝 -F、模型的「後面」→ 朝下、模型的右手 → SIDE
+  const holder = new THREE.Group(); holder.add(model);
+  holder.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(SIDE, F.clone().negate(), UP.clone().negate()));
+  group.add(holder); group.position.set(x, 0, z); group.updateMatrixWorld(true);
   const bns = {}; model.traverse((o) => { if (o.isBone) { const k = o.name.replace(/^.*Base_/, ''); bns[k] ??= o; } });
-  const F = new THREE.Vector3(face[0], 0, face[1]).normalize(), UP = new THREE.Vector3(0, 1, 0), DOWN = UP.clone().negate(), SIDE = new THREE.Vector3(-F.z, 0, F.x);
-  // 坐姿：大腿往前、小腿往前往下、身體往後靠牆、頭垂向一邊、手攤在身邊
-  for (const s of ['L', 'R']) {
-    const sd = s === 'L' ? -1 : 1;
-    if (bns[`${s}_Thigh`]) aim(bns[`${s}_Thigh`], F.clone().addScaledVector(SIDE, sd * 0.25).addScaledVector(DOWN, 0.05));
-    if (bns[`${s}_Calf`]) aim(bns[`${s}_Calf`], F.clone().addScaledVector(SIDE, sd * 0.15).addScaledVector(DOWN, 0.35));
-    if (bns[`${s}_Upperarm`]) aim(bns[`${s}_Upperarm`], DOWN.clone().addScaledVector(SIDE, sd * 0.5).addScaledVector(F, 0.1));
-    if (bns[`${s}_Forearm`]) aim(bns[`${s}_Forearm`], F.clone().addScaledVector(SIDE, sd * 0.6).addScaledVector(DOWN, 0.5));
-  }
-  if (bns.Spine01) aim(bns.Spine01, UP.clone().addScaledVector(F, -0.3));
-  if (bns.Head) { bns.Head.rotateZ(0.6); bns.Head.rotateX(0.5); bns.Head.updateMatrixWorld(true); }
+  if (bns.Head) { bns.Head.rotateY(0.9); bns.Head.rotateX(-0.3); } // 頭歪向一邊、往後仰
   group.updateMatrixWorld(true);
-  const box = new THREE.Box3().setFromObject(model, true); group.position.y -= box.min.y - 0.01; group.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(holder, true); group.position.y -= box.min.y - 0.01; group.updateMatrixWorld(true);
   const W = (b) => b.getWorldPosition(new THREE.Vector3());
   const add = (mesh, pos) => { mesh.position.copy(pos); mesh.castShadow = true; parent.add(mesh); return mesh; };
   const R = rng(seed);
-  // 胸口被撐開：血肉、深色的洞、往外翻的肋骨
   const sp = bns.Spine02 ?? bns.Spine01;
   if (sp) {
-    const chest = W(sp).addScaledVector(F, 0.13);
-    const wound = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 10), fleshMat()); wound.scale.set(0.15, 0.2, 0.05); wound.lookAt(chest.clone().add(F)); add(wound, chest);
-    const hole = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 8), wetFlesh()); hole.scale.set(0.09, 0.14, 0.04); hole.lookAt(chest.clone().add(F)); add(hole, chest.clone().addScaledVector(F, 0.015));
+    const cp = W(sp); const chest = new THREE.Vector3(cp.x, Math.max(cp.y, 0.12) + 0.1, cp.z); // 胸口（朝上）
+    // 胸口被撐開：血肉、深色的洞
+    const wound = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 10), fleshMat()); wound.scale.set(0.17, 0.05, 0.24); wound.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), F); add(wound, chest);
+    const hole = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 8), wetFlesh()); hole.scale.set(0.1, 0.04, 0.16); hole.quaternion.copy(wound.quaternion); add(hole, chest.clone().setY(chest.y + 0.015));
+    // 肋骨往兩邊外翻（像被人從中間扳開）
     const bm = boneMat();
     for (let i = 0; i < 5; i++) for (const sd of [-1, 1]) {
-      const rib = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.009, 5, 10, Math.PI * 0.7), bm);
-      const p = chest.clone().addScaledVector(UP, 0.12 - i * 0.055).addScaledVector(SIDE, sd * 0.07).addScaledVector(F, 0.03);
-      rib.position.copy(p); rib.lookAt(p.clone().add(UP)); rib.rotateZ(Math.atan2(F.z * sd, F.x * sd)); rib.rotateY(sd * 0.5);
-      rib.castShadow = true; parent.add(rib);
+      const rib = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.009, 5, 10, Math.PI * 0.6), bm);
+      const p = chest.clone().addScaledVector(F, 0.12 - i * 0.055).addScaledVector(SIDE, sd * 0.06).setY(chest.y + 0.02);
+      const m = new THREE.Matrix4().makeBasis(SIDE.clone().multiplyScalar(sd), UP, SIDE.clone().multiplyScalar(sd).cross(UP));
+      rib.quaternion.setFromRotationMatrix(m); rib.rotateZ(-0.35); rib.position.copy(p); rib.castShadow = true; parent.add(rib);
     }
-    // 內臟：從胸口流下來，掛在腿上，一路拖到地上
-    const hip = W(bns.Pelvis ?? sp);
-    guts(parent, [chest.toArray(), chest.clone().addScaledVector(F, 0.12).addScaledVector(UP, -0.2).toArray(), hip.clone().addScaledVector(F, 0.3).setY(hip.y + 0.06).toArray(), hip.clone().addScaledVector(F, 0.55).addScaledVector(SIDE, 0.25).setY(0.04).toArray(), hip.clone().addScaledVector(F, 0.8).addScaledVector(SIDE, -0.1).setY(0.03).toArray()], { r: 0.032, seed });
-    guts(parent, [chest.clone().addScaledVector(UP, -0.08).toArray(), hip.clone().addScaledVector(F, 0.22).addScaledVector(SIDE, -0.15).setY(hip.y + 0.04).toArray(), hip.clone().addScaledVector(F, 0.45).addScaledVector(SIDE, -0.4).setY(0.03).toArray()], { r: 0.028, seed: seed + 1 });
-    // 黑色結晶：從背後的牆刺穿身體，從胸口穿出來
+    // 內臟：從胸口拖出來，掛到身體兩邊的地上
+    const L = (a, b, y) => chest.clone().addScaledVector(F, a).addScaledVector(SIDE, b).setY(y).toArray();
+    guts(parent, [chest.toArray(), L(0.1, 0.18, chest.y + 0.02), L(0.18, 0.36, 0.08), L(0.35, 0.5, 0.03), L(0.6, 0.42, 0.03), L(0.75, 0.62, 0.03)], { r: 0.034, seed });
+    guts(parent, [L(-0.02, 0, chest.y), L(0.05, -0.2, chest.y), L(0.2, -0.38, 0.06), L(0.4, -0.52, 0.03)], { r: 0.03, seed: seed + 1 });
+    // 黑色結晶：從地板往上刺穿身體，從胸口、肚子穿出來
     const cm = crystalMat(), geo = new THREE.ConeGeometry(1, 1, 5); geo.translate(0, 0.5, 0);
     for (let i = 0; i < 7; i++) {
-      const l = 0.5 + R() * 0.7, wd = 0.03 + l * 0.05, s = new THREE.Mesh(geo, cm); s.scale.set(wd, l, wd);
-      const dir = F.clone().addScaledVector(UP, 0.2 + R() * 0.5).addScaledVector(SIDE, (R() - 0.5) * 0.8).normalize();
-      s.quaternion.setFromUnitVectors(UP, dir); add(s, chest.clone().addScaledVector(F, -0.35).addScaledVector(UP, (R() - 0.5) * 0.35).addScaledVector(SIDE, (R() - 0.5) * 0.25));
-    }
-    // 嘴巴流下來的血（下巴到胸口）
-    if (bns.Head) {
-      const chin = W(bns.Head).addScaledVector(F, 0.1).addScaledVector(UP, -0.05);
-      const drip = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.02, 0.22, 6), wetFlesh()); drip.position.copy(chin).addScaledVector(UP, -0.1); parent.add(drip);
+      const l = 0.45 + R() * 0.75, wd = 0.03 + l * 0.05, sk = new THREE.Mesh(geo, cm); sk.scale.set(wd, l, wd);
+      const dir = UP.clone().addScaledVector(F, (R() - 0.5) * 0.8).addScaledVector(SIDE, (R() - 0.5) * 0.8).normalize();
+      sk.quaternion.setFromUnitVectors(UP, dir); add(sk, chest.clone().addScaledVector(F, (R() - 0.3) * 0.5).addScaledVector(SIDE, (R() - 0.5) * 0.25).setY(0));
     }
   }
+  if (bns.Head) bloodPool(parent, W(bns.Head).x, W(bns.Head).z, 0.45, { seed: seed + 3, y: 0.017 }); // 嘴巴流出來的血
   // 身體下面一大灘血
-  bloodPool(parent, x + F.x * 0.35, z + F.z * 0.35, 1.2, { seed: seed + 2, y: 0.016 });
+  bloodPool(parent, x, z, 1.3, { seed: seed + 2, y: 0.016 });
   return group;
 }
