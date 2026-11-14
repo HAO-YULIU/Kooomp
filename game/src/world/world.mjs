@@ -95,7 +95,8 @@ function makeRoomCuller(scene) {
 export function createWorld(canvas, lang = 'zh') {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: !isTouch, powerPreference: 'high-performance' });
   // 解析度會依速度自動調（手機卡的時候先降解析度，順了再慢慢調回來）
-  const fullRatio = Math.min(devicePixelRatio, isTouch ? 1.5 : 2), minRatio = isTouch ? 0.6 : 0.85;
+  const gfx = new URLSearchParams(location.search).has('dev') ? +new URLSearchParams(location.search).get('gfx') || 0 : 0; // 只有本機測試（?dev&gfx=0.3）：沒有顯示卡的測試電腦用低解析度畫 3D，介面大小不變
+  const fullRatio = gfx || Math.min(devicePixelRatio, isTouch ? 1.5 : 2), minRatio = gfx || (isTouch ? 0.6 : 0.85);
   // 省電模式（設定裡開）：每秒最多 30 格、解析度最多 1 倍（手機發燙、比較舊的手機用）
   let lowPower = (() => { try { return localStorage.getItem('ml_lowpower') === '1'; } catch { return false; } })();
   let maxRatio = lowPower ? Math.min(1, fullRatio) : fullRatio;
