@@ -6,6 +6,8 @@
 ## 進行中
 開始做一件事前在這裡登記；做完就移除。格式：`- 分支名稱：在做什麼（會動到的檔案或資料夾）`
 
+- `claude/busy-hawking-1tr76j`（2026-11-14）：上架前檢查；第四幕謎題改成可以遠距作答（`game/src/logic/play.mjs`、`game/src/ui/puzzles.mjs`、`game/src/logic/i18n.mjs`、`game/index.html`、`game/style.css`）。
+
 
 - `claude/sweet-goldberg-nklgb6`（帳號二）：**帳號一額度用完，帳號二暫時接手全部工作**（2026-10-22 製作人）。已把法杖接進遊戲（`play.mjs`：依角色換法杖、施咒時發光）。本機用 `.dev.vars`（`DEV_AUTH=1`，不 commit）跑 `wrangler dev`，`?dev=名字` 單人實測過序幕～第四幕畫面正常；`npm test` 28 項全過。
 
