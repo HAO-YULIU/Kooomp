@@ -1,7 +1,7 @@
 // 《魔蝕milner》主程式（第 1 批）：18+ 提示 → 登入 → 選單 → 等待室 → 測試場景（隊友同步、聊天、標記、測試作答）。
 import { t, errText, getLang, setLang } from './logic/i18n.mjs';
 import { HOUSES, CHARS, charOfHouse } from './logic/chars.mjs';
-import { signIn, lobbyGate, testPanel, isTest, devLogin } from './net/platform.mjs';
+import { signIn, lobbyGate, testPanel, isTest, devLogin, playerLogin } from './net/platform.mjs';
 import { createRoom, roomInfo, connectRoom, mySave } from './net/room.mjs';
 import { openSorting } from './ui/sorting.mjs';
 import { DefaultLoadingManager } from 'three';
@@ -20,7 +20,7 @@ document.body.classList.toggle('touch', matchMedia('(pointer: coarse)').matches)
   document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false }); }
 
 // ---------- 畫面切換與文字 ----------
-const screens = ['s-age', 's-login', 's-menu', 's-wait'];
+const screens = ['s-age', 's-home', 's-login', 's-menu', 's-wait'];
 function show(id) { for (const s of screens) $(s).hidden = s !== id; }
 function paintText() {
   for (const el of document.querySelectorAll('[data-t]')) el.textContent = t(el.dataset.t);
@@ -42,9 +42,28 @@ function toast(text) { const el = $('toast'); el.textContent = text; el.classLis
 // 每次打開遊戲（新的分頁）都要再確認一次年齡（2026-10-22 製作人：要提示年齡限制）
 const AGE_KEY = 'ml_age_ok';
 const ageOk = () => { try { return sessionStorage.getItem(AGE_KEY) === '1'; } catch { return false; } };
-$('age-ok').onclick = () => { try { sessionStorage.setItem(AGE_KEY, '1'); } catch { /* 無痕模式 */ } boot(); };
+$('age-ok').onclick = () => { try { sessionStorage.setItem(AGE_KEY, '1'); } catch { /* 無痕模式 */ } homeTip(); };
+
+// ---------- 手機：建議加入主畫面（2026-11-14 製作人）----------
+// 用瀏覽器玩時網址列、工具列會切掉畫面；從主畫面的圖示打開才是全螢幕。每次用瀏覽器打開都問一次，可以先直接玩。
+const standalone = matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || navigator.standalone === true;
+const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+let installEvt = null; // Android Chrome：可以直接跳出「安裝」
+addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvt = e; if (!$('s-home').hidden) $('home-install').hidden = false; });
+function homeTip() {
+  const HOME_KEY = 'ml_home_shown';
+  let shown = false; try { shown = sessionStorage.getItem(HOME_KEY) === '1'; } catch { /* 無痕 */ }
+  if (!document.body.classList.contains('touch') || standalone || shown || params.has('nohome')) return boot();
+  try { sessionStorage.setItem(HOME_KEY, '1'); } catch { /* 無痕 */ }
+  $('home-steps').innerHTML = '';
+  for (const s of t(isIOS ? 'home_ios' : 'home_android').split('|')) { const li = document.createElement('li'); li.textContent = s; $('home-steps').append(li); }
+  $('home-install').hidden = !installEvt;
+  $('home-install').onclick = async () => { if (!installEvt) return; installEvt.prompt(); const r = await installEvt.userChoice.catch(() => null); installEvt = null; $('home-install').hidden = true; if (r?.outcome === 'accepted') toast(t('home_added')); };
+  $('home-skip').onclick = () => boot();
+  show('s-home');
+}
 $('age-no').onclick = () => { $('age-bye').hidden = false; $('age-ok').hidden = true; $('age-no').hidden = true; };
-if (ageOk() && !params.has('age')) boot(); else show('s-age');
+if (ageOk() && !params.has('age')) homeTip(); else show('s-age');
 setMusic('menu'); // 主選單的配樂（玩家點過畫面才會響）
 // 右上角：音樂開關（遊戲裡的設定可以細調）
 const musicBtn = document.createElement('button'); musicBtn.id = 'music-toggle'; musicBtn.className = 'chip';
@@ -61,9 +80,11 @@ async function boot() {
     $('login-body').textContent = me ? t('need_player_body') : t('need_login_body');
     $('to-lobby').href = lobbyGate();
     $('dev-email').placeholder = t('dev_email'); $('dev-pass').placeholder = t('dev_pass');
+    // 從主畫面打開：回不了大廳登入（iPhone 的主畫面 App 跟 Safari 是分開的），直接用夜語帳號登入，所有玩家都可以
+    if (standalone) { $('dev-login').open = true; $('dev-login').querySelector('summary').textContent = t('player_login'); }
     $('dev-login-form').onsubmit = async (e) => { // 開發者（大廳管理員）直接登入：遊戲還沒上架大廳時用
       e.preventDefault(); $('dev-login-err').textContent = '';
-      const r = await devLogin($('dev-email').value.trim(), $('dev-pass').value).catch(() => ({ error: 'bad_login' }));
+      const r = await (standalone ? playerLogin : devLogin)($('dev-email').value.trim(), $('dev-pass').value).catch(() => ({ error: 'bad_login' }));
       if (r.error) return ($('dev-login-err').textContent = t(r.error === 'not_dev' ? 'dev_not_dev' : 'dev_bad_login'));
       boot();
     };

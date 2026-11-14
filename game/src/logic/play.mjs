@@ -8,7 +8,7 @@ import { openTutorial, tutorialSeen } from '../ui/tutorial.mjs';
 import { createDevTools } from '../ui/devtools.mjs';
 import { setStaff, staffCast, setVolume, getVolume, setMusicVolume, getMusicVolume } from '../art/index.mjs';
 import { setSoundVolume } from '../world/sound.mjs';
-import { t, getLang } from './i18n.mjs';
+import { t, getLang, errText } from './i18n.mjs';
 import { CHARS, HOUSES } from './chars.mjs';
 import { SCRIPT } from '../data/story-ch1.mjs';
 import { sfx, buzz } from '../art/sfx.mjs';
@@ -43,6 +43,17 @@ export function startPlay({ conn, getState, myUid, toast, dev, devUser }) {
   const seenKey = `ml_seen_${code}_${myUid}`;
   const seen = new Set((() => { try { return JSON.parse(localStorage.getItem(seenKey) || '[]'); } catch { return []; } })());
   const play = (key) => { if (seen.has(key) || !SCRIPT[key]) return; seen.add(key); try { localStorage.setItem(seenKey, JSON.stringify([...seen])); } catch { /* 無痕 */ } say(SCRIPT[key]); };
+
+  // 第四幕遠距解謎（2026-11-14 製作人：被追的時候還要站在謎題前面解太難）：自己走到過、按過調查的謎題，
+  // 之後可以從「謎題」按鈕（R）隨時打開作答。解開後門一樣要自己走過去，不會傳送。
+  const REMOTE = new Set(['P26', 'P27', 'P28', 'P32']);
+  const foundKey = `ml_found_${code}_${myUid}`;
+  const found = new Set((() => { try { return JSON.parse(localStorage.getItem(foundKey) || '[]'); } catch { return []; } })());
+  const markFound = (tg) => {
+    if (!REMOTE.has(tg.puzzle) || found.has(tg.puzzle)) return;
+    found.add(tg.puzzle); try { localStorage.setItem(foundKey, JSON.stringify([...found])); } catch { /* 無痕 */ }
+    if (!S().solved.includes(tg.puzzle)) toast(t('remote_found'));
+  };
 
   const notes = {}; // 自己知道的資訊（伺服器只告訴作答者的時辰）
   const heard = new Set(); // 聽過的傳聞（第幾張長桌）
@@ -92,6 +103,7 @@ export function startPlay({ conn, getState, myUid, toast, dev, devUser }) {
   // ---- 段落開始：移到出發點、播劇情 ----
   function enterSegment(seg, first) {
     segment = seg;
+    $('btn-remote').hidden = seg !== 'act4';
     if (seg === 'prologue' && first) {
       const i = Math.max(0, S().members.findIndex((m) => m.uid === myUid));
       world.teleport({ ...SPAWNS.prologue, x: SPAWNS.prologue.x + (i - 1.5) * 1.4 });
@@ -159,13 +171,32 @@ export function startPlay({ conn, getState, myUid, toast, dev, devUser }) {
     if (tg.kind === 'puzzle') {
       if (tg.needsAi && !S().ai?.length) return toast(t('p07_none'));
       if (tg.house && S().mode !== 'solo' && myHouse() !== tg.house && !S().ai?.includes(tg.house)) return toast(t('err.not_your_house')); // 電腦控制的學院：誰都可以做
-      return openPuzzle(tg.puzzle, tg, {
+      markFound(tg);
+      return openPuzzle(tg.puzzle, tg, puzzleCtx(tg));
+    }
+  }
+
+  // 打開謎題視窗用的資料（調查、第四幕遠距作答共用）
+  function puzzleCtx(tg, remote = false) {
+    return {
         conn, state: S(), notes, heard, revealed, toast, getLang, lib: act3.lib, solo: S().mode === 'solo',
-        items: () => S().items ?? [], myHouse, aiHouse: (h) => S().mode !== 'solo' && !!S().ai?.includes(h), myChar: () => me()?.char, noise: () => conn.send({ t: 'noise', p: world.me().p }),
+        items: () => S().items ?? [], myHouse, aiHouse: (h) => S().mode !== 'solo' && !!S().ai?.includes(h), myChar: () => me()?.char, noise: () => { const p = world.controls.state.pos; if (!remote || Math.hypot(p.x - tg.x, p.z - tg.z) < 6) conn.send({ t: 'noise', p: world.me().p }); }, // 遠距敲錯：人不在門前，守夜人聽不到你
         near: (id, r) => { const th = THINGS_BY_ID[id]; const p = world.controls.state.pos; return !!th && Math.hypot(p.x - th.x, p.z - th.z) <= r; },
         onSolved: (pid, r) => onSolved(pid, myUid, r.reveal), fx: panelFx, react: (n, d) => { if (focused) world.react(focused, n, d); },
-      });
-    }
+    };
+  }
+
+  // ---- 第四幕：遠距作答的清單 ----
+  function remotePuzzles() {
+    if (segment !== 'act4' || talking() || inFinale) return;
+    if (panelOpen()) return closePanel();
+    if (S().nest?.[myUid]) return toast(errText('captured'));
+    openPanel(t('remote_title'), (body) => {
+      const list = THINGS.filter((x) => x.kind === 'puzzle' && REMOTE.has(x.puzzle) && found.has(x.puzzle) && !S().solved.includes(x.puzzle));
+      body.append(el('p', { class: 'dim', text: t('remote_intro') }));
+      if (!list.length) body.append(el('p', { text: t('remote_none') }));
+      for (const th of list) body.append(el('button', { class: 'remote-item', text: L(th.label), onclick: () => { closePanel(); openPuzzle(th.puzzle, th, puzzleCtx(th, true)); } }));
+    });
   }
 
   // ---- 魔杖 ----
@@ -207,6 +238,7 @@ export function startPlay({ conn, getState, myUid, toast, dev, devUser }) {
     if (e.code === 'KeyE' || (e.code === 'Space' && talking())) { e.preventDefault(); interact(); }
     if (e.code === 'KeyF') castWand();
     if (e.code === 'KeyN') notebook();
+    if (e.code === 'KeyR') remotePuzzles();
     if (e.code === 'KeyQ') holding = true;
     if (e.code === 'KeyV') act2.toggleFamiliar();
     if (e.code === 'Escape' && panelOpen()) closePanel();
@@ -239,6 +271,7 @@ export function startPlay({ conn, getState, myUid, toast, dev, devUser }) {
   });
   $('btn-wand').onclick = castWand;
   $('btn-notebook').onclick = notebook;
+  $('btn-remote').onclick = remotePuzzles;
   $('btn-familiar').onclick = () => act2.toggleFamiliar();
   const hb = $('btn-breath');
   hb.onpointerdown = () => { holding = true; }; hb.onpointerup = hb.onpointerleave = () => { holding = false; };

@@ -154,7 +154,7 @@ export const SCRIPT = {
     [null, '下一秒，他的身體從背後裂開。肋骨像門一樣往兩側撐開，黑色的結晶從裂口刺穿衣服，血順著結晶往下滴。', 'The next instant his back splits open. His ribs swing apart like doors; black crystal spears through his coat, and blood runs down the spikes.'],
     [null, '臉皮整片往下剝落，掛在下巴上。他的眼睛，變成了一片漆黑。', 'The skin of his face peels away in one sheet and hangs from his chin. His eyes are nothing but black.'],
     ['vaughn', '跑！往東邊的通道——別被那道綠光照到！', 'Run! The east passage — don’t let the green light touch you!'],
-    [null, '（Shift／搖桿推到底跑步，跑太久會喘。躲進櫃子、書架縫，按住 Q／「屏息」保持安靜。被抓住時連點掙脫——但只能掙脫兩次。他會不時回蝕巢休息，那就是解題的時候。）', '(Shift / push the stick fully to run — you’ll tire. Hide in cabinets and gaps; hold Q / “Hold breath” to stay silent. If caught, mash to break free — but only twice. Now and then he goes back to his nest to rest: that is your time to solve.)'],
+    [null, '（Shift／搖桿推到底跑步，跑太久會喘。躲進櫃子、書架縫，按住 Q／「屏息」保持安靜。被抓住時連點掙脫——但只能掙脫兩次。他會不時回蝕巢休息，那就是解題的時候。走到過的謎題，之後可以按「謎題」（R）在別的地方作答——但門開了，還是得自己走過去。）', '(Shift / push the stick fully to run — you’ll tire. Hide in cabinets and gaps; hold Q / “Hold breath” to stay silent. If caught, mash to break free — but only twice. Now and then he goes back to his nest to rest: that is your time to solve. Any puzzle you have reached once can be answered later from anywhere with “Puzzles” (R) — but when a door opens, you still have to get there yourself.)'],
   ],
   'act4:retry': [[null, '……你們又站在入口大廳裡。鐘聲重新開始倒數，綠燈從樓梯上下來。', '…You stand in the entrance hall again. The tolling begins its count anew, and the green lamp descends the stairs.']],
   'enter:a4_gears': [

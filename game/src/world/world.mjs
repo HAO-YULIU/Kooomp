@@ -262,6 +262,7 @@ export function createWorld(canvas, lang = 'zh') {
       if (state) { helga.position.set(state.x, 0, state.z); helga.rotation.y = state.yaw; }
     },
     ready: () => compiling ?? Promise.resolve(), // 材質都編譯好了（載入畫面等它）
+    prewarm() { if (compiling) return compiling.then(() => this.prewarm()); compiling = (renderer.compileAsync ? renderer.compileAsync(scene, camera) : Promise.resolve()).catch(() => {}).finally(() => { compiling = null; }); return compiling; }, // 新出現的東西（守夜人、蝕巢的屍體）先編譯好
     brightness: savedBright,
     setBrightness(v) { this.brightness = v; renderer.toneMappingExposure = EXPOSURE * v; try { localStorage.setItem('ml_bright', String(v)); } catch { /* 無痕模式 */ } },
     focus(th) {

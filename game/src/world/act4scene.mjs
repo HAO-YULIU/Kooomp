@@ -55,10 +55,11 @@ export function createAct4Scene(scene) {
   wallSmear(root, 172.82, 1.2, 0.2, { normal: [-1, 0, 0], w: 1.2, seed: 33 });
   wallSmear(root, 168.4, 1.1, -1.82, { normal: [0, 0, 1], w: 1.0, seed: 34 });
   bones(root, 167.6, 3.4, { n: 10, spread: 1.2, seed: 24 });
-  let victimAsked = false;
-  const wakeNest = () => { if (victimAsked) return; victimAsked = true; buildVictim(root, 171.2, 2.6, [-1, 0]).catch((e) => console.warn('蝕巢屍體載入失敗', e)); };
+  let victim = null; // 第四幕開場劇情時就載入（2026-11-14：原本走進通道才載入，追逐一開始畫面會停一下）
+  const wakeNest = () => (victim ??= buildVictim(root, 171.2, 2.6, [-1, 0]).catch((e) => console.warn('蝕巢屍體載入失敗', e)));
   let t = 0;
   return {
+    wake: wakeNest,
     frame(dt, zone) {
       if (zone === 'a4_pass' || zone === 'a4_gears' || zone === 'a4_nest') wakeNest();
       moonlight.intensity = zone === 'a4_roof' ? 1.6 : 0; sky.intensity = zone === 'a4_roof' ? 0.8 : 0;

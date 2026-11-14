@@ -15,7 +15,14 @@ function audio() {
 }
 addEventListener('pointerdown', () => audio(), { once: true }); // 瀏覽器要等玩家點過畫面才能出聲
 // 每一格都在調的音量、左右：數值沒什麼變就不要再排一次（一直排會越積越多，守夜人靠近時會卡）
-function glide(param, v, tc) { if (Math.abs((param._v ?? -9) - v) < 0.01) return; param._v = v; param.setTargetAtTime(v, ctx.currentTime, tc); }
+// 音量慢慢變：同一個參數最多每 0.1 秒排一次（每一格都排的話，手機上排程越積越多、會卡）；排新的之前先清掉還沒到的
+function glide(param, v, tc) {
+  if (Math.abs((param._v ?? -9) - v) < 0.01) return;
+  const now = ctx.currentTime; if (param._t && now - param._t < 0.1 && v !== 0) return;
+  param._v = v; param._t = now;
+  try { param.cancelScheduledValues(now); param.setValueAtTime(param.value, now); } catch { /* 舊瀏覽器 */ }
+  param.setTargetAtTime(v, now, tc);
+}
 addEventListener('keydown', () => audio(), { once: true });
 /** 音量（0～1.5），設定裡調；存在這台裝置 */
 export function setVolume(v) { volume = v; try { localStorage.setItem('ml_volume', String(v)); } catch { /* 無痕 */ } if (master) master.gain.value = 0.55 * v; if (amb.bus) amb.bus.gain.value = AMB_VOL * v; }

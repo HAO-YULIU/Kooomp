@@ -43,6 +43,19 @@
     </div>
   </section>
 
+  <!-- 手機：建議加入主畫面（2026-11-14 製作人：網頁的網址列會切掉畫面，從主畫面打開才是全螢幕） -->
+  <section class="screen" id="s-home" hidden>
+    <div class="card">
+      <h1 class="logo" data-t="title"></h1>
+      <h2 data-t="home_title"></h2>
+      <p data-t="home_why"></p>
+      <button class="primary" id="home-install" data-t="home_install" hidden></button>
+      <ol class="home-steps" id="home-steps"></ol>
+      <p class="sub" data-t="home_login"></p>
+      <button id="home-skip" data-t="home_skip"></button>
+    </div>
+  </section>
+
   <!-- 要登入 -->
   <section class="screen" id="s-login" hidden>
     <div class="card">
@@ -52,7 +65,7 @@
       <h2 data-t="need_login_title"></h2>
       <p id="login-body"></p>
       <a class="primary" id="to-lobby" data-t="to_lobby"></a>
-      <details class="dev-login">
+      <details class="dev-login" id="dev-login">
         <summary data-t="dev_login"></summary>
         <form id="dev-login-form">
           <input id="dev-email" type="email" autocomplete="username" required>
@@ -141,7 +154,8 @@
       <button id="btn-breath" data-t="breath"></button>
       <button id="btn-notebook" data-t="notebook"></button>
       <button id="btn-familiar" data-t="familiar" hidden></button>
-      <small class="keys">E　F　Q　N　V</small>
+      <button id="btn-remote" data-t="remote_btn" hidden></button>
+      <small class="keys">E　F　Q　N　V　R</small>
     </div>
     <div id="dev" hidden>
       <b data-t="dev_panel"></b>

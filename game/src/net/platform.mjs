@@ -50,6 +50,12 @@ export async function devLogin(email, password) {
   return { ok: true };
 }
 
+// 從主畫面打開（iPhone 的主畫面 App 跟 Safari 的登入是分開的，也回不了大廳）：直接用夜語帳號的 Email、密碼登入
+export async function playerLogin(email, password) {
+  const { data, error } = await client().auth.signInWithPassword({ email, password });
+  return error || !data?.user ? { error: 'bad_login' } : { ok: true };
+}
+
 // 每次連線前拿最新的 token（Supabase 會自動更新）
 export async function token() {
   if (devName !== null) return `dev-${encodeURIComponent(devName || '測試玩家')}`;

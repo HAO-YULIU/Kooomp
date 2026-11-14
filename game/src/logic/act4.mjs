@@ -37,6 +37,7 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
   let shown = { x: WARDEN_START.x, z: WARDEN_START.z, yaw: 0, mode: 'idle', zone: WARDEN_START.zone }, target = { ...shown };
   let active = false, introDone = false, startAt = 0, npcAt = 0, runFor = 0, tiredUntil = 0, humAt = 0;
   let faceYaw = 0, lastMode = null;
+  const snaps = []; // 多人：sim 傳來的守夜人位置（時間、位置）；畫面顯示 0.15 秒前的位置，在兩筆之間平滑地走（不會一頓一頓）
   let grabbed = null, roofAt = null, roofDirty = false, boundOpen = false, ending = null; // ending：'climax'（屋頂）→ 'epilogue'（宿舍）→ 結束畫面
   const isSim = () => S().sim === myUid;
   const captured = () => !!S().nest?.[myUid];
@@ -106,6 +107,10 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
     shown = { ...shown, x: WARDEN_START.x, z: WARDEN_START.z, mode: 'idle', zone: WARDEN_START.zone }; target = { ...shown };
     lost.hidden = true; bound.hidden = true; fight.hidden = true;
     world.teleport(A4_SPAWN);
+    // 追逐開始前先把新東西準備好（2026-11-14 製作人：第四幕還是卡卡的）：守夜人先放進場景、蝕巢的屍體先載入，材質趁開場劇情時編譯
+    warden.set({ ...shown, visible: true }); warden.frame(0, 'idle');
+    Promise.resolve(scenery.wake?.()).then(() => world.prewarm?.()); setTimeout(() => world.prewarm?.(), 2000);
+    snaps.length = 0;
     if (retry) { say(SCRIPT['act4:retry']); return; }
     // 十二響，然後第十三響；守夜人哼著童謠從樓梯下來
     for (let i = 0; i < 13; i++) setTimeout(() => chime(false), i * 380);
@@ -141,7 +146,7 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
       else if (!st.act4?.lost && !lost.hidden) lost.hidden = true;
       // 倒數
       const left = (st.act4?.deadline ?? now) - now;
-      hud.hidden = false; hud.textContent = `${t('a4_clock')} ${fmt(left)}`;
+      hud.hidden = false; { const txt = `${t('a4_clock')} ${fmt(left)}`; if (txt !== hud.textContent) hud.textContent = txt; } // 數字變了才寫（每一格都寫畫面會重排）
       { const m = shown.mode, k = m === 'idle' || (m === 'rest' && performance.now() - begunAt < (WARDEN.calm ?? 0) * 1000) ? 'leave' : m === 'rest' || m === 'idle' ? 'rest' : m === 'chase' || m === 'grab' ? 'chase' : m === 'stun' ? 'stun' : 'hunt'; if (k !== wsKey) { wsKey = k; wstate.textContent = t(`a4_state.${k}`); wstate.className = k; } wstate.hidden = false; } hud.classList.toggle('urgent', left < 180000);
       // 劇情講完 3 秒後守夜人開始行動
       if (!introDone && !talking()) { introDone = true; startAt = performance.now() + 3000; }
@@ -173,9 +178,13 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
         const w = ai.state; target = { x: w.x, z: w.z, yaw: w.yaw, mode: w.mode, zone: w.zone };
         shown = target;
         if (S().mode === 'multi' && performance.now() - npcAt > 120) { npcAt = performance.now(); conn.send({ t: 'npc', z: w.zone, w: [+w.x.toFixed(2), +w.z.toFixed(2), +w.yaw.toFixed(2)], m: w.mode }); }
-      } else {
-        const a = 1 - Math.exp(-dt * 6);
-        shown = { ...target, x: shown.x + (target.x - shown.x) * a, z: shown.z + (target.z - shown.z) * a };
+      } else if (snaps.length) {
+        const at = performance.now() - 150;
+        while (snaps.length > 2 && snaps[1].t <= at) snaps.shift();
+        const [a, b] = snaps;
+        if (!b || at <= a.t) shown = { ...a };
+        else if (at <= b.t) { const k = (at - a.t) / (b.t - a.t); shown = { ...b, x: a.x + (b.x - a.x) * k, z: a.z + (b.z - a.z) * k }; }
+        else { const k = Math.min(0.15, (at - b.t) / 1000) / Math.max(0.05, (b.t - a.t) / 1000); shown = { ...b, x: b.x + (b.x - a.x) * k, z: b.z + (b.z - a.z) * k }; } // 下一筆晚到：照原來的方向再走一點點
       }
       // 轉身慢慢轉（不要一下子轉過去；多人時位置每 0.12 秒才來一次，轉向會一格一格的）
       let dy = shown.yaw - faceYaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); faceYaw += dy * Math.min(1, dt * 10);
@@ -235,7 +244,12 @@ export function createAct4({ world, conn, toast, say, talking, S, myUid, myChar,
     onMessage(msg) {
       const now = performance.now();
       switch (msg.t) {
-        case 'npc': if (!isSim() && msg.w) target = { x: msg.w[0], z: msg.w[1], yaw: msg.w[2], mode: msg.m, zone: msg.z }; break;
+        case 'npc': if (!isSim() && msg.w) {
+          target = { x: msg.w[0], z: msg.w[1], yaw: msg.w[2], mode: msg.m, zone: msg.z };
+          const last = snaps[snaps.length - 1];
+          if (last && Math.hypot(last.x - target.x, last.z - target.z) > 4) snaps.length = 0; // 一下子移很遠（抓到人後退到遠處）：直接過去
+          snaps.push({ ...target, t: now }); if (snaps.length > 8) snaps.shift();
+        } break;
         case 'grab': if (msg.uid === myUid) struggle(msg.until, msg.free ?? 1); else toast(t('a4_grab_other', { name: S().members.find((m) => m.uid === msg.uid)?.name ?? '?' })); break;
         case 'escaped': if (isSim()) ai.resolve(true, now, []); break;
         case 'revived': // 單人：使魔把你拉回來（越來越虛弱）。就在原地醒來，不送回起點（2026-10-31 製作人）；守夜人退到遠處回蝕巢休息

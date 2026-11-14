@@ -57,6 +57,7 @@ export async function loadWardenModel() {
   function drip(dt, mode) {
     const em = ribs.drips; if (!em?.length) return;
     let top = root; while (top.parent) top = top.parent;
+    if (top !== root && !spots.length) for (let i = 0; i < 40; i++) { const s = new THREE.Mesh(spotGeo, spotMat); s.rotation.x = -Math.PI / 2; s.renderOrder = 1; s.position.y = -50; s.scale.setScalar(0.001); top.add(s); spots.push(s); } // 一次先放好（藏在地板下）：材質跟著場景一起編譯，第一次滴血不會卡一下
     const fast = mode === 'chase' || mode === 'grab';
     for (const d of drops) {
       if (!d.m.visible) { d.wait -= dt * (fast ? 3 : 1); if (d.wait > 0) continue; em[Math.floor(Math.random() * em.length)].getWorldPosition(wp); root.worldToLocal(wp); d.m.position.copy(wp); d.v = 0; d.m.visible = true; continue; }
@@ -64,7 +65,7 @@ export async function loadWardenModel() {
       if (d.m.position.y <= 0.01) {
         d.m.visible = false; d.wait = 0.3 + Math.random() * 0.8;
         if (top !== root) { // 落地：留下一個血點
-          d.m.getWorldPosition(wp); let s = spots[spotI]; if (!s) { s = spots[spotI] = new THREE.Mesh(spotGeo, spotMat); s.rotation.x = -Math.PI / 2; s.renderOrder = 1; top.add(s); }
+          d.m.getWorldPosition(wp); const s = spots[spotI];
           s.position.set(wp.x, 0.013, wp.z); s.scale.setScalar(0.025 + Math.random() * 0.03); spotI = (spotI + 1) % 40;
         }
       }
