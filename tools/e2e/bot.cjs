@@ -50,7 +50,7 @@ class Player {
     await loc.waitFor({ state: 'visible', timeout: opts.timeout ?? 60000 });
     if (this.mobile) await loc.tap({ timeout: opts.timeout ?? 60000 }); else await loc.click({ timeout: opts.timeout ?? 60000 });
   }
-  async tapText(text, scope = '#panel-body') { await this.tap(this.page.locator(`${scope} button`, { hasText: text })); }
+  async tapText(text, scope = '#panel-body') { if (typeof text === 'string' && text.length === 1) text = new RegExp(`^${text}$`); await this.tap(this.page.locator(`${scope} button`, { hasText: text })); }
   async type(sel, text) { const loc = typeof sel === 'string' ? this.page.locator(sel).first() : sel; await this.tap(loc); await loc.fill(''); await loc.pressSequentially(String(text), { delay: 40 }); }
   async st() { return this.page.evaluate(() => window.__bot.st()); }
   async shot(name) { const f = path.join(SHOTS, `${this.name}-${name}.png`); await this.page.screenshot({ path: f }).catch(() => {}); return f; }
@@ -62,6 +62,7 @@ class Player {
   // 對話：電腦按空白鍵、手機點對話框
   async clearTalk(max = 60) {
     for (let i = 0; i < max; i++) {
+      if (this.hook) await this.hook();
       const s = await this.st(); if (!s?.talking) return;
       if (this.mobile) await this.page.locator('#dialog').tap().catch(() => {}); else await this.page.keyboard.press('Space');
       await sleep(350);
@@ -118,7 +119,7 @@ class Player {
     const until = Date.now() + maxMs; let stuck = 0, lastPos = null;
     while (Date.now() < until) {
       await this.clearTalk();
-      if ((await this.st()).panel) await this.closePanel();
+      if ((await this.st()).panel && !(await this.page.isVisible('#a4bound'))) await this.closePanel();
       const p = await this.page.evaluate((g) => window.__bot.plan(g), goal);
       if (p.error) { this.log('找不到路', label, JSON.stringify(goal).slice(0, 120), p.error); await this.hold(400); stuck++; if (stuck > 6) return false; continue; }
       if (!p.path.length || (p.path.length === 1 && Math.hypot(p.path[0][0] - p.x, p.path[0][1] - p.z) < 0.15)) return true;
