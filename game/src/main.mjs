@@ -1,7 +1,7 @@
 // 《魔蝕milner》主程式（第 1 批）：18+ 提示 → 登入 → 選單 → 等待室 → 測試場景（隊友同步、聊天、標記、測試作答）。
 import { t, errText, getLang, setLang } from './logic/i18n.mjs';
 import { HOUSES, CHARS, charOfHouse } from './logic/chars.mjs';
-import { signIn, lobbyGate, testPanel, isTest, devLogin, playerLogin } from './net/platform.mjs';
+import { signIn, lobbyGate, testPanel, isTest, devLogin, playerLogin, recordRun } from './net/platform.mjs';
 import { createRoom, roomInfo, connectRoom, mySave } from './net/room.mjs';
 import { openSorting } from './ui/sorting.mjs';
 import { DefaultLoadingManager } from 'three';
@@ -159,7 +159,7 @@ function onMessage(msg) {
       const before = state;
       state = msg;
       if (state.phase === 'lobby') { show('s-wait'); renderWait(); }
-      else { startGame(); game?.onState(state, before); renderTeam(); }
+      else { startGame(); game?.onState(state, before); renderTeam(); recordRun(state.code, state.result); }   // 大廳的遊玩紀錄：開局 started、第一章完 cleared
       for (const line of (!before ? state.chat : [])) addChat(line);
       break;
     }

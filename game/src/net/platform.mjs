@@ -63,3 +63,39 @@ export async function token() {
   const { data: { session } } = await client().auth.getSession();
   return session?.access_token ?? '';
 }
+
+// 大廳的遊玩紀錄（play_records）：開始一局寫一筆 started，看到「第一章完」改成 cleared（每位有登入的隊員各自一筆）。
+// 大廳的管理頁、排行榜都看這張表（2026-11-15 製作人：管理員看不到魔蝕的數據——以前從來沒寫過）。
+// 哪一局對應哪一筆記在這台裝置（milner-runs，以房號分），重新整理、重新連線都不會重複寫。測試登入（?dev、?test）不寫。
+const RUNS = 'milner-runs';
+const readRuns = () => { try { return JSON.parse(localStorage.getItem(RUNS)) || {}; } catch { return {}; } };
+const setRun = (key, v) => {
+  const r = readRuns(); r[key] = { ...r[key], ...v, at: Date.now() };
+  const keep = Object.entries(r).sort((a, b) => b[1].at - a[1].at).slice(0, 20);
+  try { localStorage.setItem(RUNS, JSON.stringify(Object.fromEntries(keep))); } catch { /* 無痕 */ }
+};
+let gameId = null; const busyRuns = new Set();
+export async function recordRun(code, result) {
+  if (devName !== null || testLogin || !code || !window.supabase) return;
+  const step = result ? 'done' : 'start';
+  if (busyRuns.has(code + step)) return;
+  busyRuns.add(code + step);
+  try {
+    const { data: { session } } = await client().auth.getSession();
+    const uid = session?.user?.id; if (!uid) return;
+    const key = `${uid}:${code}`, r = readRuns()[key] || {};
+    if (result ? r.done : r.id) return;
+    gameId ||= (await client().from('games').select('id').eq('slug', SLUG).maybeSingle()).data?.id ?? null;
+    if (!gameId) return;
+    if (!result) {
+      const { data, error } = await client().from('play_records').insert({ user_id: uid, game_id: gameId, status: 'started', variant: null }).select('id').single();
+      if (!error && data) setRun(key, { id: data.id });
+      return;
+    }
+    const row = { status: 'cleared', clear_time_sec: Math.round((result.time || 0) / 1000), deaths: result.caught ?? 0, hints: result.hints ?? 0, ending: 'ch1', variant: result.mode ?? null, team_key: `milner-${code}-${result.at}` };
+    const { error } = r.id
+      ? await client().from('play_records').update(row).eq('id', r.id)
+      : await client().from('play_records').insert({ user_id: uid, game_id: gameId, ...row });
+    if (!error) setRun(key, { done: true });
+  } catch { /* 紀錄寫不進去不影響遊戲 */ } finally { busyRuns.delete(code + step); }
+}

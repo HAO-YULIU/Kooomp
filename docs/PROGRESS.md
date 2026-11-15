@@ -8,6 +8,7 @@
 
 
 
+
 - `claude/sweet-goldberg-nklgb6`（帳號二）：**帳號一額度用完，帳號二暫時接手全部工作**（2026-10-22 製作人）。已把法杖接進遊戲（`play.mjs`：依角色換法杖、施咒時發光）。本機用 `.dev.vars`（`DEV_AUTH=1`，不 commit）跑 `wrangler dev`，`?dev=名字` 單人實測過序幕～第四幕畫面正常；`npm test` 28 項全過。
 
 
@@ -37,6 +38,7 @@
 - 發佈只放 `dist/`（`wrangler.jsonc` 的 assets 只指向 `dist/`），`docs/`、`data/` 的答案不會上網站；build 也會檢查。
 
 ## 紀錄
+- 2026-11-15（`claude/modest-mendel-2td2bn`）：大廳的遊玩紀錄（製作人：管理員看不到魔蝕的數據——以前從來沒寫過 play_records）：`platform.mjs` 的 `recordRun`，`main.mjs` 收到房間狀態時呼叫——開局寫一筆 started，看到第一章完（`state.result`）改成 cleared（時間、被抓次數→deaths、提示次數、模式→variant、隊伍代號 team_key）。每位有登入的隊員各一筆；`?dev`、`?test` 登入不寫；以房號記在 localStorage `milner-runs`，不會重複寫。測試 `tools/test/records.test.mjs`。之前開放後玩的局沒有紀錄（補不回來）。
 - 2026-11-14（`claude/busy-hawking-1tr76j`）：上架前檢查與修改：
   - 大廳資料庫：《魔蝕milner》狀態「開放」、上架日 2026-11-15、網址 https://kooomp.noron.workers.dev/、大廳開放時間 08:30，都對。
   - 第四幕遠距作答（`play.mjs`）：走到過的 P26、P27、P28、P32 可以按「謎題」（R）在別處作答；解開後不傳送。敲錯節奏（P28）遠距時不會引來守夜人。
