@@ -6,7 +6,6 @@
 ## 進行中
 開始做一件事前在這裡登記；做完就移除。格式：`- 分支名稱：在做什麼（會動到的檔案或資料夾）`
 
-- `claude/modest-mendel-2td2bn`：大廳的遊玩紀錄（play_records）：開局寫 started、第一章完改成 cleared，讓大廳管理頁看得到魔蝕的數據（`game/src/net/platform.mjs`、`game/src/main.mjs`）（2026-11-15 製作人：管理員看不到新遊戲的數據）
 
 
 
@@ -39,6 +38,7 @@
 - 發佈只放 `dist/`（`wrangler.jsonc` 的 assets 只指向 `dist/`），`docs/`、`data/` 的答案不會上網站；build 也會檢查。
 
 ## 紀錄
+- 2026-11-15（`claude/modest-mendel-2td2bn`）：大廳的遊玩紀錄（製作人：管理員看不到魔蝕的數據——以前從來沒寫過 play_records）：`platform.mjs` 的 `recordRun`，`main.mjs` 收到房間狀態時呼叫——開局寫一筆 started，看到第一章完（`state.result`）改成 cleared（時間、被抓次數→deaths、提示次數、模式→variant、隊伍代號 team_key）。每位有登入的隊員各一筆；`?dev`、`?test` 登入不寫；以房號記在 localStorage `milner-runs`，不會重複寫。測試 `tools/test/records.test.mjs`。之前開放後玩的局沒有紀錄（補不回來）。
 - 2026-11-14（`claude/busy-hawking-1tr76j`）：上架前檢查與修改：
   - 大廳資料庫：《魔蝕milner》狀態「開放」、上架日 2026-11-15、網址 https://kooomp.noron.workers.dev/、大廳開放時間 08:30，都對。
   - 第四幕遠距作答（`play.mjs`）：走到過的 P26、P27、P28、P32 可以按「謎題」（R）在別處作答；解開後不傳送。敲錯節奏（P28）遠距時不會引來守夜人。
