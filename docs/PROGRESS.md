@@ -6,6 +6,8 @@
 ## 進行中
 開始做一件事前在這裡登記；做完就移除。格式：`- 分支名稱：在做什麼（會動到的檔案或資料夾）`
 
+- `claude/modest-mendel-2td2bn`：大廳的遊玩紀錄（play_records）：開局寫 started、第一章完改成 cleared，讓大廳管理頁看得到魔蝕的數據（`game/src/net/platform.mjs`、`game/src/main.mjs`）（2026-11-15 製作人：管理員看不到新遊戲的數據）
+
 
 
 - `claude/sweet-goldberg-nklgb6`（帳號二）：**帳號一額度用完，帳號二暫時接手全部工作**（2026-10-22 製作人）。已把法杖接進遊戲（`play.mjs`：依角色換法杖、施咒時發光）。本機用 `.dev.vars`（`DEV_AUTH=1`，不 commit）跑 `wrangler dev`，`?dev=名字` 單人實測過序幕～第四幕畫面正常；`npm test` 28 項全過。
