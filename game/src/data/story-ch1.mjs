@@ -23,7 +23,7 @@ export const SCRIPT = {
     ['cyril', '一座會走的鐘，真了不起。你明天要不要也去崇拜一下水壺？', 'A clock that works. Astonishing. Shall we go worship a kettle tomorrow?'],
     ['yuexi', '……', '…'],
     ['elora', '別理他們。來，喝點水，暈船的時候看遠一點會比較好。', 'Ignore them. Here, have some water — it helps to look far away when you’re seasick.'],
-    [null, '（WASD／搖桿移動，滑鼠／右半邊畫面轉視角，E／「調查」查看東西。往大廳走。）', '(Move with WASD / the stick, look with the mouse / right side of the screen, E / “Inspect” to examine things. Head for the hall.)'],
+    [null, '（WASD／搖桿移動，滑鼠／右半邊畫面轉視角，E／「探查」查看東西。往大廳走。）', '(Move with WASD / the stick, look with the mouse / right side of the screen, E / “Inspect” to examine things. Head for the hall.)'],
   ],
   'enter:hall': [
     [null, '大廳中央立著分院鏡。新生們一個一個站到它面前。', 'The Sorting Mirror stands in the middle of the hall. One by one, the first-years step before it.'],
@@ -56,7 +56,7 @@ export const SCRIPT = {
   'solved:P07': [[null, '使魔飛回你肩上。其他塔的同伴已經出發了。', 'Your familiar returns to your shoulder. The others have already set out.']],
   'enter:starhall': [
     [null, '星盤廳。巨大的星盤在地上緩緩轉動，四個學院的徽章刻在四個圓環上。', 'The Astrolabe Hall. A vast astrolabe turns slowly in the floor, the four house crests carved into its four rings.'],
-    [null, '（遠處有提燈的光——是赫爾嘉夫人。被燈照到會被抓回宿舍。躲在柱子後面或窗簾後，按住 Q／「屏息」可以不被聽到。）', '(A lamp glows in the distance — Madam Helga. If her light finds you, you’ll be sent back to bed. Hide behind the pillars or curtains; hold Q / “Hold breath” so she can’t hear you.)'],
+    [null, '（遠處有提燈的光——是赫爾嘉夫人。被燈照到會被抓回宿舍；她面前地上那片光，就是她看得到的地方。躲在柱子後面，燈就照不到你。）', '(A lamp glows in the distance — Madam Helga. If her light finds you, you’ll be sent back to bed; the pool of light on the floor in front of her is what she can see. Stay behind the pillars and her lamp can’t reach you.)'],
   ],
   'caught': [['helga', '這麼晚了，還在外面晃？回床上去！', 'Out of bed at this hour? Back to your dormitory!']],
   'solved:P08': [
@@ -65,11 +65,16 @@ export const SCRIPT = {
     ['vaughn', '這把鑰匙哪來的？', 'Where did you get that key?'],
     ['elora', '……祕密。走吧。', '…That’s a secret. Come on.'],
   ],
+  'mirror': [[null, '字是反著寫的……像是有人從鏡子的另一邊，用手指寫給你看。', 'The letters are backwards… as if someone wrote them with a finger from the other side of the glass.']],
   // ---- 第二幕：肖像畫長廊 ----
   'segment:act2': [
-    [null, '北翼的門後是一條長長的走廊，牆上掛滿了畫像。', 'Beyond the North Wing door stretches a long corridor hung with portraits.'],
-    ['yuexi', '這些是……歷代的學生？每一幅下面都有名字。', 'These are… students from every year? Each one has a name beneath it.'],
-    ['cyril', '畫得真差。走吧，盡頭有門。', 'Badly painted. Come on — there’s a door at the end.'],
+    [null, '北翼的門後是一條窄窄的走廊。兩側掛著六幅女學生的畫像，盡頭的門上了鎖。', 'Beyond the North Wing door is a narrow corridor. Six portraits of girls line the walls; the door at the end is locked.'],
+    ['yuexi', '每一幅下面都有名牌……「未畢業」？六個都是。', 'Each one has a name plate… “Did not graduate”? All six of them.'],
+    ['cyril', '門上是五格的字母鎖。還有那盞油燈……窗外好像要打雷了。', 'Five letter wheels on the door. And that oil lamp… sounds like a storm is coming.'],
+  ],
+  'solved:P30': [
+    [null, '最後一格轉到位，鎖喀的一聲開了。門後是一條更長的走廊，牆上掛滿了畫像。', 'The last wheel clicks into place and the lock gives. Beyond the door, a much longer corridor, hung wall to wall with portraits.'],
+    ['elora', '（盯著那五個字母，手在發抖）……走吧。', '(staring at the five letters, her hands shaking) …Let’s go.'],
   ],
   'enter:corridor': [
     [null, '燭火輕輕搖晃。你有種奇怪的感覺：這條走廊，好像走不完。', 'The candles flicker. You have the strangest feeling that this corridor never ends.'],
@@ -111,6 +116,7 @@ export const SCRIPT = {
   'enter:lib_reading': [
     ['yuexi', '閱覽室……這些書還在自己翻頁。', 'The reading room… the books are still turning their own pages.'],
     [null, '角落的水晶發出微弱的聲音，像有人在說話。', 'A crystal in the corner murmurs faintly, like someone speaking.'],
+    ['vaughn', '這裡怎麼到處都是娃娃……一、二、三……五個。', 'Why are there dolls everywhere… one, two, three… five.'],
   ],
   'solved:P15': [[null, '抽屜裡是莉安娜筆記的第三頁。', 'Inside the drawer is the third page of Liana’s notes.']],
   'solved:P16': [[null, '夾在第 33 頁裡的，是一張符文表殘頁。', 'Pressed between the pages is a fragment of a rune chart.']],
@@ -148,9 +154,13 @@ export const SCRIPT = {
     [null, '下一秒，他的身體從背後裂開。肋骨像門一樣往兩側撐開，黑色的結晶從裂口刺穿衣服，血順著結晶往下滴。', 'The next instant his back splits open. His ribs swing apart like doors; black crystal spears through his coat, and blood runs down the spikes.'],
     [null, '臉皮整片往下剝落，掛在下巴上。他的眼睛，變成了一片漆黑。', 'The skin of his face peels away in one sheet and hangs from his chin. His eyes are nothing but black.'],
     ['vaughn', '跑！往東邊的通道——別被那道綠光照到！', 'Run! The east passage — don’t let the green light touch you!'],
-    [null, '（Shift／搖桿推到底跑步，跑太久會喘。躲進櫃子、書架縫，按住 Q／「屏息」保持安靜。被抓住時連點掙脫。）', '(Shift / push the stick fully to run — you’ll tire. Hide in cabinets and gaps; hold Q / “Hold breath” to stay silent. If caught, mash to break free.)'],
+    [null, '（Shift／搖桿推到底跑步，跑太久會喘。躲進櫃子、書架縫，按住 Q／「屏息」保持安靜。被抓住時連點掙脫——但只能掙脫兩次。他會不時回蝕巢休息，那就是解題的時候。走到過的謎題，之後可以按「謎題」（R）在別的地方作答——但門開了，還是得自己走過去。）', '(Shift / push the stick fully to run — you’ll tire. Hide in cabinets and gaps; hold Q / “Hold breath” to stay silent. If caught, mash to break free — but only twice. Now and then he goes back to his nest to rest: that is your time to solve. Any puzzle you have reached once can be answered later from anywhere with “Puzzles” (R) — but when a door opens, you still have to get there yourself.)'],
   ],
   'act4:retry': [[null, '……你們又站在入口大廳裡。鐘聲重新開始倒數，綠燈從樓梯上下來。', '…You stand in the entrance hall again. The tolling begins its count anew, and the green lamp descends the stairs.']],
+  'enter:a4_gears': [
+    ['vaughn', '那個稻草人……剛剛是不是動了一下？', 'That scarecrow… did it just move?'],
+    [null, '地上的石板刻著羅馬數字。南牆邊有一個上鎖的工具箱。', 'The floor stones are carved with Roman numerals. A locked toolbox sits by the south wall.'],
+  ],
   'solved:P26': [[null, '門閂一根根彈開，鐵門被推開了。', 'The bolts snap back one by one, and the iron door gives way.']],
   'solved:P27': [[null, '齒輪咬死了。頭頂的鐘槌卡在半空——鐘聲停了一下。（多了 90 秒）', 'The gears seize. Overhead the hammer jams in mid-swing — the tolling falters. (+90 seconds)']],
   'solved:P28': [[null, '石板隨著節奏一塊塊亮起，通往屋頂的門開了。冷風和月光灌了進來。', 'The stones light up with the rhythm, and the way to the roof opens. Cold wind and moonlight pour in.']],
@@ -164,6 +174,8 @@ export const SCRIPT = {
     [null, '然後他往後一倒，從屋頂墜了下去。只有你聽清楚了那句話。', 'Then he tips backward and falls from the roof. Only you heard the words clearly.'],
   ],
   'P29:others': [[null, '他說了一句什麼，被風吹散了。然後他往後一倒，從屋頂墜了下去。', 'He says something — the wind tears it away. Then he tips backward and falls from the roof.']],
+  // 尾聲講完、熄燈後（2026-10-30 帳號二，伏筆；2026-10-31 製作人確認保留）
+  'finale': [[null, '燈，全滅了。黑暗裡，房間那面古鏡慢慢起了霧——有人從鏡子裡面，寫了一行字。', 'The lights die, all at once. In the dark, the old mirror slowly fogs over — someone on the inside has written a line.']],
   'segment:epilogue': [
     [null, '四個人在第十三響的餘音結束的那一刻衝回宿舍。窗外的鐘塔，恢復了安靜。', 'The four of you burst into the dormitory at the very moment the thirteenth toll fades. Outside, the clock tower falls silent.'],
     [null, '隔天早上，大廳一切如常。公告欄上寫著：「守夜人葛雷因病退休。」昨晚的血跡，全部不見了。', 'The next morning the hall is as if nothing happened. A notice reads: “Night Warden Grey has retired due to illness.” Every trace of blood is gone.'],

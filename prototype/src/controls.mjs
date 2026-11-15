@@ -86,12 +86,12 @@ export function createControls(camera, dom, { colliders, bounds, isTouch, onStep
     const m = Math.hypot(ix, iz); if (m > 1) { ix /= m; iz /= m; }
     fwd.set(-Math.sin(s.yaw), 0, -Math.cos(s.yaw)); right.set(-fwd.z, 0, fwd.x);
     dir.copy(fwd).multiplyScalar(iz).addScaledVector(right, ix);
-    const speed = run ? 3.6 : 2.0, moving = dir.lengthSq() > 0.001;
+    const speed = (run ? 3.6 : 2.0) * (s.speedMul ?? 1), moving = dir.lengthSq() > 0.001; // speedMul：開發者工具的快速移動
     s.pos.addScaledVector(dir, speed * dt); collide(s.pos);
     // 走路時鏡頭輕微上下晃
     if (moving) {
       s.bob += dt * speed * 3.2; s.stepAcc += dt * speed;
-      if (s.stepAcc > (run ? 1.1 : 0.8)) { s.stepAcc = 0; onStep?.(); }
+      if (s.stepAcc > (run ? 1.1 : 0.8)) { s.stepAcc = 0; onStep?.(run); }
     } else s.bob *= 0.9;
     camera.position.set(s.pos.x, EYE + Math.sin(s.bob) * 0.035 * Math.min(1, m), s.pos.z);
     camera.rotation.set(s.pitch, s.yaw, 0, 'YXZ');

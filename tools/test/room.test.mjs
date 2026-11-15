@@ -41,7 +41,11 @@ function player(code, name) {
     const p = {
       ws, inbox, uid: `dev-${encodeURIComponent(name)}`,
       send: (m) => ws.send(JSON.stringify(m)),
-      request: (m) => { const mid = id++; ws.send(JSON.stringify({ ...m, id: mid })); return p.wait((x) => x.id === mid); },
+      raw: (m) => { const mid = id++; ws.send(JSON.stringify({ ...m, id: mid })); return p.wait((x) => x.id === mid); },
+      async request(m) { // 選角色前要先分學院：測試裡自動補上
+        if (m.t === 'char' && m.char && !p.sorted) { p.sorted = true; await p.raw({ t: 'house', house: 'eldrin' }); }
+        return p.raw(m);
+      },
       wait(pred, ms = 3000) {
         const i = inbox.findIndex(pred); if (i >= 0) return Promise.resolve(inbox.splice(i, 1)[0]);
         return new Promise((res, rej) => { const w = { pred, res }; waiters.push(w); setTimeout(() => rej(new Error('timeout waiting')), ms); });
@@ -73,6 +77,8 @@ test('多人：加入、選角色、準備、開始、同步、聊天、作答',
   let s = await b.wait((m) => m.t === 'state' && m.members.length === 2);
   assert.equal(s.host, a.uid);
 
+  // 還沒分學院不能選角色
+  assert.equal((await a.raw({ t: 'char', char: 'vaughn' })).error, 'need_sorting');
   // 同一個角色不能兩個人選
   assert.equal((await a.request({ t: 'char', char: 'vaughn' })).t, 'ok');
   assert.equal((await b.request({ t: 'char', char: 'vaughn' })).error, 'character_taken');
@@ -157,6 +163,7 @@ test('多人：加入、選角色、準備、開始、同步、聊天、作答',
     peek = { loop: res.reply.loop, next: res.reply.next };
     if (i === 7) assert.equal(res.solved, true);
   }
+  assert.equal((await a.request({ t: 'answer', pid: 'P30', value: 'liana' })).solved, true); // 閃電中的她：大小寫都可以
   assert.equal((await a.request({ t: 'answer', pid: 'P10', value: 'NW|1626' })).solved, true);
   assert.equal((await b.wait((m) => m.t === 'state' && m.segment === 'act3a')).segment, 'act3a');
   assert.equal((await b.request({ t: 'answer', pid: 'P05', value: '9' })).error, 'already_solved');
@@ -189,6 +196,9 @@ test('單人：只能一個人，英文謎題', async () => {
   assert.equal((await p.request({ t: 'answer', pid: 'P07', value: { eldrin: 8, belmont: 9, ouroboros: 3 } })).solved, true);
   const peek = await p.request({ t: 'peek', pid: 'P09' });
   assert.equal(peek.loop, 0); assert.equal(peek.next, null);
+  // P15 錄音的字幕：轉盤調對（反轉＋0.5 倍）才給；調錯沒有
+  assert.equal((await p.request({ t: 'peek', pid: 'P15', value: { rev: true, speed: 0.5 } })).content.lines.length, 5);
+  assert.equal((await p.request({ t: 'peek', pid: 'P15', value: { rev: false, speed: 0.5 } })).content.lines, null);
   // 重新連線（舊連線會被關掉）會拿回自己知道的時辰
   const again = await player(code, 'Solo');
   assert.equal((await again.wait((m) => m.t === 'notes')).notes.P03, '8');
@@ -216,7 +226,7 @@ test('製作人的測試登入：密碼對才能用，可以跳段', async () =>
   const ws = await new Promise((res, rej) => { const w = new WebSocket(`${base.replace('http', 'ws')}/api/rooms/${code}/ws`, ['milner', `test.${enc('moon.light')}.${enc('製作人')}`]); w.onopen = () => res(w); w.onerror = rej; });
   const got = []; ws.onmessage = (e) => got.push(JSON.parse(e.data));
   const ask = async (m) => { ws.send(JSON.stringify({ ...m, id: m.t })); for (let i = 0; i < 50; i++) { const x = got.find((g) => g.id === m.t); if (x) return x; await sleep(40); } };
-  await ask({ t: 'char', char: 'cyril' }); await ask({ t: 'ready', ready: true }); await ask({ t: 'start' });
+  await ask({ t: 'house', house: 'ouroboros' }); await ask({ t: 'char', char: 'cyril' }); await ask({ t: 'ready', ready: true }); await ask({ t: 'start' });
   assert.equal((await ask({ t: 'dev', segment: 'act1' })).t, 'ok');
   assert.equal(got.find((g) => g.t === 'hello').you, 'test-製作人');
   ws.close();
@@ -243,6 +253,13 @@ test('第三幕：道具、書本密碼、段落一段一段推進、西里爾�
   assert.equal((await p.request({ t: 'collect', item: 'note1' })).t, 'ok');
   assert.equal((await p.request({ t: 'collect', item: 'mirror' })).error, 'bad_value'); // 道具不能自己撿
   for (const [pid, v] of [['P15', '3141'], ['P16', 'XXXIII'], ['P17', '110111']]) assert.equal((await ans(pid, v)).solved, true, pid);
+  // 哭泣的娃娃：伺服器說哪一個在哭；抱錯了換另一個（重新問）
+  let doll = (await p.request({ t: 'peek', pid: 'P31' })).content.doll;
+  const wrong = await ans('P31', { pick: (doll + 1) % 5 });
+  assert.equal(wrong.solved, false); assert.equal(wrong.reply.reshuffled, true);
+  await sleep(3100);
+  doll = (await p.request({ t: 'peek', pid: 'P31' })).content.doll;
+  assert.equal((await ans('P31', { pick: doll })).solved, true);
   const s3c = await p.wait((m) => m.t === 'state' && m.segment === 'act3c');
   assert.ok(s3c.solved.includes('P22')); assert.equal(s3c.flags.P22, 'hide'); // 沒人扮演西里爾：電腦替他收起徽章
   assert.deepEqual(['chartpage', 'lantern', 'mirror', 'note1', 'note3'].every((i) => s3c.items.includes(i)), true);
@@ -285,13 +302,22 @@ test('第四幕單人：倒數、齒輪多 90 秒、被抓到復活 3 次、用�
   assert.equal((await ans('P27', '12,24,18,36')).solved, true);
   s = await p.wait((m) => m.t === 'state' && m.act4?.bonus);
   assert.ok(s.act4.deadline - s.now > 36 * 60000); // 多了 90 秒
+  assert.equal((await ans('P32', '4162')).solved, true); // 稻草人的工具箱：再多 60 秒
+  s = await p.wait((m) => m.t === 'state' && m.act4 && m.act4.deadline - m.now > 37 * 60000);
   // 貝爾蒙特擊退守夜人：冷卻 60 秒
   assert.equal((await p.request({ t: 'repel' })).t, 'ok');
   assert.equal((await p.request({ t: 'repel' })).error, 'cooldown');
   // 被抓到：掙脫成功不算；沒掙脫用掉一次復活
   assert.equal((await p.request({ t: 'catch', uid: p.uid })).t, 'ok');
+  let g = await p.wait((m) => m.t === 'grab'); assert.equal(g.free, 2);
   assert.equal((await p.request({ t: 'escape' })).escaped, true);
-  for (const n of [2, 1, 0]) {
+  await sleep(10); await p.request({ t: 'catch', uid: p.uid });
+  assert.equal((await p.request({ t: 'escape' })).escaped, true); // 第二次掙脫
+  // 掙脫兩次之後：再被抓就掙脫不了（2026-10-31 製作人）
+  await sleep(10); await p.request({ t: 'catch', uid: p.uid });
+  assert.equal((await p.request({ t: 'escape' })).escaped, false);
+  assert.equal((await p.wait((m) => m.t === 'revived')).left, 2);
+  for (const n of [1, 0]) {
     await sleep(10);
     await p.request({ t: 'catch', uid: p.uid });
     assert.equal((await p.request({ t: 'caught' })).escaped, false);
@@ -384,12 +410,13 @@ test('整章：單人從序幕玩到尾聲，存檔記下結果，可以回來�
     const r = await p.request({ t: 'answer', pid: 'P09', value: { loop: pk.loop, choice: pk.next ? 'back' : 'forward' } });
     if (r.solved) break;
   }
-  await ans('P10', 'NW|1626'); await seg('act3a');
+  await ans('P30', 'LIANA'); await ans('P10', 'NW|1626'); await seg('act3a');
   // 第三幕
   await ans('P11', '257'); await p.request({ t: 'collect', item: 'note1' }); await p.request({ t: 'collect', item: 'note2' });
   for (const [pid, v] of [['P12', 'wind,fire,earth,water'], ['P13', 'exit'], ['P14', '鐘在井底']]) await ans(pid, v);
   await seg('act3b');
   for (const [pid, v] of [['P15', '3141'], ['P16', 'XXXIII'], ['P17', '110111']]) await ans(pid, v);
+  await ans('P31', { pick: (await p.request({ t: 'peek', pid: 'P31' })).content.doll });
   await seg('act3c');
   let w = (await p.request({ t: 'answer', pid: 'P21', value: { weigh: { left: [0, 1, 2], right: [3, 4, 5] } } })).reply.result;
   const g = w === 'left' ? [0, 1, 2] : w === 'right' ? [3, 4, 5] : [6, 7, 8];

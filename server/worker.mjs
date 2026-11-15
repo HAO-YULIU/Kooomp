@@ -63,6 +63,7 @@ export default {
       const stub = env.ROOMS.get(env.ROOMS.idFromName(m[1]));
       const h = new Headers(req.headers);
       h.set('x-uid', who.uid); h.set('x-name', encodeURIComponent(who.name));
+      h.set('x-dev', who.dev ? '1' : '0'); // 一定要蓋掉：玩家自己送來的 x-dev 不算
       h.set('x-ui-lang', url.searchParams.get('lang') === 'en' ? 'en' : 'zh');
       return stub.fetch(new Request('https://room/join', { headers: h }));
     }

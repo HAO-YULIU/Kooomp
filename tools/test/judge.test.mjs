@@ -116,13 +116,13 @@ test('救援題、自救題：內容和答案一致', () => {
 
 test('每一題（除了不計分的）都有三張中英文提示，難度比例接近目標', () => {
   const scored = Object.entries(CHAPTER1).filter(([, d]) => d.score !== false);
-  assert.equal(scored.length, 27); // P02～P29 扣掉不計分的 P22（單人限定的 P07 也算在內）
+  assert.equal(scored.length, 30); // P02～P32 扣掉不計分的 P22（單人限定的 P07 也算在內）
   for (const [pid, d] of scored) {
     assert.equal(d.hints?.zh?.length, 3, pid); assert.equal(d.hints?.en?.length, 3, pid);
     assert.ok(hint(pid, 2, 'en'));
   }
   const count = {}; for (const [, d] of scored) count[d.diff] = (count[d.diff] ?? 0) + 1;
-  assert.deepEqual(count, { 6: 5, 7: 6, 8: 8, 9: 5, 10: 3 }); // docs/04-map-ch1.md 的難度分配
+  assert.deepEqual(count, { 6: 5, 7: 8, 8: 9, 9: 5, 10: 3 }); // docs/04-map-ch1.md 的難度分配＋2026-10-26 新增的 P30（7）、P31（8）、P32（7）
   assert.ok(Object.keys(PUZZLES).length >= 36);
 });
 

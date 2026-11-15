@@ -1,6 +1,6 @@
 // 夜語工作室平台：登入（大廳帶過來的一次性登入碼 #sd=…）、取得 token。做法跟千山夜錄一樣。
 // 本機測試：網址加 ?dev=名字，用假的登入（只有本機伺服器開了 DEV_AUTH 才會接受）。
-export const LOBBY = 'https://hao-yuliu.github.io/escape-room/';
+export const LOBBY = 'https://lobby.noron.workers.dev/'; // 2026-10-22 製作人：大廳從 GitHub Pages 搬到 Cloudflare
 export const SLUG = 'milner';
 const SUPABASE_URL = 'https://umlnwzpmjxktfzjvcbts.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_8J3VI8dijlCccHQbXPfCQQ_v_O0Au3w';
@@ -39,6 +39,21 @@ export async function signIn() {
   if (!session?.user) return null;
   const { data: profile } = await client().from('profiles').select('username').eq('id', session.user.id).maybeSingle();
   return { uid: session.user.id, name: profile?.username ?? null };
+}
+
+// 開發者登入：遊戲還沒放上大廳（未公開）時，製作人直接用大廳的帳號密碼登入。只有大廳的管理員（admins 表裡有自己）才能進
+export async function devLogin(email, password) {
+  const { data, error } = await client().auth.signInWithPassword({ email, password });
+  if (error || !data?.user) return { error: 'bad_login' };
+  const { data: adm } = await client().from('admins').select('user_id').eq('user_id', data.user.id).maybeSingle();
+  if (!adm) { await client().auth.signOut(); return { error: 'not_dev' }; }
+  return { ok: true };
+}
+
+// 從主畫面打開（iPhone 的主畫面 App 跟 Safari 的登入是分開的，也回不了大廳）：直接用夜語帳號的 Email、密碼登入
+export async function playerLogin(email, password) {
+  const { data, error } = await client().auth.signInWithPassword({ email, password });
+  return error || !data?.user ? { error: 'bad_login' } : { ok: true };
 }
 
 // 每次連線前拿最新的 token（Supabase 會自動更新）

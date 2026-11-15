@@ -4,7 +4,8 @@
 // 眼睛、頭髮、鞋子用程式上色；穿上跟沃恩、月晞同樣做法的學院斗篷。不會眨眼、嘴巴不會動。
 import * as THREE from 'three';
 import { FBXLoader } from '../vendor/addons/loaders/FBXLoader.js';
-import { paintSkin, skinMat, makeCloak, hash3 } from './cc.mjs';
+import { mergeVertices } from '../vendor/addons/utils/BufferGeometryUtils.js';
+import { paintSkin, skinMat, makeCloak, hash3, loadCC } from './cc.mjs';
 import { wearOutfit } from './outfit.mjs';
 
 // 模型原本的座標（公分）：x 左右、y 往上、z 往前。眼睛在 (0, 135.7)，下巴約 y 126，脖子根約 y 124。
@@ -64,8 +65,43 @@ function paintHair(geo, root, tip) {
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
 }
 
+/**
+ * 西里爾原本模型的金色短髮，拆下來給有骨架的身體戴（2026-10-22 製作人：用現有模型改西里爾，才會眨眼、說話、走路）。
+ * 回傳的零件跟 hairbank.mjs 一樣：原點是頭的中心（兩眼中間往上 0.5 公分、往後 6 公分）、臉朝 +z、單位公尺，userData.eyeWidth 是眼距（公分）。
+ */
+export function loadCyrilHair({ hair = '#c8b88a', hairTip = '#efe6c8' } = {}) {
+  return new Promise((resolve, reject) => new FBXLoader().load('models/cyril/Modern_Tarzan.fbx', (o) => {
+    o.updateMatrixWorld(true);
+    const eyes = o.getObjectByName('Eyes'), src = o.getObjectByName('Hair');
+    const eg = eyes.geometry.clone().applyMatrix4(eyes.matrixWorld); eg.computeBoundingBox();
+    const E = eg.boundingBox.getCenter(new THREE.Vector3()), group = new THREE.Group();
+    group.userData.eyeWidth = eg.boundingBox.max.x - eg.boundingBox.min.x;
+    let geo = src.geometry.clone().applyMatrix4(src.matrixWorld);
+    geo.deleteAttribute('normal'); geo.deleteAttribute('uv'); geo = mergeVertices(geo, 0.05); // 同一個位置的點併起來，算出來的光影才會是圓滑的（原本一格一格）
+    paintHair(geo, hair, hairTip);
+    const pos = geo.attributes.position;
+    for (let i = 0; i < pos.count; i++) pos.setXYZ(i, (pos.getX(i) - E.x) * 0.01, (pos.getY(i) - E.y) * 0.01 - 0.005, (pos.getZ(i) - E.z) * 0.01 + 0.06);
+    // 低面數的頭髮：每個點往旁邊的點平均兩次，稜角變圓（不會縮小太多）
+    { const n = pos.count, nb = Array.from({ length: n }, () => new Set()), ix = geo.index.array;
+      for (let t = 0; t < ix.length; t += 3) for (let k = 0; k < 3; k++) { nb[ix[t + k]].add(ix[t + (k + 1) % 3]); nb[ix[t + k]].add(ix[t + (k + 2) % 3]); }
+      for (const f of [0.5, -0.52, 0.5, -0.52]) { const P = pos.array.slice(); for (let i = 0; i < n; i++) { if (!nb[i].size) continue; let x = 0, y = 0, z = 0; for (const j of nb[i]) { x += P[j * 3]; y += P[j * 3 + 1]; z += P[j * 3 + 2]; } const c = nb[i].size; pos.setXYZ(i, P[i * 3] + (x / c - P[i * 3]) * f, P[i * 3 + 1] + (y / c - P[i * 3 + 1]) * f, P[i * 3 + 2] + (z / c - P[i * 3 + 2]) * f); } } }
+    geo.computeVertexNormals(); geo.computeBoundingSphere();
+    const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ name: 'cyrilHair', vertexColors: true, roughness: 0.55 }));
+    mesh.castShadow = true; mesh.frustumCulled = false; group.add(mesh);
+    resolve(group);
+  }, undefined, reject));
+}
+
+/** 西里爾（有骨架的版本）：男生身體＋原本的金髮＋固定的冷笑表情；costume 是 costumes.mjs 的 COSTUMES.cyril */
+export async function loadCyrilCC(scene, costume = {}) {
+  const headGear = await loadCyrilHair(costume.hairColor);
+  return loadCC(scene, { body: 'male', hideHair: true, headGear, ...costume });
+}
+
 /** outfit：要穿的衣服（outfit.mjs 的 spec 陣列）；穿了衣服就不做程式的斗篷，原本的 T 恤、短褲也藏起來 */
-export function loadCyril(scene, { house = { main: '#0f2a1e', trim: '#c0c4c8' }, hair = '#8c8270', hairTip = '#d8d0bc', skin = '#f0cdb6', iris = '#3f7a52', height = 1.78, outfit = null } = {}) {
+export function loadCyril(scene, { house = { main: '#0f2a1e', trim: '#c0c4c8' }, hair = '#8c8270', hairTip = '#d8d0bc', skin = '#f0cdb6', iris = '#3f7a52', height = 1.78, outfit = undefined } = {}) {
+  // 沒指定 outfit（副校長）：男生制服＋學院色長袍；outfit: null 才用舊的筒狀斗篷
+  if (outfit === undefined) outfit = [{ name: 'boy', noSleeves: true }, { name: 'robe', color: house.main, trim: house.trim, hem: 0.08, sleeveFlare: 0.03, openTop: 0.06, openWaist: 0.035, openHem: 0.2 }];
   return new Promise((resolve, reject) => {
     new FBXLoader().load('models/cyril/Modern_Tarzan.fbx', async (o) => {
       o.updateMatrixWorld(true);
@@ -92,7 +128,12 @@ export function loadCyril(scene, { house = { main: '#0f2a1e', trim: '#c0c4c8' },
         const landmarks = { shL: P(15, 117), shR: P(-15, 117), elL: P(19, 89), hip: P(0, 82), neck: P(0, 124) };
         for (const m of model.children) if (/T-Shirt|Shorts/.test(m.name)) m.visible = false;
         holder.updateMatrixWorld(true);
-        const ctx = { holder, body: model.children.find((m) => m.name === 'Body'), landmarks };
+        // 這個模型 T 恤、短褲底下沒有身體（被切掉了），量身體時把它們一起算進去（不顯示）
+        const arr = [];
+        for (const m of model.children.filter((c) => /^(Body|T-Shirt|Shorts)$/.test(c.name))) arr.push(...(m.geometry.index ? m.geometry.toNonIndexed() : m.geometry).attributes.position.array);
+        const shape = new THREE.BufferGeometry(); shape.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
+        const measure = new THREE.Mesh(shape, new THREE.MeshBasicMaterial()); measure.visible = false; model.add(measure); holder.updateMatrixWorld(true);
+        const ctx = { holder, body: measure, landmarks };
         try { for (const spec of outfit) await wearOutfit(ctx, spec); } catch (e) { console.warn('西里爾穿衣服失敗', e); }
       } else {
         const cloak = makeCloak(house); cloak.position.y = 124 * s - 0.2; cloak.position.z = 0.01; cloak.scale.set(0.96, 1, 0.96);

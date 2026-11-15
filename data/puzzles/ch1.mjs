@@ -68,6 +68,25 @@ export const CHAPTER1 = {
              ['When the lights go out, see where every portrait is looking.', 'The second headmaster’s plaque mentions how long the founder served.', '1659 − 33 = 1626.']),
   },
 
+  // ---- 2026-10-26 新增的謎題（帳號二設計，2026-10-31 製作人確認保留）----
+  P30: {
+    seg: 'act2', diff: 7, kind: 'text', ans: 'LIANA', // 閃電時她站在哪幅畫旁邊，依序取名字的第一個字母
+    hints: H(['等閃電。每次亮起來的時候，看她站在哪一幅畫旁邊。', '每幅畫下面的銘牌都有名字。只看英文名字的第一個字母。', '她依序站在 Lorna、Ines、Ada、Nora、Agnes 旁邊。'],
+             ['Wait for the lightning. Each time it flashes, see which portrait she is standing beside.', 'Every portrait has a name plaque. Take only the first letter of each name.', 'She stands beside Lorna, Ines, Ada, Nora and Agnes, in that order.']),
+  },
+
+  P31: {
+    seg: 'act3b', diff: 8, kind: 'doll', count: 5, // 閱覽室的五個娃娃：熄燈後哪一個在哭，由房間的亂數決定；抱錯了就換另一個哭
+    hints: H(['先吹熄桌上的油燈。燈亮著的時候，娃娃不會出聲。', '戴上耳機（聽不到聲音就在設定開「聲音字幕」，會寫出哭聲在哪個方向）。哭聲從左邊來就往左轉，越走越大聲就對了。', '一直轉身，直到哭聲在正前方，再往前走到聲音最大的那一個。'],
+             ['Blow out the oil lamp on the table first. While it burns, the dolls stay silent.', 'Wear headphones (or turn on Sound captions in Settings to see which way the crying comes from). If the crying comes from the left, turn left — louder means closer.', 'Keep turning until the crying is straight ahead, then walk to where it is loudest.']),
+  },
+
+  P32: {
+    seg: 'act4', diff: 7, kind: 'text', ans: '4162', // 稻草人離開角落後依序站上的石板（IV、I、VI、II）；解開多 60 秒（每次第四幕一次）
+    hints: H(['不要一直盯著稻草人。你轉開視線，他就會換個地方站。', '他每次都站在一塊刻著羅馬數字的石板上。從他離開角落開始記，回到角落就是一輪。', '他依序站上 IV、I、VI、II。'],
+             ['Don’t keep staring at the scarecrow. Look away and he moves.', 'He always stops on a stone slab carved with a Roman numeral. Start counting when he leaves his corner; back in the corner means one full round.', 'He stands on IV, I, VI, II, in that order.']),
+  },
+
   P11: {
     seg: 'act3a', diff: 6, kind: 'text', ans: '257', gives: 'lantern',
     hints: H(['公告上有生還者的名字。', '名單上不在公告裡的人，就是沒有回來的人。', '沒有回來的是 2、5、7 號。'],
@@ -91,6 +110,9 @@ export const CHAPTER1 = {
   },
   P15: {
     seg: 'act3b', diff: 8, kind: 'text', ans: '3141', gives: 'note3',
+    // 錄音的字幕（2026-11-03，聽不到聲音的人用；轉盤調對＝反轉＋0.5 倍時，伺服器才給）。內容同 docs/06-audio-ch1.md
+    transcript: { zh: ['我是莉安娜。', '如果你聽到這個……代表我沒有回去。', '別相信鐘聲。別相信學校。', '第七張桌子……抽屜是……三、一、四、一。', '艾洛拉……對不起。'],
+      en: ['This is Liana.', 'If you’re hearing this… it means I didn’t make it back.', 'Don’t trust the bells. Don’t trust the school.', 'The seventh table… the drawer is… three, one, four, one.', 'Elora… I’m sorry.'] },
     hints: H(['聲音太快了，而且好像是反過來的。', '兩個轉盤都要調。', '反轉，速度 0.5 倍。'],
              ['It’s too fast — and it sounds backwards.', 'You need to set both dials.', 'Reverse, at 0.5× speed.']),
   },
@@ -187,7 +209,7 @@ export const ROOF = [
   'ᛁᛗᛒᚹᛗᚺ',
 ];
 // 第四幕的倒數（docs/04-map-ch1.md）：35 分鐘；卡住齒輪（P27）多 90 秒，只有一次
-export const ACT4 = { duration: 35 * 60 * 1000, gearBonus: 90 * 1000, grab: 1500, repelCool: 60 * 1000, repelFor: 5000, selfSwap: 3 * 60 * 1000 };
+export const ACT4 = { duration: 35 * 60 * 1000, gearBonus: 90 * 1000, scareBonus: 60 * 1000, grab: 1500, repelCool: 60 * 1000, repelFor: 5000, selfSwap: 3 * 60 * 1000, escapes: 2 }; // escapes：每個人最多掙脫幾次（2026-10-31 製作人）
 
 // 學院的時辰（P03～P08、R3 用）
 export const HOUSE_HOUR = { eldrin: 8, grimoire: 11, belmont: 9, ouroboros: 3 };

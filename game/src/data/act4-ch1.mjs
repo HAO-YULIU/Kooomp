@@ -54,6 +54,13 @@ export const AXLE_GAPS = [6, 7, 9];
 export const LYRIC = L(['提', '著', '綠', '燈', '走', '長', '廊'], ['Green', 'lamp', 'glow', 'ing', 'down', 'the', 'hall']); // docs/06-audio-ch1.md
 export const LYRIC_MARKS = { 0: 'L', 3: 'L', 6: 'L' };
 
+// P32 稻草人：機械室地上六塊刻羅馬數字的石板（I～VI），稻草人一開始站在角落。不看他的時候，他依 SCARECROW.route 換一塊石板站，走完一輪回到角落
+export const SCARECROW = {
+  corner: [163, 17.2],
+  slabs: [[149, 4], [162.2, 8.6], [150.2, 14.6], [156, 15.8], [161.6, 12.8], [148.6, 9.8]], // I、II、III、IV、V、VI
+  route: [3, 0, 5, 1],
+};
+
 export const A4_THINGS = [
   // ---- 入口大廳：躲藏點（書架縫） ----
   { id: 'hide_e1', room: 'lib_entry', kind: 'hide', x: 101, z: 3, size: [1, 2.2, 1.2], solid: false, label: L('書架之間的縫', 'A gap between shelves') },
@@ -69,6 +76,7 @@ export const A4_THINGS = [
   { id: 'hide_g3', room: 'a4_gears', kind: 'hide', x: 164, z: 16, size: [1.2, 2, 0.8], solid: false, label: L('工具櫃', 'A tool cabinet') },
   { id: 'hide_g4', room: 'a4_gears', kind: 'hide', x: 152, z: 11.5, size: [1.4, 2, 1], solid: false, label: L('大齒輪後面', 'Behind a great gear') },
   { id: 'hide_g5', room: 'a4_gears', kind: 'hide', x: 160, z: 4, size: [1.4, 2, 1], solid: false, label: L('大齒輪後面', 'Behind a great gear') },
+  { id: 'toolbox', hidden: true, room: 'a4_gears', kind: 'puzzle', puzzle: 'P32', x: 150.6, z: 17.4, size: [0.9, 0.6, 0.6], solid: true, label: L('上鎖的鐘塔工具箱', 'The clock keeper’s locked toolbox') },
   // ---- 蝕巢：被綁住的同伴 ----
   { id: 'roots', room: 'a4_nest', kind: 'nest', x: 170, z: 2, size: [2.4, 2, 2.4], solid: false, label: L('纏住同伴的黑根', 'The black roots binding your friend') },
   // ---- 屋頂 ----
@@ -87,6 +95,9 @@ export const WARDEN_POINTS = {
 export const WARDEN_START = { x: 107.5, z: 14.5, zone: 'lib_entry' };
 // 守夜人的行動（docs/04-map-ch1.md）：速度以玩家走路 2.0、跑步 3.6 公尺／秒為準
 export const WARDEN = {
-  patrol: 1.4, chase: 3.24, view: 12, fov: 60, notice: 0.5, hearRun: 15, hearWalk: 6, lose: 4,
-  reach: 1.1, findHidden: 1.5, stun: 2, repel: 5,
+  // 2026-10-31 製作人手機試玩：一直被追、沒時間解題 → 追得慢一點、比較快甩掉、比較不容易被聽到；找人的時間變短、休息變長
+  patrol: 1.4, chase: 3.0, view: 11, fov: 60, notice: 0.8, hearRun: 10, hearWalk: 4, lose: 3,
+  reach: 1.1, findHidden: 1.5, stun: 4, repel: 5,
+  calm: 60, hunt: 60, rest: 75, escapes: 2, // escapes：每個人最多掙脫幾次，之後被抓就掙脫不了（2026-10-31 製作人）
+  // 舊的：calm 30, hunt 90, rest 45, chase 3.24, view 12, notice 0.5, hearRun 15, hearWalk 6, lose 4, stun 2 // 開場先走開 30 秒（2026-10-22 製作人：40 改 30）；之後找人 90 秒、回蝕巢 45 秒輪流（2026-10-22 製作人：一開始就追太難，玩家還要解謎）
 };

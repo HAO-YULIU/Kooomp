@@ -1,24 +1,35 @@
 // 遊戲進行中：場景、劇情、謎題、赫爾嘉夫人、電腦同伴、筆記本。由 main.mjs 在遊戲開始時呼叫 startPlay()。
 import { createWorld, patrolAt, helgaSees } from '../world/world.mjs';
 import { createSender, createReceiver } from '../net/sync.mjs';
-import { say, talking, advanceDialog, setPauseHandler, panelOpen, openPanel, closePanel, el, L, LP, setPuzzleLang } from '../ui/overlay.mjs';
+import { say, talking, advanceDialog, setPauseHandler, panelOpen, openPanel, closePanel, el, L, LP, setPuzzleLang, setPanelHooks } from '../ui/overlay.mjs';
 import { openPuzzle } from '../ui/puzzles.mjs';
 import { openWand } from '../ui/wand.mjs';
-import { t, getLang } from './i18n.mjs';
+import { openTutorial, tutorialSeen } from '../ui/tutorial.mjs';
+import { createDevTools } from '../ui/devtools.mjs';
+import { setStaff, staffCast, setVolume, getVolume, setMusicVolume, getMusicVolume } from '../art/index.mjs';
+import { setSoundVolume } from '../world/sound.mjs';
+import { t, getLang, errText } from './i18n.mjs';
 import { CHARS, HOUSES } from './chars.mjs';
 import { SCRIPT } from '../data/story-ch1.mjs';
-import { SPAWNS, DOORS, ROOMS, RUMORS, THINGS } from '../data/world-ch1.mjs';
+import { sfx, buzz } from '../art/sfx.mjs';
+import { captionsOn } from '../ui/captions.mjs';
+import { SPAWNS, DOORS, ROOMS, RUMORS, THINGS, FINALE_MIRROR, MIRRORS } from '../data/world-ch1.mjs';
 const THINGS_BY_ID = Object.fromEntries(THINGS.map((x) => [x.id, x]));
 import { HEADMASTERS } from '../data/story-ch1.mjs';
+import { CREDITS } from '../data/credits.mjs';
 import { createAct2 } from './act2.mjs';
 import { createAct3 } from './act3.mjs';
 import { createAct4 } from './act4.mjs';
+import { createScares } from '../world/scares.mjs';
+import { createMirrors } from '../world/mirrors.mjs';
 
 const $ = (id) => document.getElementById(id);
 const HOUR_PID = { P03: 'eldrin', P04: 'grimoire', P05: 'belmont', P06: 'ouroboros' };
 
-export function startPlay({ conn, getState, myUid, toast, dev }) {
+export function startPlay({ conn, getState, myUid, toast, dev, devUser }) {
+  let devtools = null; // 開發者測試工具（下面建立）
   const world = createWorld($('view'), getLang());
+  if (dev) window.__w = world; // 本機測試用
   const sender = createSender((m) => { conn.send(m); if (window.__ml) window.__ml.sent++; });
   const receiver = createReceiver();
   const S = () => getState();
@@ -26,11 +37,23 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
   const me = () => S().members.find((m) => m.uid === myUid);
   const myHouse = () => CHARS[me()?.char]?.house;
   const code = S().code;
+  setStaff(['elora', 'yuexi'].includes(me()?.char) ? 'moon' : 'dragon'); // 第一人稱的法杖：女生星月法杖、男生龍首法杖
 
   // 看過的劇情（同一個房間重新連線不會再播一次）
   const seenKey = `ml_seen_${code}_${myUid}`;
   const seen = new Set((() => { try { return JSON.parse(localStorage.getItem(seenKey) || '[]'); } catch { return []; } })());
   const play = (key) => { if (seen.has(key) || !SCRIPT[key]) return; seen.add(key); try { localStorage.setItem(seenKey, JSON.stringify([...seen])); } catch { /* 無痕 */ } say(SCRIPT[key]); };
+
+  // 第四幕遠距解謎（2026-11-14 製作人：被追的時候還要站在謎題前面解太難）：自己走到過、按過調查的謎題，
+  // 之後可以從「謎題」按鈕（R）隨時打開作答。解開後門一樣要自己走過去，不會傳送。
+  const REMOTE = new Set(['P26', 'P27', 'P28', 'P32']);
+  const foundKey = `ml_found_${code}_${myUid}`;
+  const found = new Set((() => { try { return JSON.parse(localStorage.getItem(foundKey) || '[]'); } catch { return []; } })());
+  const markFound = (tg) => {
+    if (!REMOTE.has(tg.puzzle) || found.has(tg.puzzle)) return;
+    found.add(tg.puzzle); try { localStorage.setItem(foundKey, JSON.stringify([...found])); } catch { /* 無痕 */ }
+    if (!S().solved.includes(tg.puzzle)) toast(t('remote_found'));
+  };
 
   const notes = {}; // 自己知道的資訊（伺服器只告訴作答者的時辰）
   const heard = new Set(); // 聽過的傳聞（第幾張長桌）
@@ -39,16 +62,48 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
   let segment = null;
 
   setPauseHandler((p) => { world.controls.setEnabled(!p); });
+  // 謎題連進場景（2026-10-22 製作人）：調查打開的視窗，鏡頭滑到那個東西前面、視窗靠右；
+  // 在視窗裡每次操作，場景裡那個東西閃一下藍光；答錯紅光；解開金光、光點往上飄，鎖住的門轉開
+  let focusNext = null, focused = null, lastFx = 0;
+  setPanelHooks({
+    open() { $('panel').dataset.skin = skinOf(focusNext); if (!focusNext) return; focused = focusNext; world.focus(focused); document.body.classList.add('focus'); },
+    close() { if (!focused) return; focused = null; world.unfocus(); document.body.classList.remove('focus'); },
+  });
+  const panelFx = (kind) => { if (focused) world.fx(focused, kind); };
+  // 視窗外觀跟著東西：紙（傳聞、筆記、書）、石頭（門鎖、符文、石像、井）、黃銅（天平、沙漏、齒輪、星盤）、玻璃（窗、水晶、鏡子）
+  const SKINS = [['stone', /lock|door|rune|statue|braille|well|tiles|gate|mark|painting|plaque|roots|nest/], ['brass', /scale|hourglass|gear|pendulum|disk|lamp|pass|roof|sign/],
+    ['glass', /window|crystal|mirror|ball|vial/], ['paper', /note|letter|roster|notice|book|seat|chart|desk|sketch|eastern|badge|senior|cat|ladder/]];
+  const skinOf = (th) => (th ? (SKINS.find(([, re]) => re.test(th.id))?.[0] ?? '') : '');
+  for (const ev of ['click', 'input']) $('panel-body').addEventListener(ev, (e) => {
+    if (!focused || !(e.target.closest('button, input, select, canvas, .rune'))) return;
+    const now = performance.now(); if (now - lastFx < 250) return; lastFx = now; panelFx('input');
+  });
   const act2 = createAct2({ world, conn, toast, play, S, house: myHouse(), solo: S().mode === 'solo', lang: getLang() });
   $('btn-familiar').hidden = S().mode !== 'solo';
+  const scares = createScares(world.scene, world.world.colliders); // 一次性的驚嚇演出（碼頭、星盤廳、創辦人的房間）
+  if (dev) { window.__scares = scares; window.__conn = conn; window.__S = S; } // 本機測試用
+  const mirrors = createMirrors(world.scene); // 交誼廳的古鏡（哈氣浮出反字）
+  // 第一章的最後一幕（尾聲講完）：宿舍的燈突然全滅，自己房間的古鏡起霧、從裡面寫出一行字；講完才出現「第一章完」
+  let inFinale = false;
+  function finale(done) {
+    inFinale = true;
+    const m = MIRRORS.find((q) => q.house === myHouse()) ?? MIRRORS[0];
+    world.setDark(true); sfx('slam'); buzz([160, 60, 90]);
+    world.teleport({ x: m.x, z: m.z + m.face * 1.6, yaw: m.face > 0 ? 0 : Math.PI }); // 黑暗裡，你已經站在鏡子前面
+    setTimeout(() => {
+      mirrors.scrawl('mirror_' + m.house, L(FINALE_MIRROR)); sfx('whisper'); say(SCRIPT.finale);
+      const wait = setInterval(() => { if (!talking()) { clearInterval(wait); setTimeout(() => { world.setDark(false); inFinale = false; done(); }, 2500); } }, 500);
+    }, 1800);
+  }
   const act3 = createAct3({ world, conn, toast, say, S, myChar: () => me()?.char, solvedByMe: (pid, r) => { onSolved(pid, myUid, r.reveal); toast(t('solved', { pid })); }, serverNow: () => Date.now() + clockOffset });
-  const act4 = createAct4({ world, conn, toast, say, talking, S, myUid, myChar: () => me()?.char, receiver, serverNow: () => Date.now() + clockOffset, holding: () => holding, dev, playScript: (k) => play(k),
+  const act4 = createAct4({ world, conn, toast, say, talking, S, myUid, myChar: () => me()?.char, receiver, serverNow: () => Date.now() + clockOffset, holding: () => holding, dev, playScript: (k) => play(k), finale,
     solvedByMe: (pid, r) => { onSolved(pid, myUid, r.reveal); toast(t('solved', { pid })); } });
-  if (dev) window.__ml = { receiver, world, conn, sent: 0, notes, heard, act2, act3, act4, get state() { return S(); } };
+  if (dev) window.__ml = { myUid, receiver, world, conn, sent: 0, notes, heard, act2, act3, act4, get state() { return S(); } };
 
   // ---- 段落開始：移到出發點、播劇情 ----
   function enterSegment(seg, first) {
     segment = seg;
+    $('btn-remote').hidden = seg !== 'act4';
     if (seg === 'prologue' && first) {
       const i = Math.max(0, S().members.findIndex((m) => m.uid === myUid));
       world.teleport({ ...SPAWNS.prologue, x: SPAWNS.prologue.x + (i - 1.5) * 1.4 });
@@ -74,6 +129,8 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
 
   // ---- 狀態更新（由 main 轉來） ----
   function onState(st, before) {
+    devtools?.refresh();
+    world.syncSolved(st.solved ?? []);
     clockOffset = (st.now ?? Date.now()) - Date.now();
     const people = st.members.filter((m) => m.uid !== myUid).map((m) => ({ key: m.uid, label: m.name, char: m.char }));
     for (const c of aiChars()) people.push({ key: `ai:${c}`, label: CHARS[c][getLang()], char: c });
@@ -86,6 +143,7 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
 
   function onSolved(pid, by, reveal) {
     const st = S();
+    if (!st.solved.includes(pid) && !focused) { const th = Object.values(THINGS_BY_ID).find((x) => x.puzzle === pid && x.room === world.zone()); if (th) world.fx(th, 'solved'); } // 隊友解開：同一個房間看得到金光
     if (!st.solved.includes(pid)) st.solved.push(pid);
     if (reveal) notes[pid] = reveal;
     updateDoors();
@@ -97,10 +155,12 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
   // ---- 調查 ----
   function interact() {
     if (talking()) return advanceDialog();
-    if (panelOpen()) return;
+    if (panelOpen() || inFinale) return;
     const tg = world.target();
     if (!tg) return;
+    focusNext = tg; setTimeout(() => { focusNext = null; }); // 這次調查打開的視窗，鏡頭看著這個東西
     if (act2.interact(tg) || act3.interact(tg) || act4.interact(tg)) return;
+    if (tg.kind === 'mirrorfog') { if (mirrors.breathe(tg.id)) setTimeout(() => play('mirror'), 2500); return; }
     if (tg.kind === 'plaques') return openPanel(L(tg.label), (body) => body.append(el('ul', { class: 'plaques' }, ...HEADMASTERS.map((h) => el('li', { text: L(h) })))));
     if (tg.kind === 'prop' && tg.text) return say([[null, tg.text.zh, tg.text.en]]);
     if (tg.kind === 'rumor') {
@@ -111,21 +171,41 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
     if (tg.kind === 'puzzle') {
       if (tg.needsAi && !S().ai?.length) return toast(t('p07_none'));
       if (tg.house && S().mode !== 'solo' && myHouse() !== tg.house && !S().ai?.includes(tg.house)) return toast(t('err.not_your_house')); // 電腦控制的學院：誰都可以做
-      return openPuzzle(tg.puzzle, tg, {
-        conn, state: S(), notes, heard, revealed, toast, getLang, lib: act3.lib, solo: S().mode === 'solo',
-        items: () => S().items ?? [], myHouse, aiHouse: (h) => S().mode !== 'solo' && !!S().ai?.includes(h), myChar: () => me()?.char, noise: () => conn.send({ t: 'noise', p: world.me().p }),
-        near: (id, r) => { const th = THINGS_BY_ID[id]; const p = world.controls.state.pos; return !!th && Math.hypot(p.x - th.x, p.z - th.z) <= r; },
-        onSolved: (pid, r) => onSolved(pid, myUid, r.reveal),
-      });
+      markFound(tg);
+      return openPuzzle(tg.puzzle, tg, puzzleCtx(tg));
     }
+  }
+
+  // 打開謎題視窗用的資料（調查、第四幕遠距作答共用）
+  function puzzleCtx(tg, remote = false) {
+    return {
+        conn, state: S(), notes, heard, revealed, toast, getLang, lib: act3.lib, solo: S().mode === 'solo',
+        items: () => S().items ?? [], myHouse, aiHouse: (h) => S().mode !== 'solo' && !!S().ai?.includes(h), myChar: () => me()?.char, noise: () => { const p = world.controls.state.pos; if (!remote || Math.hypot(p.x - tg.x, p.z - tg.z) < 6) conn.send({ t: 'noise', p: world.me().p }); }, // 遠距敲錯：人不在門前，守夜人聽不到你
+        near: (id, r) => { const th = THINGS_BY_ID[id]; const p = world.controls.state.pos; return !!th && Math.hypot(p.x - th.x, p.z - th.z) <= r; },
+        onSolved: (pid, r) => onSolved(pid, myUid, r.reveal), fx: panelFx, react: (n, d) => { if (focused) world.react(focused, n, d); },
+    };
+  }
+
+  // ---- 第四幕：遠距作答的清單 ----
+  function remotePuzzles() {
+    if (segment !== 'act4' || talking() || inFinale) return;
+    if (panelOpen()) return closePanel();
+    if (S().nest?.[myUid]) return toast(errText('captured'));
+    openPanel(t('remote_title'), (body) => {
+      const list = THINGS.filter((x) => x.kind === 'puzzle' && REMOTE.has(x.puzzle) && found.has(x.puzzle) && !S().solved.includes(x.puzzle));
+      body.append(el('p', { class: 'dim', text: t('remote_intro') }));
+      if (!list.length) body.append(el('p', { text: t('remote_none') }));
+      for (const th of list) body.append(el('button', { class: 'remote-item', text: L(th.label), onclick: () => { closePanel(); openPuzzle(th.puzzle, th, puzzleCtx(th, true)); } }));
+    });
   }
 
   // ---- 魔杖 ----
   function castWand() {
     if (panelOpen() || talking()) return;
-    if (segment === 'act4' && act4.canRepel()) return act4.repel(); // 貝爾蒙特：擊退守夜人
+    if (segment === 'act4' && act4.canRepel()) { staffCast('#ffd27a'); return act4.repel(); } // 貝爾蒙特：擊退守夜人
     openWand((spell) => {
       if (spell !== 'lumen') return;
+      staffCast('#9fc4ff'); // 法杖往前一揮、杖頭發光
       const tg = world.target((x) => x.id === 'lock_eldrin');
       if (tg) { revealed.add('lock_eldrin'); toast(t('revealed')); } else toast(t('wand_nothing'));
     });
@@ -158,14 +238,40 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
     if (e.code === 'KeyE' || (e.code === 'Space' && talking())) { e.preventDefault(); interact(); }
     if (e.code === 'KeyF') castWand();
     if (e.code === 'KeyN') notebook();
+    if (e.code === 'KeyR') remotePuzzles();
     if (e.code === 'KeyQ') holding = true;
     if (e.code === 'KeyV') act2.toggleFamiliar();
     if (e.code === 'Escape' && panelOpen()) closePanel();
   });
   addEventListener('keyup', (e) => { if (e.code === 'KeyQ') holding = false; });
   $('btn-inspect').onclick = interact;
+  // 開發者測試工具（右上角 🛠）
+  devtools = devUser ? createDevTools({ conn, world, S, things: THINGS, toast, myUid, onSolved: (pid, r) => onSolved(pid, myUid, r.reveal) }) : null;
+  // 設定：亮度、重看入學指南
+  const touch = document.body.classList.contains('touch');
+  $('btn-settings').onclick = () => openPanel(t('settings'), (body) => {
+    const val = el('b', { text: `${Math.round(world.brightness * 100)}%` });
+    const slider = el('input', { type: 'range', min: '0.6', max: '1.8', step: '0.05', value: String(world.brightness), class: 'bright' });
+    slider.oninput = () => { world.setBrightness(+slider.value); val.textContent = `${Math.round(+slider.value * 100)}%`; };
+    const vval = el('b', { text: `${Math.round(getVolume() * 100)}%` });
+    const vol = el('input', { type: 'range', min: '0', max: '1.5', step: '0.05', value: String(getVolume()), class: 'bright' });
+    vol.oninput = () => { setVolume(+vol.value); setSoundVolume(+vol.value); vval.textContent = `${Math.round(+vol.value * 100)}%`; };
+    const mval = el('b', { text: `${Math.round(getMusicVolume() * 100)}%` });
+    const mus = el('input', { type: 'range', min: '0', max: '1.5', step: '0.05', value: String(getMusicVolume()), class: 'bright' });
+    mus.oninput = () => { setMusicVolume(+mus.value); mval.textContent = `${Math.round(+mus.value * 100)}%`; };
+    body.append(el('div', { class: 'row' }, el('span', { text: t('brightness') }), slider, val), el('div', { class: 'row' }, el('span', { text: t('volume') }), vol, vval),
+      el('div', { class: 'row' }, el('span', { text: t('music_volume') }), mus, mval),
+      (() => { const b = el('button', { class: 'small' }); const paint = () => { b.textContent = t(world.lowPower ? 'lowpower_on' : 'lowpower_off'); }; b.onclick = () => { world.setLowPower(!world.lowPower); paint(); }; paint(); return el('div', { class: 'row' }, el('span', { text: t('lowpower') }), b); })(),
+      (() => { const b = el('button', { class: 'small' }); const on = captionsOn; const paint = () => { b.textContent = t(on() ? 'lowpower_on' : 'lowpower_off'); }; b.onclick = () => { try { localStorage.setItem('ml_captions', on() ? '0' : '1'); } catch { /* 無痕 */ } paint(); }; paint(); return el('div', { class: 'row' }, el('span', { text: t('captions') }), b); })(), // 聲音字幕（預設開，2026-10-30 製作人）
+      (() => { const b = el('button', { class: 'small' }); const on = () => document.body.classList.contains('bigtext'); const paint = () => { b.textContent = t(on() ? 'bigtext_on' : 'bigtext_off'); }; b.onclick = () => { document.body.classList.toggle('bigtext', !on()); try { localStorage.setItem('ml_bigtext', on() ? '1' : '0'); } catch { /* 無痕 */ } paint(); }; paint(); return el('div', { class: 'row' }, el('span', { text: t('bigtext') }), b); })(), // 字體大小（2026-11-03：手機的字偏小）
+      el('button', { text: t('replay_tut'), onclick: () => { closePanel(); openTutorial({ touch }); } }),
+      el('button', { text: t('credits'), onclick: () => openPanel(t('credits'), (b) => b.append( // 素材來源（CC BY 要標註作者）
+        el('h3', { text: '3D' }), ...CREDITS.models.map(([n, a, u, lic = 'CC BY 4.0']) => el('p', { class: 'credit' }, u ? el('a', { href: u, target: '_blank', rel: 'noopener', text: n }) : el('span', { text: n }), el('small', { text: a ? ` — ${a}（${lic}）` : '' }))),
+        el('h3', { text: t('credits_sound') }), el('p', { class: 'credit', text: CREDITS.sounds }))) }));
+  });
   $('btn-wand').onclick = castWand;
   $('btn-notebook').onclick = notebook;
+  $('btn-remote').onclick = remotePuzzles;
   $('btn-familiar').onclick = () => act2.toggleFamiliar();
   const hb = $('btn-breath');
   hb.onpointerdown = () => { holding = true; }; hb.onpointerup = hb.onpointerleave = () => { holding = false; };
@@ -174,6 +280,7 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
   const entered = new Set();
   let last = performance.now(), caughtCool = 0;
   const loop = (now) => {
+    if (world.lowPower && now - last < 31) { requestAnimationFrame(loop); return; } // 省電模式：每秒最多 30 格
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
     const mine = world.me();
     const st = S();
@@ -204,14 +311,18 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
       } else world.placeAvatar(key, 0, 0, 0, false);
     });
     if (segment === 'act2') act2.frame(dt, mine);
+    if (segment?.startsWith('act3') || segment === 'act4') act3.wake();
     if (segment?.startsWith('act3')) act3.frame(dt, mine, segment);
     const hideState = act4.frame(dt, mine, segment);
     // 「調查」提示
-    const tg = !panelOpen() && !talking() ? world.target() : null;
+    const tg = !panelOpen() && !talking() && !inFinale ? world.target() : null; // 最後一幕（熄燈、鏡子）不顯示提示
     $('prompt').hidden = !tg; if (tg) $('prompt').textContent = `${matchMedia('(pointer: coarse)').matches ? '' : 'E　'}${L(tg.label)}`;
     $('btn-inspect').classList.toggle('ready', !!tg);
     // 同步、畫面
     sender.update({ ...mine, h: hideState }, now);
+    mirrors.update(dt);
+    scares.update(dt, { segment, zone: mine.z, cam: world.camera, dark: world.isDark(), busy: talking() || panelOpen() });
+    world.haunting = !!segment && segment !== 'act4' && segment !== 'epilogue' && segment !== 'prologue'; world.busy = panelOpen() || talking();
     world.frame(dt, receiver.update(dt, now), mine.z);
     requestAnimationFrame(loop);
   };
@@ -224,5 +335,7 @@ export function startPlay({ conn, getState, myUid, toast, dev }) {
     onAct4: (msg) => act4.onMessage(msg),
     zoneName: (z) => L(ROOMS.find((r) => r.id === z)?.name) || z,
     setNotes(n) { Object.assign(notes, n); },
+    // 第一次進遊戲：載入完自動打開入學指南（劇情對話先等它關掉）
+    tutorial() { if (!tutorialSeen()) openTutorial({ touch }); },
   };
 }

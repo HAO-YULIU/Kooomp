@@ -1,0 +1,6 @@
+<!doctype html><meta charset="utf-8"><body style="margin:0;background:#222">
+<script type="module">
+import { paintPortrait } from '../game/src/art/portraits.mjs';
+for (const [k, s] of [['normal', 1], ['normal', 2], ['normal', 3], ['normal', 7], ['normal', 11], ['pose', 1], ['normal', 17], ['liana', 5], ['gouged', 9], ['normal', 4242]]) { const c = paintPortrait(k, s); c.style.margin = '6px'; document.body.append(c); }
+window.ready = true;
+</script>

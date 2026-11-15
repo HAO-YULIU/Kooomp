@@ -8,13 +8,13 @@ export async function whoIs(env, token) {
   if (!token) return null;
   if (env.DEV_AUTH === '1' && token.startsWith('dev-')) {
     const name = decodeURIComponent(token.slice(4)) || '測試玩家';
-    return { uid: token, name };
+    return { uid: token, name, dev: true };
   }
   if (token.startsWith('test.')) {
     const [, pass, name] = token.split('.');
     if (!env.TEST_PASS || !pass || !same(decodeURIComponent(pass), env.TEST_PASS)) return null;
     const n = decodeURIComponent(name ?? '').trim().slice(0, 16) || '測試玩家';
-    return { uid: `test-${n}`, name: n, test: true };
+    return { uid: `test-${n}`, name: n, test: true, dev: true };
   }
   const hit = cache.get(token);
   if (hit && hit.until > Date.now()) return hit;
@@ -29,7 +29,10 @@ export async function whoIs(env, token) {
   const row = p.ok ? (await p.json())[0] : null;
   if (!row?.username) return { uid: user.id, name: null };
 
-  const who = { uid: user.id, name: row.username, until: Date.now() + 5 * 60 * 1000 };
+  // 開發者＝大廳的管理員（admins 表裡有自己）：遊戲裡可以用測試工具（跳段、直接解題、看答案）
+  const a = await fetch(`${env.SUPABASE_URL}/rest/v1/admins?user_id=eq.${user.id}&select=user_id`, { headers });
+  const dev = a.ok ? (await a.json()).length > 0 : false;
+  const who = { uid: user.id, name: row.username, dev, until: Date.now() + 5 * 60 * 1000 };
   cache.set(token, who);
   if (cache.size > 500) cache.delete(cache.keys().next().value);
   return who;

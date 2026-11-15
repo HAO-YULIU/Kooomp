@@ -1,23 +1,31 @@
 // 音效（Web Audio）：雨聲、守夜人的童謠（音樂盒）、呼吸聲、尖叫、提示音。
 // 瀏覽器要等玩家點過畫面才能出聲，所以第一次用到時才建立 AudioContext。
+import { caption } from '../ui/captions.mjs';
+import { t as tr } from '../logic/i18n.mjs';
 let ctx = null, master = null;
 const ac = () => {
-  if (!ctx) { ctx = new (window.AudioContext || window.webkitAudioContext)(); master = ctx.createGain(); master.gain.value = 0.8; master.connect(ctx.destination); }
+  if (!ctx) { try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* 舊的瀏覽器沒有 */ } // iPhone 開靜音模式時網頁預設沒有聲音：當成「播放媒體」才會出聲
+    ctx = new (window.AudioContext || window.webkitAudioContext)(); master = ctx.createGain(); master.gain.value = 0.8 * (() => { try { return +(localStorage.getItem('ml_volume') ?? 1); } catch { return 1; } })(); master.connect(ctx.destination); }
   if (ctx.state === 'suspended') ctx.resume();
   return ctx;
 };
 addEventListener('pointerdown', () => { try { ac(); } catch { /* 沒有音效也能玩 */ } }, { once: true });
+/** 設定裡的音量（雨聲、童謠、呼吸聲、尖叫也跟著） */
+export function setSoundVolume(v) { try { ac(); master.gain.value = 0.8 * v; } catch { /* 沒有音效 */ } }
 
-// ---------- 雨聲（濾過的雜訊，一直循環） ----------
-let rain = null;
+// ---------- 雨聲（有製作人給的音檔就用音檔，沒有就用濾過的雜訊；一直循環） ----------
+let rain = null, rainBuf = null;
+const RAIN_URL = 'assets/audio/sfx/amb_rain.mp3';
+// 雨聲的音檔第一次下雨時才下載、解開（之後下雨就用音檔）
 export function setRain(on) {
   try { ac(); } catch { return; }
+  if (on && !rainBuf) load(RAIN_URL).then((b) => { rainBuf = b; });
   if (on && !rain) {
-    const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate), d = buf.getChannelData(0);
-    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    let buf = rainBuf;
+    if (!buf) { buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate); const d = buf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
     const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1400;
-    const g = ctx.createGain(); g.gain.value = 0.0; g.gain.linearRampToValueAtTime(0.06, ctx.currentTime + 1.5);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = rainBuf ? 6000 : 1400;
+    const g = ctx.createGain(); g.gain.value = 0.0; g.gain.linearRampToValueAtTime(rainBuf ? 0.3 : 0.06, ctx.currentTime + 1.5);
     src.connect(lp).connect(g).connect(master); src.start();
     rain = { src, g };
   } else if (!on && rain) {
@@ -96,6 +104,10 @@ export function heartbeatFrom(deg, { beats = 4, volume = 0.7 } = {}) {
   const rad = (deg * Math.PI) / 180, pan = ctx.createStereoPanner(), lp = ctx.createBiquadFilter();
   pan.pan.value = Math.sin(rad); lp.type = 'lowpass'; lp.frequency.value = Math.cos(rad) > 0 ? 1800 : 450;
   lp.connect(pan).connect(master);
+  { // 聲音字幕（設定裡可以關）：照實寫出耳朵聽得到的——偏左還偏右、清楚（前面）還是悶悶的（後面）（2026-11-03：手機沒開聲音也能解 S2）
+    const s = Math.sin(rad), side = s > 0.85 ? 'right' : s > 0.3 ? 'rright' : s < -0.85 ? 'left' : s < -0.3 ? 'lleft' : 'mid';
+    caption('cap.heart', { side: tr(`cap_heart.${side}`), tone: tr(Math.cos(rad) > 0 ? 'cap_heart.clear' : 'cap_heart.muffled') });
+  }
   let t = ctx.currentTime + 0.05;
   for (let i = 0; i < beats; i++, t += 0.85) for (const [k, dt] of [[1, 0], [0.7, 0.22]]) { // 咚—咚
     const o = ctx.createOscillator(), g = ctx.createGain();

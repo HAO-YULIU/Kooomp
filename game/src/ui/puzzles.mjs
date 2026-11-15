@@ -5,6 +5,8 @@ import { RUMORS } from '../data/world-ch1.mjs';
 import { MORSE_TABLE, RUNE_ROWS } from '../data/story-ch1.mjs';
 import { ROSTER, SURVIVORS, BOOK_RULE, FLIP_PAGES, TRIGRAMS, RUNES, RUNE_DOOR, LIGHT_GRID, SOKOBAN, VIALS, SKETCH, BRAILLE } from '../data/library-ch1.mjs';
 import { playFile, heartbeatFrom } from '../world/sound.mjs';
+import { sfx } from '../art/sfx.mjs';
+import { captionsOn } from './captions.mjs';
 import { LEVERS, BOLTS_LOCKED, GEAR_RACK, AXLE_GAPS, LYRIC, LYRIC_MARKS } from '../data/act4-ch1.mjs';
 import { HOUSES } from '../logic/chars.mjs';
 
@@ -14,10 +16,13 @@ const ZODIAC = [
   ['sagittarius', '♐', '射手', 'Sagittarius'], ['capricorn', '♑', '摩羯', 'Capricorn'], ['aquarius', '♒', '水瓶', 'Aquarius'], ['pisces', '♓', '雙魚', 'Pisces'],
 ];
 
-// ctx：{ conn, state, notes, heard（聽過的傳聞）, revealed（施過光照咒的東西）, toast, onSolved }
+// 場景反應：視窗裡的操作送給場景裡的機關（art/react.mjs），例如沙漏翻轉、星盤轉環
+let react = () => {};
+// ctx：{ conn, state, notes, heard（聽過的傳聞）, revealed（施過光照咒的東西）, toast, onSolved, react }
 export function openPuzzle(pid, thing, ctx) {
   const builder = BUILD[thing.panel ?? pid];
   if (!builder) return;
+  react = ctx.react ?? (() => {});
   openPanel(L(thing.label), (body, panel) => {
     const solved = ctx.state.solved.includes(pid);
     const status = el('p', { class: 'p-status' });
@@ -25,10 +30,11 @@ export function openPuzzle(pid, thing, ctx) {
       status.textContent = '…';
       const r = await ctx.conn.request({ t: 'answer', pid, value });
       if (r.t === 'error') { status.textContent = errText(r.error, { s: Math.ceil((r.wait ?? 0) / 1000) }); return r; }
-      if (r.solved) { status.textContent = t('p_solved'); ctx.onSolved(pid, r); setTimeout(closePanel, 900); }
-      else status.textContent = t('wrong');
+      if (r.solved) { status.textContent = t('p_solved'); ctx.fx?.('solved'); ctx.onSolved(pid, r); setTimeout(closePanel, 1400); } // 多停一下，看得到場景裡的金光
+      else { status.textContent = t('wrong'); ctx.fx?.('wrong'); }
       return r;
     };
+    if (new URLSearchParams(location.search).has('dev')) window.__submit = submit; // 測試用（只有 ?dev）：走跟玩家按「作答」一樣的流程
     if (solved) body.append(el('p', { class: 'p-done', text: t('p_already') }));
     const main = el('div'); body.append(main, status); // 內容要等伺服器回覆的題目，也會排在狀態與提示上面
     builder(main, { ...ctx, submit, solved, pid, panel }); // 畫面可以設定 panel.onClose（關掉時要停的計時器）
@@ -50,7 +56,7 @@ function hintBox(pid, ctx) {
 }
 
 const numberInput = (submit, ph = '') => {
-  const inp = el('input', { inputmode: 'numeric', maxlength: '4', placeholder: ph, class: 'num' });
+  const inp = el('input', { inputmode: 'numeric', maxlength: '4', placeholder: ph, class: 'num', oninput: () => react('digits', { v: inp.value }) });
   const go = el('button', { text: t('answer'), onclick: () => submit(inp.value.trim()) });
   inp.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') go.click(); };
   return el('div', { class: 'row' }, inp, go);
@@ -60,6 +66,7 @@ const numberInput = (submit, ph = '') => {
 const NO_HINTS = new Set(['P22']);
 const INFO_PANELS = new Set(['roster', 'notice', 'trigrams', 'sketch', 'crystalball', 'brailletable']);
 const RUNES6 = ['ᚠ', 'ᚢ', 'ᚦ', 'ᚨ', 'ᚱ', 'ᚲ'];
+const S3_RUNES = ['ᛒ', 'ᚨ', 'ᚾ', 'ᛁ', 'ᛊ', 'ᚺ'], S3_LETTERS = ['B', 'A', 'N', 'I', 'S', 'H']; // S3 自救：數字 1～6 對應的符文（對角線拼出 BANISH）
 
 const BUILD = {
   // P02：整理傳聞
@@ -82,7 +89,7 @@ const BUILD = {
       body.append(el('blockquote', { text: t('p03_poem') }));
     }
     const grid = el('div', { class: 'zodiac' });
-    for (const [id, sym, zh, en] of ZODIAC) grid.append(el('button', { onclick: () => submit(id) }, el('b', { text: sym }), el('small', { text: getLang() === 'en' ? en : zh })));
+    ZODIAC.forEach(([id, sym, zh, en], i) => grid.append(el('button', { onclick: () => { react('zodiac', { i }); submit(id); } }, el('b', { text: sym }), el('small', { text: getLang() === 'en' ? en : zh }))));
     body.append(el('p', { text: t('p03_ask') }), grid);
   },
 
@@ -129,6 +136,7 @@ const BUILD = {
           el('button', { class: 'small', text: t('flip'), onclick: () => act('flip', [g]) })));
       }
       clock.textContent = startAt ? t('p06_elapsed') : t('p06_ready');
+      react('sand', { 7: { ...glasses[7] }, 11: { ...glasses[11] } });
     };
     const tick = () => {
       const m = (performance.now() - startAt) / SEC; const d = m - now; now = m;
@@ -139,7 +147,7 @@ const BUILD = {
       if (!startAt) { startAt = performance.now(); now = 0; timer = setInterval(tick, 100); }
       tick();
       const tm = +now.toFixed(2);
-      if (a === 'flip') for (const k of g) { const s = glasses[k]; [s.top, s.bot] = [s.bot, s.top]; }
+      if (a === 'flip') { for (const k of g) { const s = glasses[k]; [s.top, s.bot] = [s.bot, s.top]; } react('flip', { g }); }
       actions.push(a === 'knock' ? { t: tm, a } : { t: tm, a, g });
       draw();
       if (a === 'knock') { clearInterval(timer); finish(); }
@@ -150,7 +158,7 @@ const BUILD = {
       const r = await submit(sent);
       if (!r?.solved) reset();
     };
-    const reset = () => { clearInterval(timer); startAt = 0; now = 0; actions = []; glasses[7] = { top: 0, bot: 7 }; glasses[11] = { top: 0, bot: 11 }; draw(); };
+    const reset = () => { clearInterval(timer); startAt = 0; now = 0; actions = []; glasses[7] = { top: 0, bot: 7 }; glasses[11] = { top: 0, bot: 11 }; react('reset'); draw(); };
     body.append(view, clock,
       el('div', { class: 'row' },
         el('button', { text: t('flip_both'), onclick: () => act('flip', [7, 11]) }),
@@ -167,7 +175,7 @@ const BUILD = {
     const inputs = {};
     for (const [h, codes] of Object.entries(morse)) {
       const lamp = el('span', { class: 'candle' });
-      const play = el('button', { class: 'small', text: t('p07_watch'), onclick: () => blink(lamp, codes) });
+      const play = el('button', { class: 'small', text: t('p07_watch'), onclick: () => blink(lamp, codes, (on) => react('blink', { house: h, on })) });
       inputs[h] = el('input', { inputmode: 'numeric', maxlength: '2', class: 'num', onkeydown: (e) => e.stopPropagation() });
       body.append(el('div', { class: 'row tower' }, el('b', { text: HOUSES[h][getLang()], style: `color:${HOUSES[h].color}` }), lamp, play, inputs[h]));
     }
@@ -199,6 +207,7 @@ const BUILD = {
     const rows = [0, 1, 2, 3].map((i) => {
       const house = el('select', {}, el('option', { value: '', text: '—' }), ...Object.entries(HOUSES).map(([k, v]) => el('option', { value: k, text: v[getLang()] })));
       const hour = el('select', {}, ...Array.from({ length: 12 }, (_, k) => el('option', { value: String(k + 1), text: String(k + 1) })));
+      house.onchange = hour.onchange = () => react('ring', { i, house: house.value, hour: hour.value });
       return { house, hour, row: el('div', { class: 'row' }, el('span', { class: 'ring', text: t(`p08_ring_${i}`) }), house, hour) };
     });
     body.append(...rows.map((r) => r.row),
@@ -223,7 +232,7 @@ const BUILD = {
       conn.request({ t: 'peek', pid: 'P12' }).then((r) => { sh.textContent = r.t === 'peek' ? r.content.shadows.map((id) => ELEM.find((e) => e[0] === id)?.[1] ?? '?').join(' ') : ''; });
     }
     const pick = []; const show = el('div', { class: 'slots' });
-    const paint = () => { show.textContent = [0, 1, 2, 3].map((i) => ELEM.find((e) => e[0] === pick[i])?.[1] ?? '＿').join('　'); };
+    const paint = () => { show.textContent = [0, 1, 2, 3].map((i) => ELEM.find((e) => e[0] === pick[i])?.[1] ?? '＿').join('　'); react('elements', { pick: [...pick] }); };
     paint();
     body.append(show, el('div', { class: 'row' }, ...ELEM.map(([id, sym, name]) => el('button', { text: `${sym} ${name}`, onclick: () => { if (pick.length < 4) pick.push(id); paint(); } })),
       el('button', { class: 'small', text: t('reset'), onclick: () => { pick.length = 0; paint(); } }),
@@ -237,6 +246,7 @@ const BUILD = {
     const page = el('input', { inputmode: 'numeric', maxlength: '3', class: 'num', placeholder: t('page'), onkeydown: (e) => e.stopPropagation() });
     const view = el('div', { class: 'bookpage' });
     const open = async () => {
+      react('book', { i: +book.value });
       const r = await conn.request({ t: 'peek', pid: 'P14', value: { book: +book.value, page: +page.value } });
       view.innerHTML = '';
       if (r.t !== 'peek') return (view.textContent = t('p14_nopage'));
@@ -248,27 +258,35 @@ const BUILD = {
   },
 
   // P15：留聲水晶（方向、速度）與第七張桌子
-  recording(body, { getLang }) {
-    let dir = 'fwd', speed = 1, playing = null;
+  recording(body, { getLang, conn }) {
+    let dir = 'fwd', speed = 1, playing = null, subT = [];
+    const subs = el('p', { class: 'p15subs' }); // 聲音字幕（設定裡可以關）：轉盤調對時，伺服器給錄音的字幕；調錯就是聽不懂的聲音
     const lab = el('p', { class: 'dim' });
     const paint = () => { lab.textContent = `${t('dial_dir')}：${dir === 'fwd' ? t('forward') : t('reverse')}　${t('dial_speed')}：${speed}×`; };
     paint();
     const play = async () => {
-      playing?.stop();
+      playing?.stop(); react('play', { rev: dir === 'rev', speed });
+      subT.forEach(clearTimeout); subT = []; subs.textContent = '';
+      if (captionsOn()) conn.request({ t: 'peek', pid: 'P15', value: { rev: dir === 'rev', speed } }).then((r) => {
+        const lines = r.content?.lines;
+        if (!lines) { subs.textContent = t(dir === 'rev' ? 'p15_sub_quick' : speed >= 1 ? 'p15_sub_fast' : 'p15_sub_garbled'); return; } // 錄音檔本身是倒過來又加快的
+        lines.forEach((ln, i) => subT.push(setTimeout(() => { subs.textContent = `（${ln}）`; }, 400 + i * 3200)));
+        subT.push(setTimeout(() => { subs.textContent = t('p15_sub_breath'); }, 400 + lines.length * 3200));
+      });
       playing = await playFile(`assets/audio/ch1/p15_liana_${getLang() === 'en' ? 'en' : 'zh'}.mp3`, { volume: 0.9, reverse: dir === 'rev', rate: speed });
     };
     body.append(el('p', { text: t('p15_crystal') }), lab, el('div', { class: 'row' },
       el('button', { text: t('dial_dir'), onclick: () => { dir = dir === 'fwd' ? 'rev' : 'fwd'; paint(); } }),
       el('button', { text: t('dial_speed'), onclick: () => { speed = speed === 1 ? 2 : speed === 2 ? 0.5 : 1; paint(); } }),
       el('button', { text: `▶ ${t('play')}`, onclick: play }),
-      el('button', { class: 'small', text: '■', onclick: () => playing?.stop() })));
+      el('button', { class: 'small', text: '■', onclick: () => { playing?.stop(); react('play', { off: true }); subT.forEach(clearTimeout); subs.textContent = ''; } })), subs);
   },
   P15(body, { submit }) { body.append(el('p', { text: t('p15_drawer') }), numberInput(submit, '????')); },
 
   // P16：自己翻頁的書
   P16(body, { submit, panel }) {
     const pageEl = el('div', { class: 'flip', text: FLIP_PAGES[0] });
-    let i = 0; const timer = setInterval(() => { i = (i + 1) % FLIP_PAGES.length; pageEl.textContent = FLIP_PAGES[i]; }, 1200);
+    let i = 0; const timer = setInterval(() => { i = (i + 1) % FLIP_PAGES.length; pageEl.textContent = FLIP_PAGES[i]; react('page', { i }); }, 1200);
     panel.onClose = () => clearInterval(timer);
     const inp = el('input', { class: 'num', placeholder: t('page'), onkeydown: (e) => e.stopPropagation() });
     body.append(el('p', { text: t('p16_intro') }), pageEl, el('div', { class: 'row' }, inp, el('button', { text: t('turn_to'), onclick: () => submit(inp.value.trim()) })));
@@ -279,7 +297,7 @@ const BUILD = {
   P17(body, { submit }) {
     const bits = [1, 1, 1, 1, 1, 1];
     const bars = el('div', { class: 'hexagram' });
-    const paint = () => { bars.innerHTML = ''; for (let i = 5; i >= 0; i--) bars.append(el('button', { class: bits[i] ? 'solid' : 'broken', title: String(i + 1), onclick: () => { bits[i] ^= 1; paint(); } }, el('i'), el('i'))); };
+    const paint = () => { bars.innerHTML = ''; for (let i = 5; i >= 0; i--) bars.append(el('button', { class: bits[i] ? 'solid' : 'broken', title: String(i + 1), onclick: () => { bits[i] ^= 1; react('bars', { bits: [...bits] }); paint(); } }, el('i'), el('i'))); };
     paint();
     body.append(el('p', { text: t('p17_drawer') }), bars, el('button', { text: t('answer'), onclick: () => submit(bits.join('')) }));
   },
@@ -288,7 +306,7 @@ const BUILD = {
   P18(body, { submit, items }) {
     const latin = items().includes('chartpage');
     const seq = []; const show = el('div', { class: 'slots runes-in' });
-    const paint = () => { show.textContent = [0, 1, 2, 3, 4, 5].map((i) => RUNES.find((r) => r[1] === seq[i])?.[0] ?? '＿').join(' '); };
+    const paint = () => { show.textContent = [0, 1, 2, 3, 4, 5].map((i) => RUNES.find((r) => r[1] === seq[i])?.[0] ?? '＿').join(' '); react('runes', { seq: seq.map((id) => RUNES.find((r) => r[1] === id)?.[0]) }); };
     paint();
     const ring = el('div', { class: 'runering' }, ...RUNES.map(([g, id]) => el('button', { onclick: () => { if (seq.length < 6) seq.push(id); paint(); } }, el('b', { text: g }), latin ? el('small', { text: id.toUpperCase() }) : null)));
     body.append(el('p', { text: L(RUNE_DOOR) }), show, ring, el('p', { class: 'dim', text: latin ? t('p18_latin') : t('p18_nolatin') }),
@@ -321,10 +339,11 @@ const BUILD = {
         const b = el('button', { class: `${lit ? 'lit' : ''} ${end ? 'end' : ''} ${c === 'C' ? 'crystal' : ''}`, text: label });
         if (/\d/.test(c)) b.onclick = () => {
           if (c === '4' && !hasMirror) return (status.textContent = t('p19_need_mirror'));
-          set[c] = set[c] === '' ? '/' : set[c] === '/' ? '\\' : ''; paint();
+          set[c] = set[c] === '' ? '/' : set[c] === '/' ? '\\' : ''; react('mirror'); paint();
         };
         grid.append(b);
       }));
+      react('light', { path: [[0, 0], ...[...tr.path].filter((k) => k !== '0,0').map((k) => k.split(',').map(Number))], hit: !!tr.hit, mirrors: { ...set }, see });
       if (tr.hit && !done) { done = true; submit('done').then((r) => { if (!r?.solved) done = false; }); } // 沒送成功可以再試
     };
     const status = el('p', { class: 'dim', text: see ? t('p19_see') : t('p19_blind') });
@@ -345,6 +364,7 @@ const BUILD = {
         const tgt = targets.some(([a, b]) => a === x && b === y);
         grid.append(el('span', { class: `${c === '#' ? 'wall' : ''} ${tgt ? 'target' : ''}`, text: x === px && y === py ? '◉' : c === 'B' ? '🗿' : '' }));
       }));
+      const boxes = []; map.forEach((row, y) => row.forEach((c, x) => { if (c === 'B') boxes.push([x, y]); })); react('board', { boxes, player: [px, py] });
       if (!done && targets.every(([x, y]) => map[y][x] === 'B')) { done = true; submit('done').then((r) => { if (!r?.solved) done = false; }); }
     };
     const move = (dx, dy) => {
@@ -370,8 +390,8 @@ const BUILD = {
     const paint = () => {
       row.innerHTML = '';
       VIALS.forEach(([sym, name], i) => row.append(el('button', { class: side[i], onclick: () => {
-        if (mode === 'pick') return submit({ pick: i });
-        side[i] = side[i] === '' ? 'L' : side[i] === 'L' ? 'R' : ''; paint();
+        if (mode === 'pick') { react('pick', { i }); return submit({ pick: i }); }
+        side[i] = side[i] === '' ? 'L' : side[i] === 'L' ? 'R' : ''; react('vials', { side: [...side] }); paint();
       } }, el('b', { text: sym }), el('small', { text: named ? L(name) : '？' }), el('i', { text: side[i] }))));
     };
     paint();
@@ -379,9 +399,10 @@ const BUILD = {
       const left = side.flatMap((s, i) => (s === 'L' ? [i] : [])), right = side.flatMap((s, i) => (s === 'R' ? [i] : []));
       const r = await conn.request({ t: 'answer', pid: 'P21', value: { weigh: { left, right } } });
       if (r.reply?.reshuffled) out.textContent = t('p21_reshuffled');
-      else if (r.reply?.result) out.textContent = t(`p21_${r.reply.result}`, { n: r.reply.used });
+      else if (r.reply?.result) { out.textContent = t(`p21_${r.reply.result}`, { n: r.reply.used }); react('weigh', { result: r.reply.result }); }
       else if (r.t === 'error') out.textContent = errText(r.error, { s: Math.ceil((r.wait ?? 0) / 1000) });
       side.fill(''); paint();
+      if (!r.reply?.result) react('vials', { side: [...side] });
     };
     body.append(row, out, el('div', { class: 'row' },
       el('button', { text: t('weigh'), onclick: weigh }),
@@ -420,9 +441,9 @@ const BUILD = {
   P24(body, { conn, submit }) {
     body.append(el('p', { text: t('p24_intro') }));
     const cells = el('div', { class: 'braille-door' });
-    conn.request({ t: 'peek', pid: 'P24' }).then((r) => (r.content?.cells ?? []).forEach((dots) => {
+    conn.request({ t: 'peek', pid: 'P24' }).then((r) => (r.content?.cells ?? []).forEach((dots, i) => {
       const c = brailleCell(dots, true);
-      const feel = () => { c.classList.add('felt'); navigator.vibrate?.(dots.map(() => 40)); setTimeout(() => c.classList.remove('felt'), 1500); };
+      const feel = () => { react('feel', { i, dots }); c.classList.add('felt'); navigator.vibrate?.(dots.map(() => 40)); setTimeout(() => c.classList.remove('felt'), 1500); };
       c.onpointerenter = feel; c.onclick = feel; cells.append(c);
     }));
     const inp = el('input', { maxlength: '8', onkeydown: (e) => e.stopPropagation() });
@@ -435,9 +456,32 @@ const BUILD = {
     const view = el('div', { class: 'rings' });
     const paint = () => { view.innerHTML = ''; rings.forEach((v, i) => view.append(el('div', {}, el('small', { text: t(`ring_${i}`) }),
       el('button', { text: '−', onclick: () => { rings[i] = (rings[i] + 12) % 13; paint(); } }), el('b', { text: String(v) }),
-      el('button', { text: '+', onclick: () => { rings[i] = (rings[i] + 1) % 13; paint(); } })))); };
+      el('button', { text: '+', onclick: () => { rings[i] = (rings[i] + 1) % 13; paint(); } })))); react('rings', { rings: [...rings] }); };
     paint();
     body.append(el('p', { text: t('p25_intro') }), view, el('button', { text: t('answer'), onclick: () => submit(rings.join(',')) }));
+  },
+
+  // P30：鐵柵門的五格字母鎖（A～Z 轉輪）
+  P30(body, { submit }) {
+    const wheels = [0, 0, 0, 0, 0], AZ = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const view = el('div', { class: 'rings' });
+    const paint = () => { view.innerHTML = ''; wheels.forEach((v, i) => view.append(el('div', {},
+      el('button', { text: '−', onclick: () => { wheels[i] = (v + 25) % 26; react('wheel', { i }); paint(); } }), el('b', { text: AZ[v] }),
+      el('button', { text: '+', onclick: () => { wheels[i] = (v + 1) % 26; react('wheel', { i }); paint(); } })))); };
+    // 也可以直接打字（轉輪一格一格轉太慢）：打的字母同步轉到轉輪上
+    const typed = el('input', { maxlength: '5', placeholder: 'ABCDE', class: 'num', autocapitalize: 'characters', oninput: () => {
+      [...typed.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 5)].forEach((ch, i) => { wheels[i] = AZ.indexOf(ch); }); react('wheel', {}); paint();
+    } });
+    typed.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') go.click(); };
+    const go = el('button', { text: t('answer'), onclick: () => submit(wheels.map((v) => AZ[v]).join('')) });
+    paint();
+    body.append(el('p', { text: t('p30_intro') }), view, el('div', { class: 'row' }, typed, go));
+  },
+
+  // P31：閱覽室的油燈（吹熄之後，在黑暗中找到正在哭的娃娃；場景裡的事由 logic/act3.mjs 處理）
+  sobLamp(body, { solved }) {
+    body.append(el('p', { text: t('p31_intro') }));
+    if (!solved) body.append(el('button', { text: t('p31_blow'), onclick: () => { closePanel(); dispatchEvent(new Event('ml-sob')); } }));
   },
 
   // ---- 第四幕 ----
@@ -450,10 +494,11 @@ const BUILD = {
       for (const p of pulls) for (const b of LEVERS[p]) locked.has(b) ? locked.delete(b) : locked.add(b);
       bolts.innerHTML = '';
       for (let b = 1; b <= 4; b++) bolts.append(el('span', { class: locked.has(b) ? 'locked' : 'open', text: `${b}　${t(locked.has(b) ? 'bolt_locked' : 'bolt_open')}` }));
+      react('levers', { locked: [...locked], reset: !pulls.length });
     };
     paint();
     body.append(el('p', { text: t('p26_intro') }), bolts,
-      el('div', { class: 'row' }, ...Object.keys(LEVERS).map((k) => el('button', { text: k, onclick: () => { pulls.push(k); paint(); } })),
+      el('div', { class: 'row' }, ...Object.keys(LEVERS).map((k) => el('button', { text: k, onclick: () => { pulls.push(k); react('pull', { k }); paint(); } })),
         el('button', { class: 'small', text: t('reset'), onclick: () => { pulls.length = 0; paint(); } })),
       el('button', { text: t('p26_push'), onclick: () => submit([...pulls]) }));
   },
@@ -475,6 +520,7 @@ const BUILD = {
       });
       const all = pick.every(Boolean) && pick.every((g, i) => chain[i] / 6 + g / 6 === AXLE_GAPS[i]);
       const k = gcd(12, pick[2] ?? 12);
+      react('gears', { pick: [...pick], fits: pick.map((g, i) => !!g && !!chain[i] && chain[i] / 6 + g / 6 === AXLE_GAPS[i]), all });
       out.textContent = all ? t('p27_result', { dir: t(pick.length % 2 ? 'p27_ccw' : 'p27_cw'), ratio: `${12 / k}/${pick[2] / k}` }) : '';
     };
     paint();
@@ -489,13 +535,18 @@ const BUILD = {
     let down = 0;
     const pad = el('button', { class: 'knock', text: t('p28_tap') });
     pad.onpointerdown = () => { down = performance.now(); pad.classList.add('on'); };
-    pad.onpointerup = () => { if (!down) return; pad.classList.remove('on'); if (seq.length < 7) seq.push(performance.now() - down > 350 ? 'L' : 'S'); down = 0; paint(); };
+    pad.onpointerup = () => { if (!down) return; pad.classList.remove('on'); const k = performance.now() - down > 350 ? 'L' : 'S'; if (seq.length < 7) seq.push(k); react('tap', { kind: k }); down = 0; paint(); };
     paint();
     body.append(el('p', { text: t('p28_intro') }), show, pad, mine,
-      el('div', { class: 'row' }, el('button', { class: 'small', text: t('p28_long'), onclick: () => { if (seq.length < 7) seq.push('L'); paint(); } }),
-        el('button', { class: 'small', text: t('p28_short'), onclick: () => { if (seq.length < 7) seq.push('S'); paint(); } }),
+      el('div', { class: 'row' }, el('button', { class: 'small', text: t('p28_long'), onclick: () => { if (seq.length < 7) seq.push('L'); react('tap', { kind: 'L' }); paint(); } }),
+        el('button', { class: 'small', text: t('p28_short'), onclick: () => { if (seq.length < 7) seq.push('S'); react('tap', { kind: 'S' }); paint(); } }),
         el('button', { class: 'small', text: t('reset'), onclick: () => { seq.length = 0; paint(); } }),
         el('button', { text: t('p28_knock'), onclick: async () => { const r = await submit(seq.join('')); if (r && r.t !== 'error' && !r.solved) noise?.(); seq.length = 0; paint(); } })));
+  },
+  // P32：稻草人的工具箱（四位數密碼鎖）。解開：鐘塔的時間多 60 秒
+  P32(body, { submit, toast }) {
+    const go = async (v) => { const r = await submit(v); if (r?.solved) toast(t('p32_bonus')); return r; };
+    body.append(el('p', { text: t('p32_intro') }), numberInput(go, '????'));
   },
   // P29：屋頂入口的刻字（石板本身在場景裡踩）
   roofsign(body) { body.append(el('blockquote', { text: t('p29_quote') }), el('p', { class: 'dim', text: t('p29_sign') })); },
@@ -606,8 +657,9 @@ const NEST = {
       : el('button', { text: t(`dir.${d}`), onclick: () => { picks.push(d * 45); if (picks.length === 3) { submit(picks.join(',')); picks.length = 0; } paint(); } })));
     body.append(el('p', { text: t('s2_intro') }), info, dirs);
   },
-  S3(body, { submit }) { // 符文數獨（6×6，2×3 的框）
-    const GIVEN = ['1..4.6', '.5..2.', '2.1..4', '5..2.1', '.1..4.', '6.5..2'];
+  S3(body, { submit }) { // 符文數獨（6×6，2×3 的框）。2026-11-03：換成只有一種填法的題目，填完後對角線（左上→右下）的六個符文拼出 BANISH「驅逐」
+    const GIVEN = ['..5.64', '..45.3', '.4.621', '..6.35', '.....2', '....4.'];
+    const RUNES6 = S3_RUNES;
     const g = GIVEN.map((row) => [...row].map((ch) => (ch === '.' ? 0 : +ch)));
     const fixed = g.map((row) => row.map(Boolean));
     const ok = () => {
@@ -619,11 +671,19 @@ const NEST = {
     const view = el('div', { class: 'sudoku' });
     const paint = () => {
       view.innerHTML = '';
-      g.forEach((row, r) => row.forEach((v, c) => view.append(el('button', { class: `${fixed[r][c] ? 'fixed' : ''} ${c === 2 ? 'bx' : ''} ${r % 2 ? 'by' : ''}`, text: v ? RUNES6[v - 1] : '',
-        onclick: () => { if (fixed[r][c]) return; g[r][c] = (g[r][c] + 1) % 7; paint(); if (ok()) submit('done'); } }))));
+      g.forEach((row, r) => row.forEach((v, c) => view.append(el('button', { class: `${fixed[r][c] ? 'fixed' : ''} ${c === 2 ? 'bx' : ''} ${r % 2 ? 'by' : ''} ${r === c ? 'diag' : ''} ${done && r === c ? 'lit' : ''}`, text: v ? RUNES6[v - 1] : '',
+        onclick: () => { if (fixed[r][c] || done) return; g[r][c] = (g[r][c] + 1) % 7; paint(); if (ok()) reveal(); } }))));
+    };
+    // 填完：對角線的符文一個一個亮起來，拼出解咒的字，再送出
+    let done = false;
+    const word = el('p', { class: 's3word' });
+    const reveal = () => {
+      done = true; paint(); sfx('chime', 0);
+      g.forEach((row, i) => setTimeout(() => { word.textContent = g.map((rw, k) => (k <= i ? S3_LETTERS[rw[k] - 1] : '・')).join(' '); sfx('note', i); }, 350 * (i + 1)));
+      setTimeout(() => { word.textContent = t('s3_word'); setTimeout(() => submit('done'), 1800); }, 350 * 7);
     };
     paint();
-    body.append(el('p', { text: t('s3_intro') }), view);
+    body.append(el('p', { text: t('s3_intro') }), view, word);
   },
   S4(body, { content, submit }) {
     const SIDES = ['left', 'middle', 'right'];
@@ -634,7 +694,7 @@ const NEST = {
 };
 
 // 燭光閃爍：長＝－，短＝・
-function blink(lamp, codes) {
+function blink(lamp, codes, onLight = () => {}) { // onLight(true/false)：場景裡遠方窗戶的燭光跟著亮滅
   if (lamp.dataset.on) return;
   lamp.dataset.on = '1';
   const seq = [];
@@ -644,8 +704,8 @@ function blink(lamp, codes) {
   });
   let i = 0;
   const step = () => {
-    if (i >= seq.length) { delete lamp.dataset.on; lamp.classList.remove('lit'); return; }
-    const [on, ms] = seq[i++]; lamp.classList.toggle('lit', !!on); setTimeout(step, ms);
+    if (i >= seq.length) { delete lamp.dataset.on; lamp.classList.remove('lit'); onLight(false); return; }
+    const [on, ms] = seq[i++]; lamp.classList.toggle('lit', !!on); onLight(!!on); setTimeout(step, ms);
   };
   step();
 }

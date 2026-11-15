@@ -1,6 +1,7 @@
 // 第四幕的特別場景（灰盒）：屋頂的符文石板（P29）、機械室的大齒輪與鐘擺、蝕巢的黑根、屋頂的月亮。
 import * as THREE from 'three';
 import { ROOF, ROOF_AT } from '../data/act4-ch1.mjs';
+import { bloodPool, bloodSplat, bloodTrail, wallSmear, bones, buildVictim } from '../art/gore.mjs';
 
 function runeTexture(ch) {
   const c = document.createElement('canvas'); c.width = c.height = 128;
@@ -12,7 +13,7 @@ function runeTexture(ch) {
 }
 
 export function createAct4Scene(scene) {
-  const root = new THREE.Group(); scene.add(root);
+  const root = new THREE.Group(); root.userData.static = true; scene.add(root); // static：不會移動的場景，world.mjs 只畫玩家附近房間的部分
   // ---- 屋頂的石板 ----
   const tiles = [];
   ROOF.forEach((row, r) => [...row].forEach((ch, c) => {
@@ -44,9 +45,23 @@ export function createAct4Scene(scene) {
     const m = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.16, len, 5), rootMat);
     m.position.set(166 + Math.random() * 6.5, Math.random() * 3.5, -1.5 + Math.random() * 7); m.rotation.set(Math.random() * 2, Math.random() * 3, Math.random() * 2); root.add(m);
   }
+  // 蝕巢地上的血：被拖進來的人留下的（帳號二）
+  bloodPool(root, 169.5, 2, 1.3, { seed: 21 }); bloodPool(root, 167.2, -0.6, 0.6, { seed: 22 });
+  bloodSplat(root, 172.82, 1.4, 3.5, { size: 1.3, name: 'drip', normal: [-1, 0, 0], spin: Math.PI });
+  bloodSplat(root, 170.5, 1.1, -1.82, { size: 1.0, name: 'drip', normal: [0, 0, 1], spin: Math.PI });
+  bloodSplat(root, 166.4, 0, 4.4, { size: 1.2, name: 'spray', spin: 1.3 });
+  // 加重（2026-11-04）：被拖進來的拖痕、牆上的血手印、啃乾淨的骨頭；頭朝牆仰躺著一個被撐開胸口的學生（模型到第四幕才載入）
+  bloodTrail(root, { x: 166.2, z: 4.6 }, { x: 171.6, z: 1.2 }, { width: 0.9, seed: 23, hands: 4 });
+  wallSmear(root, 172.82, 1.2, 0.2, { normal: [-1, 0, 0], w: 1.2, seed: 33 });
+  wallSmear(root, 168.4, 1.1, -1.82, { normal: [0, 0, 1], w: 1.0, seed: 34 });
+  bones(root, 167.6, 3.4, { n: 10, spread: 1.2, seed: 24 });
+  let victim = null; // 第四幕開場劇情時就載入（2026-11-14：原本走進通道才載入，追逐一開始畫面會停一下）
+  const wakeNest = () => (victim ??= buildVictim(root, 171.2, 2.6, [-1, 0]).catch((e) => console.warn('蝕巢屍體載入失敗', e)));
   let t = 0;
   return {
+    wake: wakeNest,
     frame(dt, zone) {
+      if (zone === 'a4_pass' || zone === 'a4_gears' || zone === 'a4_nest') wakeNest();
       moonlight.intensity = zone === 'a4_roof' ? 1.6 : 0; sky.intensity = zone === 'a4_roof' ? 0.8 : 0;
       if (zone !== 'a4_gears') return;
       t += dt; gears.forEach((g, i) => { g.rotation.y += dt * (i % 2 ? -0.3 : 0.3); }); pend.rotation.z = Math.sin(t * 1.2) * 0.35;
