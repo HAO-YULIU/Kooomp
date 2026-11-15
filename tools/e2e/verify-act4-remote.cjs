@@ -5,13 +5,15 @@ const { Player, sleep, issues, close } = require('./bot.cjs');
   const A4 = await import('../../game/src/data/act4-ch1.mjs');
   const TH = (id) => A4.A4_THINGS.find((t) => t.id === id);
   const A = new Player('驗證甲', { house: 'grimoire' }), B = new Player('驗證乙', { mobile: true, house: 'belmont' });
-  const out = [];
+  const out = []; const _push = out.push.bind(out); out.push = (x) => { console.log('✔步驟', x); return _push(x); };
+  setTimeout(() => { console.log('========（超過 40 分鐘，中止）'); console.log(out.join('\n')); process.exit(1); }, 40 * 60000);
   try {
     for (const p of [A, B]) {
       await p.open(); await p.tap('#age-ok');
       if (p.mobile) { await p.page.locator('#s-home').waitFor({ state: 'visible', timeout: 15000 }); await p.checkLayout('加入主畫面'); await p.shot('home-tip'); out.push(`手機：加入主畫面建議 ✔（步驟 ${await p.page.locator('#home-steps li').count()} 條）`); await p.tap('#home-skip'); }
       await p.page.locator('#s-menu').waitFor({ state: 'visible' });
     }
+    console.log('進到選單');
     await A.tap('#btn-create'); await A.page.waitForFunction(() => /^[A-Z0-9]{4}$/.test(document.getElementById('room-code').textContent.trim()));
     const code = (await A.page.textContent('#room-code')).trim();
     await B.type('#join-code', code); await B.tap('#btn-join'); await B.page.locator('#s-wait').waitFor({ state: 'visible' });
@@ -22,7 +24,7 @@ const { Player, sleep, issues, close } = require('./bot.cjs');
       await sleep(800); await p.tap('#btn-ready'); await sleep(800);
     }
     await A.page.waitForFunction(() => [...document.querySelectorAll('#member-list li')].filter((li) => li.textContent.includes('✔')).length === 2);
-    await A.tap('#btn-start');
+    console.log('按出發'); await A.tap('#btn-start');
     await Promise.all([A, B].map(async (p) => { await p.page.locator('#loading').waitFor({ state: 'hidden', timeout: 600000 }); await p.page.waitForFunction(() => window.__w && window.__ml); await sleep(1500); for (let i = 0; i < 12; i++) { const b = p.page.locator('#panel .tut-nav button.primary'); if (!(await b.count())) break; await p.tap(b); await sleep(300); } await p.clearTalk(); }));
     out.push('兩人連線、載入 ✔');
     // 跳到第四幕（開發者工具）
@@ -37,7 +39,7 @@ const { Player, sleep, issues, close } = require('./bot.cjs');
     await B.checkLayout('遠距清單'); await B.closePanel();
     // 手機玩家走到鐵門前調查一次（真的走路）
     const door = TH('ironDoor');
-    await B.inspect(door); await B.checkLayout('P26');
+    console.log('手機玩家走去鐵門'); await B.inspect(door); await B.checkLayout('P26');
     out.push(`走到鐵門調查：${(await B.st()).panel ? '打開了視窗' : '沒打開'}；提示「${(await B.st()).toast}」`);
     await B.closePanel();
     // 走回入口大廳的書架縫躲起來
