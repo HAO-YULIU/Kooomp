@@ -38,7 +38,21 @@ export async function signIn() {
   const { data: { session } } = await client().auth.getSession();
   if (!session?.user) return null;
   const { data: profile } = await client().from('profiles').select('username').eq('id', session.user.id).maybeSingle();
+  if (profile?.username) startPlayClock();
   return { uid: session.user.id, name: profile?.username ?? null };
+}
+
+// 遊玩時間（大廳的等級和金幣，沒逃出也算；2026-11-16 大廳）：畫面開著、5 分鐘內有操作，每分鐘回報一次。
+// 時間由伺服器（Supabase 的 lobby_tick）記，同一分鐘只算一次；測試登入、本機 ?dev= 不回報
+let clockOn = false;
+function startPlayClock() {
+  if (clockOn) return;
+  clockOn = true;
+  let act = Date.now();
+  for (const t of ['pointerdown', 'pointermove', 'keydown', 'touchstart', 'wheel']) addEventListener(t, () => { act = Date.now(); }, { capture: true, passive: true });
+  setInterval(() => {
+    if (document.visibilityState === 'visible' && Date.now() - act < 300000) client().rpc('lobby_tick', { p_game: SLUG }).then(() => {}, () => {});
+  }, 60000);
 }
 
 // 開發者登入：遊戲還沒放上大廳（未公開）時，製作人直接用大廳的帳號密碼登入。只有大廳的管理員（admins 表裡有自己）才能進
