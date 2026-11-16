@@ -38,7 +38,7 @@
 - 發佈只放 `dist/`（`wrangler.jsonc` 的 assets 只指向 `dist/`），`docs/`、`data/` 的答案不會上網站；build 也會檢查。
 
 ## 紀錄
-- 2026-11-16（`claude/lobby-update-validation-coins-effects-idlnpk`，大廳那邊做的）：遊玩時間回報大廳——大廳改成沒逃出的遊玩時間也算等級和金幣。`game/src/net/platform.mjs` 的 `startPlayClock`：登入（有玩家名稱）後，畫面開著、5 分鐘內有操作（含滑鼠轉視角），每分鐘呼叫一次 Supabase 的 `lobby_tick('milner')`；`?dev`、`?test` 登入不回報。沒動到其他檔案；`npm test` 35 項全過。
+- 2026-11-16（`claude/lobby-update-validation-coins-effects-idlnpk`，大廳那邊做的）：遊玩時間回報大廳——大廳改成沒逃出的遊玩時間也算等級和金幣。`game/src/net/platform.mjs` 的 `startPlayClock`：登入（有玩家名稱）後，畫面開著、5 分鐘內有操作（含滑鼠轉視角），每 5 分鐘把有在玩的分鐘數送到大廳的 Cloudflare（`lobby-api` 的 `/api/tick`），再整批交給 Supabase；`?dev`、`?test` 登入不回報。沒動到其他檔案；`npm test` 35 項全過。
 - 2026-11-15（`claude/modest-mendel-2td2bn`）：大廳的遊玩紀錄（製作人：管理員看不到魔蝕的數據——以前從來沒寫過 play_records）：`platform.mjs` 的 `recordRun`，`main.mjs` 收到房間狀態時呼叫——開局寫一筆 started，看到第一章完（`state.result`）改成 cleared（時間、被抓次數→deaths、提示次數、模式→variant、隊伍代號 team_key）。每位有登入的隊員各一筆；`?dev`、`?test` 登入不寫；以房號記在 localStorage `milner-runs`，不會重複寫。測試 `tools/test/records.test.mjs`。之前開放後玩的局沒有紀錄（補不回來）。
 - 2026-11-14（`claude/busy-hawking-1tr76j`）：上架前檢查與修改：
   - 大廳資料庫：《魔蝕milner》狀態「開放」、上架日 2026-11-15、網址 https://kooomp.noron.workers.dev/、大廳開放時間 08:30，都對。

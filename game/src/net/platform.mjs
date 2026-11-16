@@ -43,16 +43,21 @@ export async function signIn() {
 }
 
 // 遊玩時間（大廳的等級和金幣，沒逃出也算；2026-11-16 大廳）：畫面開著、5 分鐘內有操作，每分鐘回報一次。
-// 時間由伺服器（Supabase 的 lobby_tick）記，同一分鐘只算一次；測試登入、本機 ?dev= 不回報
+// 交給大廳的 Cloudflare（lobby-api 的 /api/tick），每 5 分鐘整批進 Supabase；測試登入、本機 ?dev= 不回報
 let clockOn = false;
 function startPlayClock() {
-  if (clockOn) return;
+  if (clockOn || typeof addEventListener !== 'function') return;
   clockOn = true;
-  let act = Date.now();
+  // 每分鐘看一次有沒有在玩，每 5 分鐘把累積的分鐘數送到大廳的 Cloudflare（不直接打 Supabase，省用量）；切走或關掉時把剩下的先送出去
+  let act = Date.now(), n = 0, tok = '';
+  const token = () => client().auth.getSession().then(({ data }) => { tok = data?.session?.access_token || ''; }, () => {});
+  const send = () => {
+    if (!n || !tok) return; const k = n; n = 0;
+    fetch('https://lobby-api.noron.workers.dev/api/tick', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ t: tok, game: SLUG, n: k }) }).catch(() => {});
+  };
   for (const t of ['pointerdown', 'pointermove', 'keydown', 'touchstart', 'wheel']) addEventListener(t, () => { act = Date.now(); }, { capture: true, passive: true });
-  setInterval(() => {
-    if (document.visibilityState === 'visible' && Date.now() - act < 300000) client().rpc('lobby_tick', { p_game: SLUG }).then(() => {}, () => {});
-  }, 60000);
+  token(); setInterval(() => { token(); if (document.visibilityState === 'visible' && Date.now() - act < 300000 && ++n >= 5) send(); }, 60000);
+  addEventListener('pagehide', send); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') send(); });
 }
 
 // 開發者登入：遊戲還沒放上大廳（未公開）時，製作人直接用大廳的帳號密碼登入。只有大廳的管理員（admins 表裡有自己）才能進
