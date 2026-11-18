@@ -4,6 +4,8 @@ import * as THREE from 'three';
 import { decorators } from './art-hooks.mjs';
 
 const WALL_T = 0.3; // 牆的厚度
+// 站在門口、外觀就是那扇門（或門上的鎖）的謎題物件：門開了它們也要藏起來。卡住的鐵門（ironDoor）由機關自己升上去，不在這裡
+const DOOR_ART = new Set(['gate', 'runedoor', 'exitdoor', 'pendulum', 'north_door', 'nh_lock', 'lock_eldrin', 'lock_grimoire']);
 const FLOOR = {
   stone: new THREE.MeshStandardMaterial({ color: '#4a4744', roughness: 0.95 }),
   wood: new THREE.MeshStandardMaterial({ color: '#3a2a1c', roughness: 0.8 }),
@@ -36,6 +38,7 @@ export function buildWorld(scene, { rooms, doors, things }, { lowQuality = false
   const group = new THREE.Group(); group.userData.static = true; scene.add(group);
   const colliders = [];
   const doorState = new Map(); // id → { mesh, collider, open }
+  const doorArt = []; // 畫在謎題物件上、站在門口的門：{ t, objs, door }
   const thingMeshes = new Map(); // id → mesh
   let doorsReady = false; // 蓋場景時本來就開著的門直接不見；之後解開才開的門，轉開（看得到門打開）
 
@@ -101,18 +104,24 @@ export function buildWorld(scene, { rooms, doors, things }, { lowQuality = false
     const i = colliders.indexOf(st.collider);
     if (open && i >= 0) colliders.splice(i, 1);
     if (!open && i < 0) colliders.push(st.collider);
+    showDoorArt(id, !open);
   }
+  // 門開了，門口那扇畫在謎題物件上的門（柵門、符文大門……）也要不見；以前留在原地，看起來關著卻走得過去（玩家回報 2026-11-18）
+  function showDoorArt(id, show) { for (const a of doorArt) if (a.door === id) for (const o of a.objs) o.visible = show; }
 
   // 門往房間裡轉開（鉸鏈在門的一邊），1 秒
   function swing(st) {
     const d = st.door;
     if (!st.pivot) {
+      // 轉到底（180 度）時門板貼著牆面：鉸鏈往房間那邊挪半個牆厚＋一點，門板就停在牆的前面，不會插進牆裡
+      // （以前轉 100 度停在房間中間、又沒有碰撞，玩家走得穿過門板，玩家回報 2026-11-18）
+      const off = (WALL_T / 2 + 0.08) / 2;
       st.pivot = new THREE.Group();
-      st.pivot.position.set(d.axis === 'x' ? d.x - d.w / 2 : d.x, 0, d.axis === 'x' ? d.z : d.z - d.w / 2);
+      st.pivot.position.set(d.axis === 'x' ? d.x - d.w / 2 : d.x + off, 0, d.axis === 'x' ? d.z + off : d.z - d.w / 2);
       group.add(st.pivot); st.pivot.updateMatrixWorld(true); st.pivot.attach(st.mesh);
     }
     st.mesh.visible = true;
-    const t0 = performance.now(), to = d.axis === 'x' ? -1.75 : 1.75;
+    const t0 = performance.now(), to = d.axis === 'x' ? -Math.PI : Math.PI;
     const step = () => { const k = Math.min(1, (performance.now() - t0) / 1000); st.pivot.rotation.y = to * (1 - (1 - k) ** 3); if (k < 1 && st.open) requestAnimationFrame(step); };
     requestAnimationFrame(step);
   }
@@ -127,8 +136,15 @@ export function buildWorld(scene, { rooms, doors, things }, { lowQuality = false
     mesh.visible = !t.hidden; // hidden：外觀由別的程式畫（例如長廊、創辦人的房間），這裡只留調查範圍
     group.add(mesh); thingMeshes.set(t.id, mesh);
     if (t.solid) colliders.push({ minX: t.x - w / 2, maxX: t.x + w / 2, minZ: t.z - d / 2, maxZ: t.z + d / 2 });
+    const n0 = group.children.length;
     for (const f of decorators.thing) f({ thing: t, mesh, group, THREE });
+    if (DOOR_ART.has(t.id)) doorArt.push({ t, objs: group.children.slice(n0) }); // 這個東西的美術（裝飾函式加在 group 底下的那些）
   }
+  // 畫在謎題物件上的門：看它站在哪一扇門的門口
+  for (const a of doorArt) a.door = [...doorState.values()].find(({ door: d }) => d.axis === 'x'
+    ? Math.abs(a.t.z - d.z) < 0.8 && Math.abs(a.t.x - d.x) <= d.w / 2 + 0.3
+    : Math.abs(a.t.x - d.x) < 0.8 && Math.abs(a.t.z - d.z) <= d.w / 2 + 0.3)?.door.id;
+  for (const st of doorState.values()) if (st.open) showDoorArt(st.door.id, false);
 
   doorsReady = true;
   const roomAt = (x, z) => rooms.find((r) => x >= r.x[0] && x <= r.x[1] && z >= r.z[0] && z <= r.z[1])?.id ?? null;
