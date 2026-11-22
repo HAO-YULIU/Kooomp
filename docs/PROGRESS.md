@@ -5,6 +5,7 @@
 
 ## 進行中
 開始做一件事前在這裡登記；做完就移除。格式：`- 分支名稱：在做什麼（會動到的檔案或資料夾）`
+- `claude/gifted-cori-l8acq5`：P06 沙漏（玩家：翻轉很難按、敲門永遠對不上時間）（`game/src/ui/puzzles.mjs`、`game/src/logic/i18n.mjs`、`tools/test/`）
 
 
 
