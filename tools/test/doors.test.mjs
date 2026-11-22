@@ -49,3 +49,14 @@ test('開門時門板轉到貼著牆（不會停在房間中間變成走得穿�
     assert.ok(!world.colliders.includes(st.collider), `${id} 開著不擋路`);
   }
 });
+
+// 玩家回報 #412（2026-11-22）：「第一章進入各自房間後，出去的門不用解謎可以直接穿門出去」
+// 門一開始的狀態寫成「關著」，setDoor(關) 以為沒變就直接跳過，鎖著的門從來沒有加上擋路的牆（開過再關上才會擋）
+test('鎖著的門一開始就擋路（各宿舍的門、要解謎才開的門）；沒有鎖的門不擋', () => {
+  const w2 = buildWorld(new THREE.Scene(), { rooms: ROOMS, doors: DOORS, things: THINGS });
+  for (const d of DOORS) {
+    const st = w2.doorState.get(d.id);
+    if (d.lock) assert.ok(w2.colliders.includes(st.collider), `${d.id}（${d.lock.puzzle || d.lock.segment}）鎖著卻沒有擋路`);
+    else assert.ok(!w2.colliders.includes(st.collider), `${d.id} 沒有鎖卻擋路`);
+  }
+});

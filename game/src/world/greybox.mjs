@@ -92,7 +92,8 @@ export function buildWorld(scene, { rooms, doors, things }, { lowQuality = false
     const collider = d.axis === 'x'
       ? { minX: d.x - d.w / 2, maxX: d.x + d.w / 2, minZ: d.z - 0.1, maxZ: d.z + 0.1 }
       : { minX: d.x - 0.1, maxX: d.x + 0.1, minZ: d.z - d.w / 2, maxZ: d.z + d.w / 2 };
-    const st = { mesh, collider, open: false, door: d };
+    // open 一開始是 null（還不知道）：以前寫 false，setDoor(關) 以為沒變就跳過，鎖著的門從來沒有加上擋路的牆，走得穿過去（玩家回報 #412，2026-11-22）
+    const st = { mesh, collider, open: null, door: d };
     doorState.set(d.id, st);
     setDoor(d.id, !d.lock);
     for (const f of decorators.door) f({ door: d, mesh, group, THREE });
