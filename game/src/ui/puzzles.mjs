@@ -9,6 +9,7 @@ import { sfx } from '../art/sfx.mjs';
 import { captionsOn } from './captions.mjs';
 import { LEVERS, BOLTS_LOCKED, GEAR_RACK, AXLE_GAPS, LYRIC, LYRIC_MARKS } from '../data/act4-ch1.mjs';
 import { HOUSES } from '../logic/chars.mjs';
+import { hourglassClock } from '../logic/hourglass.mjs';
 
 const ZODIAC = [
   ['aries', '♈', '牡羊', 'Aries'], ['taurus', '♉', '金牛', 'Taurus'], ['gemini', '♊', '雙子', 'Gemini'], ['cancer', '♋', '巨蟹', 'Cancer'],
@@ -117,52 +118,53 @@ const BUILD = {
   },
 
   // P06：烏洛波斯的沙漏（時間加快：遊戲 1 分鐘＝現實 1 秒）
+  // 2026-11-22 玩家：「翻轉很難按，敲門永遠敲不到時間」——①以前每 0.1 秒把整排沙漏連同按鈕拆掉重畫，手指按下去時按鈕已經換掉了；
+  // ②要在漏完的那一秒內按。改成：按鈕只建一次；沙漏一漏完時間就停下來，等你決定（logic/hourglass.mjs）
   P06(body, { submit }) {
     body.append(el('p', { text: t('p06_intro') }));
     const SEC = 1000; // 遊戲 1 分鐘幾毫秒
-    const glasses = { 7: { top: 0, bot: 7 }, 11: { top: 0, bot: 11 } };
-    let actions = [], startAt = 0, timer = 0, now = 0;
+    let clk = hourglassClock([7, 11]), timer = 0, last = 0;
+    const parts = {};
     const view = el('div', { class: 'hourglasses' });
+    for (const g of [7, 11]) {
+      parts[g] = { top: el('div', { class: 'sand-top' }), bot: el('div', { class: 'sand-bot' }) };
+      view.append(el('div', { class: 'glass' }, parts[g].top, el('div', { class: 'neck' }), parts[g].bot,
+        el('small', { text: `${g} ${t('minutes')}` }),
+        el('button', { class: 'small', text: t('flip'), onclick: () => act('flip', [g]) })));
+    }
     const clock = el('div', { class: 'p06-clock' });
+    const waitBtn = el('button', { class: 'small', text: t('p06_wait'), onclick: () => { clk.resume(); go(); draw(); } });
     const draw = () => {
-      view.innerHTML = '';
-      for (const g of [7, 11]) {
-        const s = glasses[g];
-        view.append(el('div', { class: 'glass' },
-          el('div', { class: 'sand-top', style: `height:${(s.top / g) * 50}px` }),
-          el('div', { class: 'neck' }),
-          el('div', { class: 'sand-bot', style: `height:${(s.bot / g) * 50}px` }),
-          el('small', { text: `${g} ${t('minutes')}` }),
-          el('button', { class: 'small', text: t('flip'), onclick: () => act('flip', [g]) })));
-      }
-      clock.textContent = startAt ? t('p06_elapsed') : t('p06_ready');
-      react('sand', { 7: { ...glasses[7] }, 11: { ...glasses[11] } });
+      for (const g of [7, 11]) { const s = clk.glasses[g]; parts[g].top.style.height = `${(s.top / g) * 50}px`; parts[g].bot.style.height = `${(s.bot / g) * 50}px`; }
+      clock.textContent = !clk.started ? t('p06_ready') : clk.paused ? t('p06_paused', { g: clk.emptied.join('、'), n: Math.round(clk.now) }) : t('p06_elapsed');
+      waitBtn.style.display = clk.paused ? '' : 'none';
+      react('sand', { 7: { ...clk.glasses[7] }, 11: { ...clk.glasses[11] } });
     };
+    const stop = () => { clearInterval(timer); timer = 0; };
     const tick = () => {
-      const m = (performance.now() - startAt) / SEC; const d = m - now; now = m;
-      for (const g of [7, 11]) { const s = glasses[g]; const run = Math.min(s.top, d); s.top -= run; s.bot += run; }
+      if (!body.isConnected) return stop(); // 關掉視窗就不要再算
+      const n = performance.now(), d = (n - last) / SEC; last = n;
+      if (clk.step(d)) { stop(); sfx?.('tick'); }
       draw();
     };
+    const go = () => { if (timer) return; last = performance.now(); timer = setInterval(tick, 100); };
     const act = (a, g) => {
-      if (!startAt) { startAt = performance.now(); now = 0; timer = setInterval(tick, 100); }
-      tick();
-      const tm = +now.toFixed(2);
-      if (a === 'flip') { for (const k of g) { const s = glasses[k]; [s.top, s.bot] = [s.bot, s.top]; } react('flip', { g }); }
-      actions.push(a === 'knock' ? { t: tm, a } : { t: tm, a, g });
+      if (!clk.paused && timer) tick(); // 時間還在走：先算到現在
+      clk.act(a, g);
+      if (a === 'flip') react('flip', { g });
       draw();
-      if (a === 'knock') { clearInterval(timer); finish(); }
+      if (a === 'knock') { stop(); finish(); } else go();
     };
-    const snap = (x) => Math.round(x); // 敲門／翻轉的時間對齊到整分（沙漏剛好漏完的那一刻）
     const finish = async () => {
-      const sent = actions.map((x) => ({ ...x, t: snap(x.t) }));
-      const r = await submit(sent);
+      const r = await submit(clk.actions.map((x) => ({ ...x })));
       if (!r?.solved) reset();
     };
-    const reset = () => { clearInterval(timer); startAt = 0; now = 0; actions = []; glasses[7] = { top: 0, bot: 7 }; glasses[11] = { top: 0, bot: 11 }; react('reset'); draw(); };
+    const reset = () => { stop(); clk = hourglassClock([7, 11]); react('reset'); draw(); };
     body.append(view, clock,
       el('div', { class: 'row' },
         el('button', { text: t('flip_both'), onclick: () => act('flip', [7, 11]) }),
         el('button', { text: t('knock'), onclick: () => act('knock') }),
+        waitBtn,
         el('button', { class: 'small', text: t('reset'), onclick: reset })));
     draw();
   },
